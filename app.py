@@ -61,7 +61,7 @@ if check_password():
             else: return 10
 
     # ==========================================
-    # 1. 사이드바 (API 설정, 업체관리, 빠른실행)
+    # 1. 사이드바 (API, 업체관리, 빠른실행)
     # ==========================================
     st.sidebar.header("⚙️ AI 엔진 설정")
     if "api_key" not in st.session_state: st.session_state["api_key"] = ""
@@ -102,7 +102,7 @@ if check_password():
         st.session_state["view_mode"] = "REPORT"; st.rerun()
 
     # ==========================================
-    # 2. 화면 모드 제어 (입력 화면 vs 리포트 화면)
+    # 2. 화면 모드 제어
     # ==========================================
     if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 
@@ -119,11 +119,10 @@ if check_password():
         else:
             try:
                 with st.status("🚀 AI 전문가 분석 진행 중...", expanded=True) as status:
-                    model = genai.GenerativeModel('gemini-pro')
+                    model = genai.GenerativeModel('gemini-1.5-flash')
                     st.write("📍 데이터 취합 및 AI 프롬프트 생성 중...")
                     time.sleep(1)
                     
-                    # [핵심 수정] 변수를 미리 선언하여 f-string 괄호 충돌 및 SyntaxError 완벽 방지
                     c_name = d.get('in_company_name', '미입력')
                     c_ind = d.get('in_industry', '미입력')
                     s_23 = d.get('in_sales_2023', 0)
@@ -132,28 +131,20 @@ if check_password():
                     kcb_s = d.get('in_kcb_score', 0)
                     nice_s = d.get('in_nice_score', 0)
                     item = d.get('in_item_desc', '미입력')
+                    market = d.get('in_market_status', '미입력')
+                    diff = d.get('in_diff_point', '미입력')
                     req_fund = d.get('in_req_amount', 0)
                     
                     prompt = f"""
-                    당신은 20년 경력의 중소기업 경영컨설턴트입니다. 다음 데이터를 바탕으로 9개 항목의 리포트를 작성하세요.
-                    
-                    기업명: {c_name}
-                    업종: {c_ind}
-                    매출: 23년({s_23}만원), 24년({s_24}만원), 25년({s_25}만원)
+                    당신은 중소기업 경영컨설턴트입니다. 다음 데이터를 바탕으로 리포트를 작성하세요.
+                    기업명: {c_name} / 업종: {c_ind}
+                    매출: 23년({s_23}만), 24년({s_24}만), 25년({s_25}만)
                     신용점수: KCB {kcb_s}, NICE {nice_s}
-                    비즈니스 아이템: {item}
+                    비즈니스 정보: 아이템({item}), 시장현황({market}), 차별화({diff})
                     필요자금: {req_fund}만원
                     
-                    [작성 필수 항목]
-                    1. 기업현황분석
-                    2. SWOT분석 (표 활용)
-                    3. 시장현황 및 경쟁력 분석
-                    4. 핵심 경쟁력분석
-                    5. 정책자금 추천 분석 (기관명/금액/추천이유)
-                    6. 한도 확대를 위한 추천 인증 및 교육
-                    7. 자금 사용계획
-                    8. 매출 추이 및 1년 전망 (월별 상승곡선 반영)
-                    9. 성장비전 및 AI 코멘트
+                    [작성 항목]
+                    1.기업현황분석 2.SWOT분석(표) 3.시장현황 및 경쟁력 4.핵심경쟁력 5.정책자금 추천 6.추천 인증 및 교육 7.자금 사용계획 8.매출 1년 전망 9.성장비전 및 AI 코멘트
                     """
                     
                     st.write("📍 리포트 작성 중...")
@@ -214,7 +205,8 @@ if check_password():
             st.text_input("학과", key="in_edu_major")
             st.text_area("경력(최근기준)", key="in_career")
 
-        st.subheader("📌 신용 및 연체 정보")
+        # 3. 신용 및 연체 정보 (그래프 빼고 텍스트만!)
+        st.header("3. 신용 및 연체 정보")
         cr1, cr2 = st.columns(2)
         with cr1:
             cc1, cc2 = st.columns(2)
@@ -224,12 +216,12 @@ if check_password():
             with sc1: kcb = st.number_input("KCB 점수", 0, 1000, 800, key="in_kcb_score")
             with sc2: nice = st.number_input("NICE 점수", 0, 1000, 800, key="in_nice_score")
         with cr2:
-            st.info(f"🏆 등급 판정 결과: KCB {get_credit_grade(kcb, 'KCB')}등급 / NICE {get_credit_grade(nice, 'NICE')}등급")
+            st.info(f"#### 🏆 등급 판정 결과\n\n* **KCB (올크레딧):** {get_credit_grade(kcb, 'KCB')}등급\n* **NICE (나이스):** {get_credit_grade(nice, 'NICE')}등급")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # 3. 재무 현황
-        st.header("3. 재무현황")
+        # 4. 재무 현황
+        st.header("4. 재무현황")
         m1, m2, m3 = st.columns(3)
         with m1: st.number_input("23년 매출(만원)", key="in_sales_2023")
         with m2: st.number_input("24년 매출(만원)", key="in_sales_2024")
@@ -237,21 +229,7 @@ if check_password():
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # 4. 비즈니스 세부 현황 
-        st.header("4. 비즈니스 세부 현황")
-        st.text_area("[아이템]", key="in_item_desc")
-        st.markdown("**[주거래처 정보]**")
-        cli1, cli2, cli3 = st.columns(3)
-        with cli1: st.text_input("거래처 1", key="in_client_1")
-        with cli2: st.text_input("거래처 2", key="in_client_2")
-        with cli3: st.text_input("거래처 3", key="in_client_3")
-        st.text_area("[판매루트]", key="in_sales_route")
-        st.text_area("[시장현황]", key="in_market_status")
-        st.text_area("[차별화 및 계획]", key="in_future_plan")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # 5. 기대출현황 
+        # 5. 기대출현황
         st.header("5. 기대출현황")
         d1, d2, d3, d4 = st.columns(4)
         with d1: st.number_input("중진공", key="in_debt_kosme")
@@ -261,8 +239,8 @@ if check_password():
         d5, d6, d7, d8 = st.columns(4)
         with d5: st.number_input("기술보증기금", key="in_debt_kibo")
         with d6: st.number_input("기타", key="in_debt_etc")
-        with d7: st.number_input("신용", key="in_debt_credit")
-        with d8: st.number_input("담보", key="in_debt_coll")
+        with d7: st.number_input("신용대출", key="in_debt_credit")
+        with d8: st.number_input("담보대출", key="in_debt_coll")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -283,5 +261,20 @@ if check_password():
         with ac3: st.checkbox("벤처인증", key="in_chk_6"); st.checkbox("뿌리기업확인서", key="in_chk_7")
         with ac4: st.checkbox("ISO인증", key="in_chk_10")
 
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.success("✅ 모든 정보 세팅 완료! 좌측에 API 키를 적용하고 상단의 [1. 기업분석리포트 생성]을 눌러보세요.")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # 8. 비즈니스 정보 (복원 완료!!!)
+        st.header("8. 비즈니스 정보")
+        st.text_area("[아이템]", key="in_item_desc")
+        st.markdown("**[주거래처 정보]**")
+        cli1, cli2, cli3 = st.columns(3)
+        with cli1: st.text_input("거래처 1", key="in_client_1")
+        with cli2: st.text_input("거래처 2", key="in_client_2")
+        with cli3: st.text_input("거래처 3", key="in_client_3")
+        st.text_area("[판매루트]", key="in_sales_route")
+        st.text_area("[시장현황]", key="in_market_status")
+        st.text_area("[차별화]", key="in_diff_point")
+        st.text_area("[앞으로의 계획]", key="in_future_plan")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.success("✅ 세팅 완료! 좌측에 API 키 적용하고 상단의 [1. 기업분석리포트 생성] 눌러보자고!")
