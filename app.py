@@ -61,7 +61,7 @@ if check_password():
             else: return 10
 
     # ==========================================
-    # 1. 사이드바 (API, 업체관리, 빠른실행)
+    # 1. 사이드바 (API 설정 및 업체관리)
     # ==========================================
     st.sidebar.header("⚙️ AI 엔진 설정")
     if "api_key" not in st.session_state: st.session_state["api_key"] = ""
@@ -102,7 +102,7 @@ if check_password():
         st.session_state["view_mode"] = "REPORT"; st.rerun()
 
     # ==========================================
-    # 2. 화면 모드 제어
+    # 2. 화면 모드 제어 (리포트 vs 대시보드)
     # ==========================================
     if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 
@@ -119,10 +119,32 @@ if check_password():
         else:
             try:
                 with st.status("🚀 AI 전문가 분석 진행 중...", expanded=True) as status:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    st.write("📍 데이터 취합 및 AI 프롬프트 생성 중...")
+                    st.write("📍 연결 가능한 AI 모델 탐색 중...")
                     time.sleep(1)
                     
+                    # [핵심] 사용 가능한 모델 리스트를 먼저 조회해서 404 에러 원천 차단
+                    try:
+                        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    except Exception as e:
+                        raise Exception(f"API 키 권한 오류입니다. 새 API 키를 발급받아 적용해주세요. (상세: {e})")
+
+                    if 'models/gemini-1.5-flash' in available_models:
+                        target_model = 'gemini-1.5-flash'
+                    elif 'models/gemini-1.5-pro' in available_models:
+                        target_model = 'gemini-1.5-pro'
+                    elif 'models/gemini-pro' in available_models:
+                        target_model = 'gemini-pro'
+                    elif len(available_models) > 0:
+                        target_model = available_models[0].replace('models/', '')
+                    else:
+                        raise Exception("사용 가능한 생성형 모델이 없습니다.")
+
+                    st.write(f"💡 접속 성공! 연결된 AI 엔진: **{target_model}**")
+                    model = genai.GenerativeModel(target_model)
+                    
+                    st.write("📍 데이터 취합 및 AI 프롬프트 생성 중...")
+                    
+                    # 변수 안전하게 선언
                     c_name = d.get('in_company_name', '미입력')
                     c_ind = d.get('in_industry', '미입력')
                     s_23 = d.get('in_sales_2023', 0)
@@ -155,6 +177,7 @@ if check_password():
                 st.balloons()
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
+                st.info("🚨 [중요 해결책] 계속 오류가 뜬다면 구글 AI Studio에서 새로운 API 키를 발급받아 입력해주세요!")
 
     # --- [입력 화면] ---
     else:
@@ -205,7 +228,7 @@ if check_password():
             st.text_input("학과", key="in_edu_major")
             st.text_area("경력(최근기준)", key="in_career")
 
-        # 3. 신용 및 연체 정보 (그래프 빼고 텍스트만!)
+        # 3. 신용 및 연체 정보 (텍스트로만 출력!)
         st.header("3. 신용 및 연체 정보")
         cr1, cr2 = st.columns(2)
         with cr1:
@@ -263,7 +286,7 @@ if check_password():
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # 8. 비즈니스 정보 (복원 완료!!!)
+        # 8. 비즈니스 정보 (완벽 복원 완료!)
         st.header("8. 비즈니스 정보")
         st.text_area("[아이템]", key="in_item_desc")
         st.markdown("**[주거래처 정보]**")
