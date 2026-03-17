@@ -3,6 +3,7 @@ import json
 import os
 import time
 import pandas as pd
+import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
 
@@ -24,6 +25,22 @@ def check_password():
                 st.error("비밀번호가 틀렸습니다.")
         return False
     return True
+
+# --- 금액 변환 로직 (56000 -> 5억 6,000만원) ---
+def format_kr_currency(value):
+    try:
+        val = int(value)
+        if val == 0: return "0원"
+        uk = val // 10000
+        man = val % 10000
+        if uk > 0 and man > 0:
+            return f"{uk}억 {man:,}만원"
+        elif uk > 0:
+            return f"{uk}억원"
+        else:
+            return f"{man:,}만원"
+    except:
+        return str(value)
 
 if check_password():
     # --- 파일 관리 및 신용등급 로직 ---
@@ -81,7 +98,6 @@ if check_password():
     if st.sidebar.button("💾 현재 정보 저장", use_container_width=True):
         c_name = st.session_state.get("in_company_name", "").strip()
         if c_name:
-            # 현재 화면의 in_ 데이터를 영구 저장
             current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
             db[c_name] = current_data
             save_db(db)
@@ -102,9 +118,7 @@ if check_password():
 
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
-    # 3가지 탭 복원 완료
     if st.sidebar.button("📊 1. 기업분석리포트 생성", use_container_width=True):
-        # [핵심] 화면 넘어가기 전에 데이터 유실 방지를 위해 강제 복사!
         st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         st.session_state["view_mode"] = "REPORT"
         st.rerun()
@@ -122,35 +136,23 @@ if check_password():
     # --- [리포트 화면] ---
     if st.session_state["view_mode"] == "REPORT":
         if st.button("⬅️ 대시보드로 돌아가기"):
-            # [핵심] 돌아갈 때 저장해둔 데이터를 다시 화면(session_state)에 뿌려줌 (증발 방지)
             for k, v in st.session_state["permanent_data"].items():
                 st.session_state[k] = v
             st.session_state["view_mode"] = "INPUT"
             st.rerun()
         
-        # 유실 방지된 데이터 불러오기
         d = st.session_state["permanent_data"]
         c_name = d.get('in_company_name', '미입력')
         
         st.title("📋 시각화 기반 AI 기업분석 리포트")
         st.subheader(f"📌 분석 대상 기업: {c_name}")
         
-        # 상단 요약 대시보드 (입력값이 잘 넘어왔는지 확인용)
-        st.markdown("""<hr style="height:3px;border:none;color:#174EA6;background-color:#174EA6;" />""", unsafe_allow_html=True)
-        col_sum1, col_sum2, col_sum3, col_sum4 = st.columns(4)
-        col_sum1.metric("25년 예상매출", f"{d.get('in_sales_2025', 0):,} 만원")
-        col_sum2.metric("필요자금액", f"{d.get('in_req_amount', 0):,} 만원")
-        col_sum3.metric("KCB 신용점수", f"{d.get('in_kcb_score', 0)} 점")
-        col_sum4.metric("NICE 신용점수", f"{d.get('in_nice_score', 0)} 점")
-        st.markdown("""<hr style="height:3px;border:none;color:#174EA6;background-color:#174EA6;" />""", unsafe_allow_html=True)
-
         if not st.session_state["api_key"]:
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하고 [적용]을 눌러주세요.")
         else:
             try:
                 with st.status("🚀 AI 전문가가 시각화 리포트를 생성 중입니다...", expanded=True) as status:
-                    st.write("📍 연결 가능한 AI 모델 탐색 중...")
-                    
+                    # 모델 탐색 로직
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
@@ -164,91 +166,168 @@ if check_password():
 
                     model = genai.GenerativeModel(target_model)
                     
-                    st.write("📍 대시보드 입력 데이터 100% 동기화 중...")
-                    
+                    # 변수 할당 및 포맷팅
                     c_ind = d.get('in_industry', '미입력')
-                    s_23 = d.get('in_sales_2023', 0)
-                    s_24 = d.get('in_sales_2024', 0)
-                    s_25 = d.get('in_sales_2025', 0)
+                    rep_name = d.get('in_rep_name', '미입력')
+                    biz_no = d.get('in_raw_biz_no', '미입력')
+                    corp_no = d.get('in_raw_corp_no', '')
+                    corp_text = f" ({corp_no})" if corp_no else ""
+                    address = d.get('in_biz_addr', '미입력')
+                    
+                    # 단위 변환 적용
+                    s_23 = format_kr_currency(d.get('in_sales_2023', 0))
+                    s_24 = format_kr_currency(d.get('in_sales_2024', 0))
+                    s_25 = format_kr_currency(d.get('in_sales_2025', 0))
+                    req_fund = format_kr_currency(d.get('in_req_amount', 0))
+                    
                     kcb_s = d.get('in_kcb_score', 0)
                     nice_s = d.get('in_nice_score', 0)
                     item = d.get('in_item_desc', '미입력')
                     market = d.get('in_market_status', '미입력')
                     diff = d.get('in_diff_point', '미입력')
-                    req_fund = d.get('in_req_amount', 0)
-                    kosme = d.get('in_debt_kosme', 0)
-                    semas = d.get('in_debt_semas', 0)
-                    koreg = d.get('in_debt_koreg', 0)
                     
-                    # [핵심] 입력값을 무조건 사용하고 시각적으로 표현하도록 멱살 잡는 프롬프트
+                    total_debt = int(d.get('in_debt_kosme', 0)) + int(d.get('in_debt_semas', 0)) + int(d.get('in_debt_koreg', 0)) + int(d.get('in_debt_kodit', 0)) + int(d.get('in_debt_kibo', 0)) + int(d.get('in_debt_etc', 0)) + int(d.get('in_debt_credit', 0)) + int(d.get('in_debt_coll', 0))
+                    
+                    # HTML 기반 프롬프트 (대표님 요청사항 100% 반영)
                     prompt = f"""
-                    당신은 20년 경력의 중소기업 경영컨설턴트이자 파워포인트(PPT) 디자인 전문가입니다.
-                    아래 [대시보드 실제 데이터]를 **절대적으로 100% 반영**하고, 부족한 정보는 최신 외부 시장 자료로 채워 리포트를 작성하세요.
+                    당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
+                    출력 시 각 카테고리 제목에는 이모지나 부연 설명을 절대 붙이지 말고 오직 숫자와 제목만 적으세요 (예: '1. 기업현황분석').
+                    마크다운과 HTML 태그(div, table 등)를 사용하여 아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
+
+                    [데이터]
+                    - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
+                    - 사업자번호: {biz_no}{corp_text} / 주소: {address}
+                    - 매출액: 23년 {s_23}, 24년 {s_24}, 25년예상 {s_25}
+                    - 총 기대출: {format_kr_currency(total_debt)}
+                    - 비즈니스 아이템: {item} / 시장현황: {market} / 차별화: {diff}
+                    - 필요자금: {req_fund}
+
+                    [출력 양식 및 규칙]
                     
-                    [대시보드 실제 데이터 - 이 수치들을 반드시 리포트 본문에 명시할 것!]
-                    - 기업명: {c_name} / 업종: {c_ind}
-                    - 매출액: 23년 {s_23}만원 ➡️ 24년 {s_24}만원 ➡️ 25년 {s_25}만원
-                    - 신용점수: KCB {kcb_s}점, NICE {nice_s}점
-                    - 기대출: 중진공({kosme}만), 소진공({semas}만), 신용보증재단({koreg}만)
-                    - 비즈니스 아이템: {item}
-                    - 시장현황: {market}
-                    - 차별화 포인트: {diff}
-                    - 필요자금: {req_fund}만원
-                    
-                    [작성 규칙 - 매우 중요!!!]
-                    1. 글씨만 빽빽한 산문체는 절대 금지! PPT 슬라이드처럼 한눈에 들어오게 시각적으로 구성하세요.
-                    2. 도형, 화살표(➡️, 📈, 🚀, 🎯, 📊, 🟢, 🔹), 표(| | |)를 적극 활용하여 디자인하세요.
-                    3. 입력된 숫자는 무조건 리포트에 직접 언급하며 분석하세요. (예: "24년 매출 {s_24}만원 대비...")
-                    4. 각 항목의 핵심 메시지는 굵은 글씨(** **)와 블릿 포인트(-)로 강조하세요.
-                    
-                    [작성 항목]
-                    1. 기업현황분석 (매출/기대출/신용 점수 분석)
-                    2. SWOT분석 (반드시 깔끔한 2x2 마크다운 표 형태)
-                    3. 시장현황 및 경쟁력 (외부 데이터 참고)
-                    4. 핵심경쟁력 분석 ({item} 및 {diff} 집중 조명)
-                    5. 정책자금 추천 (해당 업종 및 {req_fund}만원 한도에 맞는 기관명/금액/사유 - 표 형태 권장)
-                    6. 추천 인증 및 교육 (벤처, 이노비즈 등 한도 확대용)
-                    7. 자금 사용계획 ({req_fund}만원 기준 상세 분배안)
-                    8. 매출 1년 전망 (향후 12개월 상승 시나리오)
-                    9. 성장비전 및 AI 컨설턴트 최종 코멘트
+                    ### 1. 기업현황분석
+                    <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
+                      <b>기업명:</b> {c_name} <br>
+                      <b>대표자명:</b> {rep_name} <br>
+                      <b>업종:</b> {c_ind} <br>
+                      <b>사업자등록번호:</b> {biz_no}{corp_text} <br>
+                      <b>사업장 주소:</b> {address}
+                    </div>
+                    (여기에 매출/대출 숫자는 노출하지 말고, 위 데이터를 바탕으로 한 기업의 건전성과 현재 상태에 대한 '분석 코멘트'만 3~4줄 작성하세요.)
+
+                    ### 2. SWOT 분석
+                    (아래 HTML 표 구조를 그대로 사용하여 둥근 모서리와 파스텔톤 색상을 적용하세요. 내용은 기업에 맞게 채우세요.)
+                    <table style="width:100%; text-align:center; border-collapse: separate; border-spacing: 10px;">
+                      <tr>
+                        <td style="background-color:#e3f2fd; padding:20px; border-radius:15px; width:50%;"><b>S (강점)</b><br>내용작성</td>
+                        <td style="background-color:#ffebee; padding:20px; border-radius:15px; width:50%;"><b>W (약점)</b><br>내용작성</td>
+                      </tr>
+                      <tr>
+                        <td style="background-color:#e8f5e9; padding:20px; border-radius:15px;"><b>O (기회)</b><br>내용작성</td>
+                        <td style="background-color:#fff3e0; padding:20px; border-radius:15px;"><b>T (위협)</b><br>내용작성</td>
+                      </tr>
+                    </table>
+
+                    ### 3. 시장현황 및 경쟁력
+                    <div style="background-color:#f3e5f5; padding:20px; border-radius:15px; margin-bottom:10px;">
+                      (이 둥근 사각형 박스 안에 시장현황과 경쟁력을 Bullet point로 작성하세요)
+                    </div>
+
+                    ### 4. 핵심경쟁력분석
+                    <div style="background-color:#e0f7fa; padding:20px; border-radius:15px; margin-bottom:10px;">
+                      (이 둥근 사각형 박스 안에 핵심 경쟁력과 차별화 포인트를 작성하세요)
+                    </div>
+
+                    ### 5. 정책자금 추천
+                    (아래와 같이 순번을 매기고, 기관/금액은 크고 굵게, 사유는 그 아래에 일반 글씨로 작성. 총 3개 추천)
+                    1. <b style="font-size:1.2em; color:#1565c0;">[기관명] / {req_fund}</b>
+                       <div style="margin-top:5px; margin-bottom:15px; color:#555;">추천사유: (작성)</div>
+                    (2번, 3번도 동일한 양식으로 작성)
+
+                    ### 6. 추천 인증 및 교육
+                    <div style="background-color:#fff8e1; padding:20px; border-radius:15px; margin-bottom:10px;">
+                      (이 둥근 사각형 박스 안에 한도 확대를 위한 인증/교육 전략을 작성하세요)
+                    </div>
+
+                    ### 7. 자금 사용계획
+                    (아래 표 양식을 사용하여 여유 있는 패딩을 주고, 상세 내용은 폰트를 작게 하세요)
+                    <table style="width:100%; border-collapse: collapse; text-align:left;">
+                     <tr style="background-color:#eceff1;">
+                       <th style="padding:15px; border:1px solid #ccc; border-radius:10px 0 0 0;">구분</th>
+                       <th style="padding:15px; border:1px solid #ccc; border-radius:0 10px 0 0;">상세 사용계획</th>
+                     </tr>
+                     <tr>
+                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">운전자금/시설자금</td>
+                       <td style="padding:15px; border:1px solid #ccc; font-size:0.85em;">(작성)</td>
+                     </tr>
+                    </table>
+
+                    ### 8. 매출 1년 전망
+                    (아래 HTML을 사용하여 4단계 박스와 화살표 로드맵을 만드세요)
+                    <div style="display:flex; justify-content:space-between; align-items:center; text-align:center; flex-wrap:wrap;">
+                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1; margin:5px; font-weight:bold;">1단계<br>(내용)</div>
+                      <div style="font-size:1.5em;">➡️</div>
+                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1; margin:5px; font-weight:bold;">2단계<br>(내용)</div>
+                      <div style="font-size:1.5em;">➡️</div>
+                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1; margin:5px; font-weight:bold;">3단계<br>(내용)</div>
+                      <div style="font-size:1.5em;">➡️</div>
+                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1; margin:5px; font-weight:bold;">4단계<br>(내용)</div>
+                    </div>
+
+                    ### 9. 성장비전 및 AI 컨설턴트 코멘트
+                    (성장 로드맵을 작성하고, 마지막 최종 코멘트는 아래 둥근 박스에 넣으세요)
+                    단기/중기/장기 로드맵 텍스트 작성 후,
+                    <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:20px; border-radius:15px; margin-top:15px;">
+                      <b>💡 AI 컨설턴트 최종 코멘트:</b><br>
+                      (작성)
+                    </div>
                     """
                     
-                    st.write("📍 표, 도형, 그래프를 활용한 전문 보고서 생성 중...")
+                    st.write("📍 지시하신 서식(도형, 화살표, 표) 기반 보고서 생성 중...")
                     response = model.generate_content(prompt)
                     status.update(label="✅ 분석 및 시각화 보고서 생성 완료!", state="complete")
                 
-                # 결과 출력
+                # HTML이 포함된 마크다운 렌더링
                 st.markdown(response.text, unsafe_allow_html=True)
                 
-                # [강력한 시각화 추가] Plotly를 이용한 아름다운 이중 차트
-                st.divider()
-                st.subheader("📊 [첨부] 연도별 매출 성장 트렌드 분석")
+                # ---------------------------------------------------------
+                # [8번 항목 보조] 월별 매출 상승 곡선 그래프 (Plotly)
+                # ---------------------------------------------------------
+                st.markdown("<br><br>", unsafe_allow_html=True)
+                st.subheader("📊 [첨부] 향후 1년간 월별 매출 상승 곡선 (8번 항목 참조)")
                 
+                # 24년과 25년 매출을 기반으로 12개월 상승 데이터 임의 생성
+                try:
+                    val_24 = int(d.get('in_sales_2024', 0))
+                    val_25 = int(d.get('in_sales_2025', 0))
+                except:
+                    val_24, val_25 = 1000, 2000
+                
+                start_val = val_24 / 12 if val_24 > 0 else 1000
+                end_val = val_25 / 12 if val_25 > 0 else start_val * 1.5
+                step = (end_val - start_val) / 11
+                monthly_vals = [int(start_val + step * i) for i in range(12)]
+                monthly_labels = [f"{i}월" for i in range(1, 13)]
+
                 fig = go.Figure()
-                # 막대 그래프
-                fig.add_trace(go.Bar(
-                    x=['2023년', '2024년', '2025년(예상)'],
-                    y=[s_23, s_24, s_25],
-                    name='매출액',
-                    marker_color=['#B0BEC5', '#90CAF9', '#1E88E5'],
-                    text=[f"{s_23:,}만", f"{s_24:,}만", f"{s_25:,}만"],
-                    textposition='auto'
-                ))
-                # 꺾은선 추세선
                 fig.add_trace(go.Scatter(
-                    x=['2023년', '2024년', '2025년(예상)'],
-                    y=[s_23, s_24, s_25],
-                    name='성장 곡선',
-                    mode='lines+markers',
-                    line=dict(color='#FF5252', width=3),
-                    marker=dict(size=10, color='#FF5252')
+                    x=monthly_labels, 
+                    y=monthly_vals,
+                    mode='lines+markers+text',
+                    text=[format_kr_currency(v) for v in monthly_vals],
+                    textposition="top center",
+                    textfont=dict(size=11),
+                    line=dict(color='#1E88E5', width=4, shape='spline'),
+                    marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
                 ))
+                
+                # 가로형 텍스트를 위한 레이아웃 설정 (tickangle=0)
                 fig.update_layout(
-                    title="📈 3개년 매출 추이 및 가속도",
-                    xaxis_title="연도",
-                    yaxis_title="매출액 (만원)",
+                    xaxis_title="진행 월",
+                    yaxis_title="예상 매출액",
+                    xaxis=dict(tickangle=0, showgrid=False),
+                    yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
                     template="plotly_white",
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                    margin=dict(l=20, r=20, t=30, b=20)
                 )
                 st.plotly_chart(fig, use_container_width=True)
                 
@@ -263,7 +342,6 @@ if check_password():
         col_t1, col_t2, col_t3 = st.columns(3)
         with col_t1:
             if st.button("📊 1. 기업분석리포트 생성", use_container_width=True, type="primary"):
-                # 입력화면에서도 버튼 누를 때 강제 저장!
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "REPORT"
                 st.rerun()
@@ -381,4 +459,4 @@ if check_password():
         st.text_area("[앞으로의 계획]", key="in_future_plan")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.success("✅ 세팅 완료! 좌측에 API 키 적용하고 상단의 [1. 기업분석리포트 생성] 눌러보자고!")
+        st.success("✅ 세팅 완료! 좌측에 API 키 적용하고 상단의 [1. 기업분석리포트 생성] 버튼을 클릭해 주십시오.")
