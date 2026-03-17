@@ -4,6 +4,7 @@ import os
 import time
 import pandas as pd
 import google.generativeai as genai
+import plotly.graph_objects as go
 
 # ==========================================
 # 0. 기본 설정 및 보안
@@ -80,8 +81,11 @@ if check_password():
     if st.sidebar.button("💾 현재 정보 저장", use_container_width=True):
         c_name = st.session_state.get("in_company_name", "").strip()
         if c_name:
-            db[c_name] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-            save_db(db); st.sidebar.success(f"✅ '{c_name}' 저장 완료!")
+            # 현재 화면의 in_ 데이터를 영구 저장
+            current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            db[c_name] = current_data
+            save_db(db)
+            st.sidebar.success(f"✅ '{c_name}' 저장 완료!")
 
     selected_company = st.sidebar.selectbox("저장된 업체 목록", ["선택 안 함"] + list(db.keys()))
     col_s1, col_s2 = st.sidebar.columns(2)
@@ -98,9 +102,12 @@ if check_password():
 
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
-    # [수정] 사이드바에 3개 버튼 모두 복원 완벽 적용!
+    # 3가지 탭 복원 완료
     if st.sidebar.button("📊 1. 기업분석리포트 생성", use_container_width=True):
-        st.session_state["view_mode"] = "REPORT"; st.rerun()
+        # [핵심] 화면 넘어가기 전에 데이터 유실 방지를 위해 강제 복사!
+        st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+        st.session_state["view_mode"] = "REPORT"
+        st.rerun()
     if st.sidebar.button("💡 2. 정책자금 매칭 리포트", use_container_width=True):
         st.sidebar.info("개발 중인 기능입니다.")
     if st.sidebar.button("📝 3. 사업계획서 생성", use_container_width=True):
@@ -110,26 +117,32 @@ if check_password():
     # 2. 화면 모드 제어 (리포트 vs 대시보드)
     # ==========================================
     if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
+    if "permanent_data" not in st.session_state: st.session_state["permanent_data"] = {}
 
     # --- [리포트 화면] ---
     if st.session_state["view_mode"] == "REPORT":
         if st.button("⬅️ 대시보드로 돌아가기"):
-            st.session_state["view_mode"] = "INPUT"; st.rerun()
+            # [핵심] 돌아갈 때 저장해둔 데이터를 다시 화면(session_state)에 뿌려줌 (증발 방지)
+            for k, v in st.session_state["permanent_data"].items():
+                st.session_state[k] = v
+            st.session_state["view_mode"] = "INPUT"
+            st.rerun()
         
-        d = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+        # 유실 방지된 데이터 불러오기
+        d = st.session_state["permanent_data"]
         c_name = d.get('in_company_name', '미입력')
         
         st.title("📋 시각화 기반 AI 기업분석 리포트")
         st.subheader(f"📌 분석 대상 기업: {c_name}")
         
-        # [추가] 데이터가 잘 넘어왔는지 직관적으로 보여주는 상단 요약 카드
-        st.markdown("""<hr style="height:2px;border:none;color:#174EA6;background-color:#174EA6;" />""", unsafe_allow_html=True)
+        # 상단 요약 대시보드 (입력값이 잘 넘어왔는지 확인용)
+        st.markdown("""<hr style="height:3px;border:none;color:#174EA6;background-color:#174EA6;" />""", unsafe_allow_html=True)
         col_sum1, col_sum2, col_sum3, col_sum4 = st.columns(4)
         col_sum1.metric("25년 예상매출", f"{d.get('in_sales_2025', 0):,} 만원")
         col_sum2.metric("필요자금액", f"{d.get('in_req_amount', 0):,} 만원")
         col_sum3.metric("KCB 신용점수", f"{d.get('in_kcb_score', 0)} 점")
         col_sum4.metric("NICE 신용점수", f"{d.get('in_nice_score', 0)} 점")
-        st.markdown("""<hr style="height:2px;border:none;color:#174EA6;background-color:#174EA6;" />""", unsafe_allow_html=True)
+        st.markdown("""<hr style="height:3px;border:none;color:#174EA6;background-color:#174EA6;" />""", unsafe_allow_html=True)
 
         if not st.session_state["api_key"]:
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하고 [적용]을 눌러주세요.")
@@ -141,7 +154,7 @@ if check_password():
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
-                        raise Exception(f"API 키 권한 오류입니다. 새 API 키를 발급받아 적용해주세요. (상세: {e})")
+                        raise Exception(f"API 키 권한 오류입니다. 새 API 키를 적용해주세요. (상세: {e})")
 
                     if 'models/gemini-1.5-flash' in available_models: target_model = 'gemini-1.5-flash'
                     elif 'models/gemini-1.5-pro' in available_models: target_model = 'gemini-1.5-pro'
@@ -151,9 +164,8 @@ if check_password():
 
                     model = genai.GenerativeModel(target_model)
                     
-                    st.write("📍 대시보드 입력 데이터 및 외부 시장 자료 융합 중...")
+                    st.write("📍 대시보드 입력 데이터 100% 동기화 중...")
                     
-                    # 변수 안전 선언
                     c_ind = d.get('in_industry', '미입력')
                     s_23 = d.get('in_sales_2023', 0)
                     s_24 = d.get('in_sales_2024', 0)
@@ -168,66 +180,93 @@ if check_password():
                     semas = d.get('in_debt_semas', 0)
                     koreg = d.get('in_debt_koreg', 0)
                     
-                    # [핵심] PPT 스타일 출력 및 대시보드 데이터 강제 사용을 위한 강력한 프롬프트
+                    # [핵심] 입력값을 무조건 사용하고 시각적으로 표현하도록 멱살 잡는 프롬프트
                     prompt = f"""
                     당신은 20년 경력의 중소기업 경영컨설턴트이자 파워포인트(PPT) 디자인 전문가입니다.
-                    아래 제공된 [대시보드 입력 데이터]를 100% 반영하고, 부족한 정보는 당신이 아는 최신 외부 시장 자료로 채워서 리포트를 작성하세요.
+                    아래 [대시보드 실제 데이터]를 **절대적으로 100% 반영**하고, 부족한 정보는 최신 외부 시장 자료로 채워 리포트를 작성하세요.
                     
-                    [대시보드 입력 데이터]
+                    [대시보드 실제 데이터 - 이 수치들을 반드시 리포트 본문에 명시할 것!]
                     - 기업명: {c_name} / 업종: {c_ind}
                     - 매출액: 23년 {s_23}만원 ➡️ 24년 {s_24}만원 ➡️ 25년 {s_25}만원
                     - 신용점수: KCB {kcb_s}점, NICE {nice_s}점
-                    - 기대출: 중진공({kosme}만), 소진공({semas}만), 신보재단({koreg}만)
+                    - 기대출: 중진공({kosme}만), 소진공({semas}만), 신용보증재단({koreg}만)
                     - 비즈니스 아이템: {item}
                     - 시장현황: {market}
                     - 차별화 포인트: {diff}
                     - 필요자금: {req_fund}만원
                     
                     [작성 규칙 - 매우 중요!!!]
-                    1. 절대 단순 줄글(산문체)로 작성하지 마세요. PPT 슬라이드를 보듯 시각적으로 구성하세요.
-                    2. 마크다운의 표(| | |), 인용구(>), 굵은 글씨(** **), 화살표(➡️, 🚀, 📈) 및 이모지를 적극 활용하세요.
-                    3. 입력된 숫자는 반드시 리포트 내용에 직접 언급하여 분석하세요 (예: "24년 매출 {s_24}만원 대비...").
-                    4. 각 항목별 핵심 요약을 Bullet Point(-)로 눈에 띄게 강조하세요.
+                    1. 글씨만 빽빽한 산문체는 절대 금지! PPT 슬라이드처럼 한눈에 들어오게 시각적으로 구성하세요.
+                    2. 도형, 화살표(➡️, 📈, 🚀, 🎯, 📊, 🟢, 🔹), 표(| | |)를 적극 활용하여 디자인하세요.
+                    3. 입력된 숫자는 무조건 리포트에 직접 언급하며 분석하세요. (예: "24년 매출 {s_24}만원 대비...")
+                    4. 각 항목의 핵심 메시지는 굵은 글씨(** **)와 블릿 포인트(-)로 강조하세요.
                     
                     [작성 항목]
-                    1. 기업현황분석 (입력된 매출/대출/신용 점수 기반)
-                    2. SWOT분석 (반드시 깔끔한 2x2 표 형태로 출력)
-                    3. 시장현황 및 경쟁력 (외부 데이터 참고하여 융합)
+                    1. 기업현황분석 (매출/기대출/신용 점수 분석)
+                    2. SWOT분석 (반드시 깔끔한 2x2 마크다운 표 형태)
+                    3. 시장현황 및 경쟁력 (외부 데이터 참고)
                     4. 핵심경쟁력 분석 ({item} 및 {diff} 집중 조명)
                     5. 정책자금 추천 (해당 업종 및 {req_fund}만원 한도에 맞는 기관명/금액/사유 - 표 형태 권장)
                     6. 추천 인증 및 교육 (벤처, 이노비즈 등 한도 확대용)
-                    7. 자금 사용계획 ({req_fund}만원 기준 상세 계획)
+                    7. 자금 사용계획 ({req_fund}만원 기준 상세 분배안)
                     8. 매출 1년 전망 (향후 12개월 상승 시나리오)
                     9. 성장비전 및 AI 컨설턴트 최종 코멘트
                     """
                     
-                    st.write("📍 PPT 스타일 구조화 및 시각화 텍스트 생성 중...")
+                    st.write("📍 표, 도형, 그래프를 활용한 전문 보고서 생성 중...")
                     response = model.generate_content(prompt)
                     status.update(label="✅ 분석 및 시각화 보고서 생성 완료!", state="complete")
                 
                 # 결과 출력
                 st.markdown(response.text, unsafe_allow_html=True)
                 
-                # 추가 시각화 그래프 보조
+                # [강력한 시각화 추가] Plotly를 이용한 아름다운 이중 차트
                 st.divider()
-                st.subheader("📈 [첨부] 매출 성장 추이 그래프")
-                sales_df = pd.DataFrame({
-                    "연도": ["2023년", "2024년", "2025년(예상)"],
-                    "매출액(만원)": [s_23, s_24, s_25]
-                })
-                st.line_chart(sales_df.set_index("연도"))
+                st.subheader("📊 [첨부] 연도별 매출 성장 트렌드 분석")
+                
+                fig = go.Figure()
+                # 막대 그래프
+                fig.add_trace(go.Bar(
+                    x=['2023년', '2024년', '2025년(예상)'],
+                    y=[s_23, s_24, s_25],
+                    name='매출액',
+                    marker_color=['#B0BEC5', '#90CAF9', '#1E88E5'],
+                    text=[f"{s_23:,}만", f"{s_24:,}만", f"{s_25:,}만"],
+                    textposition='auto'
+                ))
+                # 꺾은선 추세선
+                fig.add_trace(go.Scatter(
+                    x=['2023년', '2024년', '2025년(예상)'],
+                    y=[s_23, s_24, s_25],
+                    name='성장 곡선',
+                    mode='lines+markers',
+                    line=dict(color='#FF5252', width=3),
+                    marker=dict(size=10, color='#FF5252')
+                ))
+                fig.update_layout(
+                    title="📈 3개년 매출 추이 및 가속도",
+                    xaxis_title="연도",
+                    yaxis_title="매출액 (만원)",
+                    template="plotly_white",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
                 st.balloons()
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
-    # --- [입력 화면] ---
+    # --- [입력 화면 (대시보드)] ---
     else:
         st.title("📊 AI 컨설팅 대시보드")
         col_t1, col_t2, col_t3 = st.columns(3)
         with col_t1:
             if st.button("📊 1. 기업분석리포트 생성", use_container_width=True, type="primary"):
-                st.session_state["view_mode"] = "REPORT"; st.rerun()
+                # 입력화면에서도 버튼 누를 때 강제 저장!
+                st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+                st.session_state["view_mode"] = "REPORT"
+                st.rerun()
         with col_t2: st.button("💡 2. 정책자금 매칭 리포트", use_container_width=True)
         with col_t3: st.button("📝 3. 사업계획서 생성", use_container_width=True)
         st.markdown("<br>", unsafe_allow_html=True)
