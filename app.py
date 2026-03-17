@@ -123,7 +123,7 @@ if check_password():
                 status.update(label="✅ 분석 완료! 리포트 페이지로 이동합니다.", state="complete", expanded=False)
             # 페이지 이동
             try:
-                st.switch_page("pages/report.py")
+                st.switch_page("report.py")
             except Exception as e:
                 st.error(f"⚠️ 페이지 이동 실패: {e}")
 
