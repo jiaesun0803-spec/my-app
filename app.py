@@ -36,10 +36,27 @@ def check_password():
     return True
 
 if check_password():
-    # --- 데이터 관리 함수 ---
+    # --- 데이터 및 키 관리 함수 ---
+    KEY_FILE = "gemini_key.txt"
     DB_FILE = "company_db.json"
-    def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path.exists(DB_FILE) else {}
-    def save_db(db_data): json.dump(db_data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
+    
+    def save_key(key):
+        with open(KEY_FILE, "w") as f: f.write(key)
+        st.sidebar.success("✅ API 키 저장 완료!")
+
+    def load_key():
+        if os.path.exists(KEY_FILE):
+            with open(KEY_FILE, "r") as f: return f.read().strip()
+        return ""
+
+    def load_db():
+        if os.path.exists(DB_FILE):
+            with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
+        return {}
+
+    def save_db(db_data):
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(db_data, f, ensure_ascii=False, indent=4)
 
     # 신용등급 판정 로직
     def get_credit_grade(score, type="NICE"):
@@ -67,32 +84,52 @@ if check_password():
             else: return 10
 
     # ==========================================
-    # 1. 사이드바 (기존 기능 100% 유지)
+    # 1. 사이드바 (API 키 설정 및 업체 관리 복원)
     # ==========================================
+    st.sidebar.header("⚙️ Gemini AI 설정")
+    saved_key = load_key()
+    api_key_input = st.sidebar.text_input("Gemini API Key", value=saved_key, type="password")
+    if st.sidebar.button("💾 API 키 저장"):
+        save_key(api_key_input)
+        st.rerun()
+    
+    if api_key_input:
+        genai.configure(api_key=api_key_input)
+
+    st.sidebar.markdown("---")
     st.sidebar.header("📁 업체 관리")
     db = load_db()
     if st.sidebar.button("💾 현재 정보 저장", use_container_width=True):
         c_name = st.session_state.get("in_company_name", "").strip()
         if c_name:
             db[c_name] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-            save_db(db); st.sidebar.success("저장 완료!")
-    
+            save_db(db); st.sidebar.success(f"✅ '{c_name}' 저장 완료!")
+
     selected_company = st.sidebar.selectbox("📂 업체 목록", ["새 업체 입력"] + list(db.keys()))
     if st.sidebar.button("불러오기", use_container_width=True):
         if selected_company != "새 업체 입력":
             for k, v in db[selected_company].items(): st.session_state[k] = v
             st.rerun()
 
+    st.sidebar.markdown("---")
+    st.sidebar.header("🚀 빠른 리포트 생성")
+    # 하단 정의될 실행 함수 연결용 버튼들
+    if st.sidebar.button("📊 기업분석리포트 생성", use_container_width=True):
+        st.info("메인 화면의 리포트 생성 기능을 호출합니다.")
+
     # ==========================================
-    # 2. 메인 대시보드 (전면 수정 레이아웃)
+    # 2. 메인 대시보드 (여백 추가 및 항목 수정)
     # ==========================================
     st.title("📊 AI 컨설팅 대시보드")
+    st.write("") # 상단 여백
     
-    # 상단 탭 (유지)
+    # 상단 실행 버튼 탭
     col_t1, col_t2, col_t3 = st.columns(3)
-    with col_t1: st.button("📊 1. 기업분석리포트 생성", use_container_width=True, type="primary")
-    with col_t2: st.button("💡 2. 정책자금 매칭 리포트", use_container_width=True)
-    with col_t3: st.button("📝 3. 사업계획서 생성", use_container_width=True)
+    with col_t1: st.button("📊 1. 기업분석리포트 생성", use_container_width=True, type="primary", key="btn_main_1")
+    with col_t2: st.button("💡 2. 정책자금 매칭 리포트", use_container_width=True, key="btn_main_2")
+    with col_t3: st.button("📝 3. 사업계획서 생성", use_container_width=True, key="btn_main_3")
+
+    st.markdown("<br><br>", unsafe_allow_html=True) # 카테고리 간 여백
 
     # --- 1. 기업현황 ---
     st.header("1. 기업현황")
@@ -112,11 +149,15 @@ if check_password():
         st.text_input("사업장 팩스번호", key="in_biz_fax")
         st.text_input("사업장 주소", key="in_biz_addr")
 
+    st.markdown("<br><br>", unsafe_allow_html=True) # 여백
+
     # --- 2. 대표자 정보 ---
     st.header("2. 대표자 정보")
     r1, r2, r3 = st.columns(3)
     with r1:
-        st.text_input("대표자명", key="in_rep_name")
+        rc1, rc2 = st.columns(2)
+        with rc1: st.text_input("대표자명", key="in_rep_name")
+        with rc2: st.text_input("대표자 생년월일", placeholder="800101", key="in_rep_dob") # 생년월일 추가
         st.text_input("대표자 연락처", key="in_rep_phone")
         st.selectbox("통신사", ["SKT", "KT", "LG U+", "알뜰폰"], key="in_rep_telecom")
         st.text_input("이메일 주소", key="in_rep_email")
@@ -132,26 +173,27 @@ if check_password():
     st.subheader("📌 신용 및 연체 정보")
     cr1, cr2 = st.columns(2)
     with cr1:
-        # 세금체납/금융연체 한줄 배치
+        # 한줄 배치
         cc1, cc2 = st.columns(2)
         with cc1: st.checkbox("세금체납 유/무", key="in_tax_overdue")
         with cc2: st.checkbox("금융연체 유/무", key="in_fin_overdue")
         
-        # 신용점수 한줄 배치
         sc1, sc2 = st.columns(2)
         with sc1: kcb_score = st.number_input("KCB 신용점수", 0, 1000, 800, key="in_kcb_score")
         with sc2: nice_score = st.number_input("NICE 신용점수", 0, 1000, 800, key="in_nice_score")
     
     with cr2:
-        # 우측 그래프 삭제 후 판정 결과 텍스트 출력
         kcb_g = get_credit_grade(kcb_score, "KCB")
         nice_g = get_credit_grade(nice_score, "NICE")
         st.markdown(f"""
-        <div style="background-color:#f0f2f6; padding:20px; border-radius:10px; border-left:5px solid #174EA6;">
+        <div style="background-color:#f0f2f6; padding:20px; border-radius:10px; border-left:5px solid #174EA6; height:100%;">
             <h4 style="margin:0;">🏆 신용등급 판정 결과</h4>
-            <p style="font-size:18px; margin:10px 0;">KCB(올크레딧): <b>{kcb_g}등급</b> | NICE(나이스): <b>{nice_g}등급</b></p>
+            <p style="font-size:18px; margin:10px 0;">KCB: <b>{kcb_g}등급</b> | NICE: <b>{nice_g}등급</b></p>
+            <small>* 입력된 점수 기준 자동 판정</small>
         </div>
         """, unsafe_allow_html=True)
+
+    st.markdown("<br><br>", unsafe_allow_html=True) # 여백
 
     # --- 3. 재무현황 ---
     st.header("3. 재무현황")
@@ -162,8 +204,11 @@ if check_password():
     with m3: st.number_input("24년도 매출합계", key="in_sales_2024")
     with m4: st.number_input("23년도 매출합계", key="in_sales_2023")
 
+    st.markdown("<br><br>", unsafe_allow_html=True) # 여백
+
     # --- 4. 기대출현황 ---
     st.header("4. 기대출현황")
+    st.subheader("기대출 내역 (단위: 만 원)")
     d1, d2, d3 = st.columns(3)
     with d1: st.number_input("중진공", key="in_debt_kosme")
     with d2: st.number_input("소진공", key="in_debt_semas")
@@ -175,12 +220,16 @@ if check_password():
     with d7: st.number_input("신용대출", key="in_debt_credit")
     with d8: st.number_input("담보대출", key="in_debt_coll")
 
+    st.markdown("<br><br>", unsafe_allow_html=True) # 여백
+
     # --- 5. 필요자금 ---
     st.header("5. 필요자금")
     p1, p2, p3 = st.columns([1, 1, 2])
     with p1: st.selectbox("자금구분", ["운전자금", "시설자금"], key="in_fund_type")
     with p2: st.number_input("필요자금(만원)", key="in_req_amount")
     with p3: st.text_input("자금사용용도", key="in_fund_purpose")
+
+    st.markdown("<br><br>", unsafe_allow_html=True) # 여백
 
     # --- 6. 인증현황 ---
     st.header("6. 인증현황")
@@ -190,17 +239,24 @@ if check_password():
     with ac3: st.checkbox("벤처인증", key="in_chk_6"); st.checkbox("뿌리기업확인서", key="in_chk_7")
     with ac4: st.checkbox("ISO인증", key="in_chk_10")
 
+    st.markdown("<br><br>", unsafe_allow_html=True) # 여백
+
     # --- 7. 비즈니스 정보 ---
     st.header("7. 비즈니스 정보")
     st.text_area("[아이템]", key="in_item_desc")
     
+    st.write("")
     st.markdown("**[주거래처 정보(매출위주)]**")
     client_col1, client_col2, client_col3 = st.columns(3)
     with client_col1: st.text_input("거래처 1", key="in_client_1")
     with client_col2: st.text_input("거래처 2", key="in_client_2")
     with client_col3: st.text_input("거래처 3", key="in_client_3")
     
+    st.write("")
     st.text_area("[판매루트]", key="in_sales_route")
     st.text_area("[시장현황]", key="in_market_status")
     st.text_area("[차별화]", key="in_diff_point")
     st.text_area("[앞으로의 계획]", key="in_future_plan")
+
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.success("✅ 모든 정보 입력이 완료되었습니다. 상단의 리포트 생성 버튼을 눌러주세요.")
