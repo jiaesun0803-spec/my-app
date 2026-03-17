@@ -123,20 +123,25 @@ if check_password():
         else:
             try:
                 with st.status("🚀 AI 전문가가 기업 데이터를 심층 분석 중입니다...", expanded=True) as status:
-                    st.write("📍 데이터 정밀 분석 중...")
+                    st.write("📍 모델 연결 확인 중...")
+                    
+                    # [최종 수정] 가장 범용적인 모델명 'gemini-1.5-flash' 사용
+                    # 만약 이것도 안되면 'gemini-pro'로 자동 전환되게 설계
+                    try:
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                    except:
+                        model = genai.GenerativeModel('gemini-pro')
+                    
+                    st.write("📍 데이터 정밀 분석 및 외부 트렌드 대조 중...")
                     time.sleep(1)
                     
-                    # [핵심 수정] 모델명을 가장 표준적인 'gemini-1.5-flash'로 변경
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    
                     prompt = f"""
-                    당신은 20년 경력의 대한민국 최고 기업컨설턴트입니다. 다음 데이터를 기반으로 전문 리포트를 작성하세요.
+                    당신은 경영컨설팅 전문가입니다. 아래 데이터를 분석하여 전문적인 리포트를 작성하세요.
                     기업명: {d.get('in_company_name')}, 업종: {d.get('in_industry')}
-                    매출: 23년({d.get('in_sales_2023')}), 24년({d.get('in_sales_2024')}), 25년예정({d.get('in_sales_2025')})
+                    매출: 23년({d.get('in_sales_2023')}), 24년({d.get('in_sales_2024')}), 25년({d.get('in_sales_2025')})
                     신용: KCB {d.get('in_kcb_score', 0)}, NICE {d.get('in_nice_score', 0)}
                     
-                    [필수 작성 항목]
-                    1.기업현황분석 2.SWOT분석 3.시장현황 4.경쟁력분석 5.정책자금추천 6.인증/교육제안 7.자금사용계획 8.매출전망 9.종합비전
+                    항목: 1.기업현황 2.SWOT 3.시장현황 4.경쟁력 5.정책자금추천 6.인증제안 7.사용계획 8.매출전망 9.종합의견
                     """
                     
                     response = model.generate_content(prompt)
@@ -144,15 +149,11 @@ if check_password():
                 
                 st.markdown(response.text)
                 st.divider()
-                st.subheader("📊 매출 성장 시뮬레이션")
-                sales_df = pd.DataFrame({
-                    "연도": ["2023", "2024", "2025(E)"],
-                    "매출액(만원)": [d.get('in_sales_2023', 0), d.get('in_sales_2024', 0), d.get('in_sales_2025', 0)]
-                })
-                st.line_chart(sales_df.set_index("연도"))
+                st.balloons() # 축하 효과 추가
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류가 발생했습니다: {e}")
+                st.info("💡 API 키가 'Free' 버전인 경우 특정 모델명이 제한될 수 있습니다. 사이드바의 API 키가 올바른지 다시 확인해 주세요.")
 
     # --- [입력 화면 모드] ---
     else:
@@ -189,7 +190,7 @@ if check_password():
         r1, r2, r3 = st.columns(3)
         with r1:
             st.text_input("대표자명", key="in_rep_name")
-            st.text_input("생년월일", key="in_rep_dob")
+            st.text_input("생년월일", placeholder="800101", key="in_rep_dob")
             st.text_input("연락처", key="in_rep_phone")
         with r2:
             st.text_input("거주지 주소", key="in_home_addr")
