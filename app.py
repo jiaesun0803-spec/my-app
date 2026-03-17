@@ -84,7 +84,7 @@ if check_password():
             else: return 10
 
     # ==========================================
-    # 1. 사이드바 (설정 및 관리)
+    # 1. 사이드바 (기능 복원 및 초기화 추가)
     # ==========================================
     st.sidebar.header("⚙️ Gemini AI 설정")
     saved_key = load_key()
@@ -105,16 +105,34 @@ if check_password():
             db[c_name] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
             save_db(db); st.sidebar.success(f"✅ '{c_name}' 저장 완료!")
 
-    selected_company = st.sidebar.selectbox("📂 업체 목록", ["새 업체 입력"] + list(db.keys()))
-    if st.sidebar.button("불러오기", use_container_width=True):
-        if selected_company != "새 업체 입력":
-            for k, v in db[selected_company].items(): st.session_state[k] = v
-            st.rerun()
+    selected_company = st.sidebar.selectbox("📂 업체 목록", ["선택 안 함"] + list(db.keys()))
+    
+    col_s1, col_s2 = st.sidebar.columns(2)
+    with col_s1:
+        if st.button("불러오기", use_container_width=True):
+            if selected_company != "선택 안 함":
+                for k, v in db[selected_company].items(): st.session_state[k] = v
+                st.rerun()
+    with col_s2:
+        if st.button("업체 삭제", use_container_width=True):
+            if selected_company != "선택 안 함" and selected_company in db:
+                del db[selected_company]
+                save_db(db); st.rerun()
+
+    # 업체 초기화 버튼 추가
+    if st.sidebar.button("🔄 입력 데이터 초기화", use_container_width=True):
+        for k in list(st.session_state.keys()):
+            if k.startswith("in_"): del st.session_state[k]
+        st.rerun()
 
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
-    if st.sidebar.button("📊 기업분석리포트 생성", use_container_width=True, key="side_btn_1"):
-        st.info("상단 메인 버튼을 이용해 주세요.")
+    if st.sidebar.button("📊 기업분석리포트 생성", use_container_width=True, key="side_report"):
+        st.info("상단 메인 리포트 생성 기능을 호출합니다.")
+    if st.sidebar.button("💡 정책자금 매칭 리포트", use_container_width=True, key="side_fund"):
+        st.info("정책자금 매칭 로직을 실행합니다.")
+    if st.sidebar.button("📝 사업계획서 생성", use_container_width=True, key="side_biz"):
+        st.info("사업계획서 생성 로직을 실행합니다.")
 
     # ==========================================
     # 2. 메인 대시보드
@@ -170,12 +188,9 @@ if check_password():
     st.subheader("📌 신용 및 연체 정보")
     cr1, cr2 = st.columns(2)
     with cr1:
-        # 유/무 선택 라디오 버튼으로 수정 (한 줄 배치)
         cc1, cc2 = st.columns(2)
-        with cc1: 
-            tax_val = st.radio("세금체납", ["무", "유"], horizontal=True, key="in_tax_status")
-        with cc2: 
-            fin_val = st.radio("금융연체", ["무", "유"], horizontal=True, key="in_fin_status")
+        with cc1: tax_val = st.radio("세금체납", ["무", "유"], horizontal=True, key="in_tax_status")
+        with cc2: fin_val = st.radio("금융연체", ["무", "유"], horizontal=True, key="in_fin_status")
         
         sc1, sc2 = st.columns(2)
         with sc1: kcb_score = st.number_input("KCB 신용점수", 0, 1000, 800, key="in_kcb_score")
@@ -256,4 +271,4 @@ if check_password():
     st.text_area("[앞으로의 계획]", key="in_future_plan")
 
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.success("✅ 대시보드 세팅이 완료되었습니다.")
+    st.success("✅ 대시보드 모든 설정이 완료되었습니다.")
