@@ -98,8 +98,13 @@ if check_password():
 
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
-    if st.sidebar.button("📊 기업분석리포트 생성", use_container_width=True):
+    # [수정] 사이드바에 3개 버튼 모두 복원 완벽 적용!
+    if st.sidebar.button("📊 1. 기업분석리포트 생성", use_container_width=True):
         st.session_state["view_mode"] = "REPORT"; st.rerun()
+    if st.sidebar.button("💡 2. 정책자금 매칭 리포트", use_container_width=True):
+        st.sidebar.info("개발 중인 기능입니다.")
+    if st.sidebar.button("📝 3. 사업계획서 생성", use_container_width=True):
+        st.sidebar.info("개발 중인 기능입니다.")
 
     # ==========================================
     # 2. 화면 모드 제어 (리포트 vs 대시보드)
@@ -111,41 +116,44 @@ if check_password():
         if st.button("⬅️ 대시보드로 돌아가기"):
             st.session_state["view_mode"] = "INPUT"; st.rerun()
         
-        st.title("📋 AI 기업분석 결과보고서")
         d = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+        c_name = d.get('in_company_name', '미입력')
         
+        st.title("📋 시각화 기반 AI 기업분석 리포트")
+        st.subheader(f"📌 분석 대상 기업: {c_name}")
+        
+        # [추가] 데이터가 잘 넘어왔는지 직관적으로 보여주는 상단 요약 카드
+        st.markdown("""<hr style="height:2px;border:none;color:#174EA6;background-color:#174EA6;" />""", unsafe_allow_html=True)
+        col_sum1, col_sum2, col_sum3, col_sum4 = st.columns(4)
+        col_sum1.metric("25년 예상매출", f"{d.get('in_sales_2025', 0):,} 만원")
+        col_sum2.metric("필요자금액", f"{d.get('in_req_amount', 0):,} 만원")
+        col_sum3.metric("KCB 신용점수", f"{d.get('in_kcb_score', 0)} 점")
+        col_sum4.metric("NICE 신용점수", f"{d.get('in_nice_score', 0)} 점")
+        st.markdown("""<hr style="height:2px;border:none;color:#174EA6;background-color:#174EA6;" />""", unsafe_allow_html=True)
+
         if not st.session_state["api_key"]:
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하고 [적용]을 눌러주세요.")
         else:
             try:
-                with st.status("🚀 AI 전문가 분석 진행 중...", expanded=True) as status:
+                with st.status("🚀 AI 전문가가 시각화 리포트를 생성 중입니다...", expanded=True) as status:
                     st.write("📍 연결 가능한 AI 모델 탐색 중...")
-                    time.sleep(1)
                     
-                    # [핵심] 사용 가능한 모델 리스트를 먼저 조회해서 404 에러 원천 차단
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
                         raise Exception(f"API 키 권한 오류입니다. 새 API 키를 발급받아 적용해주세요. (상세: {e})")
 
-                    if 'models/gemini-1.5-flash' in available_models:
-                        target_model = 'gemini-1.5-flash'
-                    elif 'models/gemini-1.5-pro' in available_models:
-                        target_model = 'gemini-1.5-pro'
-                    elif 'models/gemini-pro' in available_models:
-                        target_model = 'gemini-pro'
-                    elif len(available_models) > 0:
-                        target_model = available_models[0].replace('models/', '')
-                    else:
-                        raise Exception("사용 가능한 생성형 모델이 없습니다.")
+                    if 'models/gemini-1.5-flash' in available_models: target_model = 'gemini-1.5-flash'
+                    elif 'models/gemini-1.5-pro' in available_models: target_model = 'gemini-1.5-pro'
+                    elif 'models/gemini-pro' in available_models: target_model = 'gemini-pro'
+                    elif len(available_models) > 0: target_model = available_models[0].replace('models/', '')
+                    else: raise Exception("사용 가능한 생성형 모델이 없습니다.")
 
-                    st.write(f"💡 접속 성공! 연결된 AI 엔진: **{target_model}**")
                     model = genai.GenerativeModel(target_model)
                     
-                    st.write("📍 데이터 취합 및 AI 프롬프트 생성 중...")
+                    st.write("📍 대시보드 입력 데이터 및 외부 시장 자료 융합 중...")
                     
-                    # 변수 안전하게 선언
-                    c_name = d.get('in_company_name', '미입력')
+                    # 변수 안전 선언
                     c_ind = d.get('in_industry', '미입력')
                     s_23 = d.get('in_sales_2023', 0)
                     s_24 = d.get('in_sales_2024', 0)
@@ -156,28 +164,62 @@ if check_password():
                     market = d.get('in_market_status', '미입력')
                     diff = d.get('in_diff_point', '미입력')
                     req_fund = d.get('in_req_amount', 0)
+                    kosme = d.get('in_debt_kosme', 0)
+                    semas = d.get('in_debt_semas', 0)
+                    koreg = d.get('in_debt_koreg', 0)
                     
+                    # [핵심] PPT 스타일 출력 및 대시보드 데이터 강제 사용을 위한 강력한 프롬프트
                     prompt = f"""
-                    당신은 중소기업 경영컨설턴트입니다. 다음 데이터를 바탕으로 리포트를 작성하세요.
-                    기업명: {c_name} / 업종: {c_ind}
-                    매출: 23년({s_23}만), 24년({s_24}만), 25년({s_25}만)
-                    신용점수: KCB {kcb_s}, NICE {nice_s}
-                    비즈니스 정보: 아이템({item}), 시장현황({market}), 차별화({diff})
-                    필요자금: {req_fund}만원
+                    당신은 20년 경력의 중소기업 경영컨설턴트이자 파워포인트(PPT) 디자인 전문가입니다.
+                    아래 제공된 [대시보드 입력 데이터]를 100% 반영하고, 부족한 정보는 당신이 아는 최신 외부 시장 자료로 채워서 리포트를 작성하세요.
+                    
+                    [대시보드 입력 데이터]
+                    - 기업명: {c_name} / 업종: {c_ind}
+                    - 매출액: 23년 {s_23}만원 ➡️ 24년 {s_24}만원 ➡️ 25년 {s_25}만원
+                    - 신용점수: KCB {kcb_s}점, NICE {nice_s}점
+                    - 기대출: 중진공({kosme}만), 소진공({semas}만), 신보재단({koreg}만)
+                    - 비즈니스 아이템: {item}
+                    - 시장현황: {market}
+                    - 차별화 포인트: {diff}
+                    - 필요자금: {req_fund}만원
+                    
+                    [작성 규칙 - 매우 중요!!!]
+                    1. 절대 단순 줄글(산문체)로 작성하지 마세요. PPT 슬라이드를 보듯 시각적으로 구성하세요.
+                    2. 마크다운의 표(| | |), 인용구(>), 굵은 글씨(** **), 화살표(➡️, 🚀, 📈) 및 이모지를 적극 활용하세요.
+                    3. 입력된 숫자는 반드시 리포트 내용에 직접 언급하여 분석하세요 (예: "24년 매출 {s_24}만원 대비...").
+                    4. 각 항목별 핵심 요약을 Bullet Point(-)로 눈에 띄게 강조하세요.
                     
                     [작성 항목]
-                    1.기업현황분석 2.SWOT분석(표) 3.시장현황 및 경쟁력 4.핵심경쟁력 5.정책자금 추천 6.추천 인증 및 교육 7.자금 사용계획 8.매출 1년 전망 9.성장비전 및 AI 코멘트
+                    1. 기업현황분석 (입력된 매출/대출/신용 점수 기반)
+                    2. SWOT분석 (반드시 깔끔한 2x2 표 형태로 출력)
+                    3. 시장현황 및 경쟁력 (외부 데이터 참고하여 융합)
+                    4. 핵심경쟁력 분석 ({item} 및 {diff} 집중 조명)
+                    5. 정책자금 추천 (해당 업종 및 {req_fund}만원 한도에 맞는 기관명/금액/사유 - 표 형태 권장)
+                    6. 추천 인증 및 교육 (벤처, 이노비즈 등 한도 확대용)
+                    7. 자금 사용계획 ({req_fund}만원 기준 상세 계획)
+                    8. 매출 1년 전망 (향후 12개월 상승 시나리오)
+                    9. 성장비전 및 AI 컨설턴트 최종 코멘트
                     """
                     
-                    st.write("📍 리포트 작성 중...")
+                    st.write("📍 PPT 스타일 구조화 및 시각화 텍스트 생성 중...")
                     response = model.generate_content(prompt)
-                    status.update(label="✅ 분석 완료!", state="complete")
+                    status.update(label="✅ 분석 및 시각화 보고서 생성 완료!", state="complete")
                 
-                st.markdown(response.text)
+                # 결과 출력
+                st.markdown(response.text, unsafe_allow_html=True)
+                
+                # 추가 시각화 그래프 보조
+                st.divider()
+                st.subheader("📈 [첨부] 매출 성장 추이 그래프")
+                sales_df = pd.DataFrame({
+                    "연도": ["2023년", "2024년", "2025년(예상)"],
+                    "매출액(만원)": [s_23, s_24, s_25]
+                })
+                st.line_chart(sales_df.set_index("연도"))
                 st.balloons()
+
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
-                st.info("🚨 [중요 해결책] 계속 오류가 뜬다면 구글 AI Studio에서 새로운 API 키를 발급받아 입력해주세요!")
 
     # --- [입력 화면] ---
     else:
@@ -228,7 +270,7 @@ if check_password():
             st.text_input("학과", key="in_edu_major")
             st.text_area("경력(최근기준)", key="in_career")
 
-        # 3. 신용 및 연체 정보 (텍스트로만 출력!)
+        # 3. 신용 및 연체 정보
         st.header("3. 신용 및 연체 정보")
         cr1, cr2 = st.columns(2)
         with cr1:
@@ -286,7 +328,7 @@ if check_password():
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # 8. 비즈니스 정보 (완벽 복원 완료!)
+        # 8. 비즈니스 정보
         st.header("8. 비즈니스 정보")
         st.text_area("[아이템]", key="in_item_desc")
         st.markdown("**[주거래처 정보]**")
