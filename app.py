@@ -3,18 +3,10 @@ import json
 import io
 import os
 import re
-import random
-import datetime
+import time
 import pandas as pd
 import google.generativeai as genai
 import plotly.graph_objects as go
-from pptx import Presentation
-from pptx.util import Inches, Pt
-from pptx.dml.color import RGBColor
-from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
-from pptx.enum.shapes import MSO_SHAPE, MSO_CONNECTOR
 
 # ==========================================
 # 0. 보안 및 기본 설정
@@ -43,22 +35,13 @@ if check_password():
     def save_key(key):
         with open(KEY_FILE, "w") as f: f.write(key)
         st.sidebar.success("✅ API 키 저장 완료!")
-
     def load_key():
-        if os.path.exists(KEY_FILE):
-            with open(KEY_FILE, "r") as f: return f.read().strip()
-        return ""
-
+        return open(KEY_FILE, "r").read().strip() if os.path.exists(KEY_FILE) else ""
     def load_db():
-        if os.path.exists(DB_FILE):
-            with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
-        return {}
-
+        return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path.exists(DB_FILE) else {}
     def save_db(db_data):
-        with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(db_data, f, ensure_ascii=False, indent=4)
+        json.dump(db_data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
-    # 신용등급 판정 로직
     def get_credit_grade(score, type="NICE"):
         if type == "NICE":
             if score >= 900: return 1
@@ -84,17 +67,13 @@ if check_password():
             else: return 10
 
     # ==========================================
-    # 1. 사이드바 (기능 복원 및 초기화 추가)
+    # 1. 사이드바 (설정 및 관리)
     # ==========================================
     st.sidebar.header("⚙️ Gemini AI 설정")
     saved_key = load_key()
     api_key_input = st.sidebar.text_input("Gemini API Key", value=saved_key, type="password")
-    if st.sidebar.button("💾 API 키 저장"):
-        save_key(api_key_input)
-        st.rerun()
-    
-    if api_key_input:
-        genai.configure(api_key=api_key_input)
+    if st.sidebar.button("💾 API 키 저장"): save_key(api_key_input); st.rerun()
+    if api_key_input: genai.configure(api_key=api_key_input)
 
     st.sidebar.markdown("---")
     st.sidebar.header("📁 업체 관리")
@@ -106,7 +85,6 @@ if check_password():
             save_db(db); st.sidebar.success(f"✅ '{c_name}' 저장 완료!")
 
     selected_company = st.sidebar.selectbox("📂 업체 목록", ["선택 안 함"] + list(db.keys()))
-    
     col_s1, col_s2 = st.sidebar.columns(2)
     with col_s1:
         if st.button("불러오기", use_container_width=True):
@@ -116,23 +94,12 @@ if check_password():
     with col_s2:
         if st.button("업체 삭제", use_container_width=True):
             if selected_company != "선택 안 함" and selected_company in db:
-                del db[selected_company]
-                save_db(db); st.rerun()
+                del db[selected_company]; save_db(db); st.rerun()
 
-    # 업체 초기화 버튼 추가
     if st.sidebar.button("🔄 입력 데이터 초기화", use_container_width=True):
         for k in list(st.session_state.keys()):
             if k.startswith("in_"): del st.session_state[k]
         st.rerun()
-
-    st.sidebar.markdown("---")
-    st.sidebar.header("🚀 빠른 리포트 생성")
-    if st.sidebar.button("📊 기업분석리포트 생성", use_container_width=True, key="side_report"):
-        st.info("상단 메인 리포트 생성 기능을 호출합니다.")
-    if st.sidebar.button("💡 정책자금 매칭 리포트", use_container_width=True, key="side_fund"):
-        st.info("정책자금 매칭 로직을 실행합니다.")
-    if st.sidebar.button("📝 사업계획서 생성", use_container_width=True, key="side_biz"):
-        st.info("사업계획서 생성 로직을 실행합니다.")
 
     # ==========================================
     # 2. 메인 대시보드
@@ -140,7 +107,26 @@ if check_password():
     st.title("📊 AI 컨설팅 대시보드")
     
     col_t1, col_t2, col_t3 = st.columns(3)
-    with col_t1: st.button("📊 1. 기업분석리포트 생성", use_container_width=True, type="primary", key="main_btn_1")
+    
+    # --- [중요] 기업분석리포트 생성 버튼 로직 (수정됨) ---
+    with col_t1:
+        if st.button("📊 1. 기업분석리포트 생성", use_container_width=True, type="primary", key="main_btn_1"):
+            # 데이터 저장
+            report_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            st.session_state["final_report_data"] = report_data
+            # 로딩 애니메이션
+            with st.status("🚀 AI 전문가가 데이터를 분석 중입니다...", expanded=True) as status:
+                st.write("📍 재무 제표 및 매출 추이 분석 중...")
+                time.sleep(1)
+                st.write("📍 정책자금 한도 매칭 중...")
+                time.sleep(1)
+                status.update(label="✅ 분석 완료! 리포트 페이지로 이동합니다.", state="complete", expanded=False)
+            # 페이지 이동
+            try:
+                st.switch_page("pages/report.py")
+            except Exception as e:
+                st.error(f"⚠️ 페이지 이동 실패: {e}")
+
     with col_t2: st.button("💡 2. 정책자금 매칭 리포트", use_container_width=True, key="main_btn_2")
     with col_t3: st.button("📝 3. 사업계획서 생성", use_container_width=True, key="main_btn_3")
 
@@ -153,8 +139,7 @@ if check_password():
         st.text_input("기업명", key="in_company_name")
         st.text_input("사업자등록번호", key="in_raw_biz_no")
         biz_type = st.radio("사업자유형", ["개인", "법인"], horizontal=True, key="in_biz_type")
-        if biz_type == "법인":
-            st.text_input("법인등록번호", key="in_raw_corp_no")
+        if biz_type == "법인": st.text_input("법인등록번호", key="in_raw_corp_no")
     with c2:
         st.text_input("사업개시일", placeholder="2020.01.01", key="in_start_date")
         st.selectbox("업종", ["제조업", "도소매업", "서비스업", "IT업", "건설업", "음식점업", "기타"], key="in_industry")
@@ -191,21 +176,15 @@ if check_password():
         cc1, cc2 = st.columns(2)
         with cc1: tax_val = st.radio("세금체납", ["무", "유"], horizontal=True, key="in_tax_status")
         with cc2: fin_val = st.radio("금융연체", ["무", "유"], horizontal=True, key="in_fin_status")
-        
         sc1, sc2 = st.columns(2)
         with sc1: kcb_score = st.number_input("KCB 신용점수", 0, 1000, 800, key="in_kcb_score")
         with sc2: nice_score = st.number_input("NICE 신용점수", 0, 1000, 800, key="in_nice_score")
-    
     with cr2:
-        kcb_g = get_credit_grade(kcb_score, "KCB")
-        nice_g = get_credit_grade(nice_score, "NICE")
-        st.markdown(f"""
-        <div style="background-color:#f8f9fa; padding:20px; border-radius:10px; border:1px solid #dee2e6; border-left:5px solid #174EA6; height:100%;">
+        kcb_g, nice_g = get_credit_grade(kcb_score, "KCB"), get_credit_grade(nice_score, "NICE")
+        st.markdown(f"""<div style="background-color:#f8f9fa; padding:20px; border-radius:10px; border:1px solid #dee2e6; border-left:5px solid #174EA6; height:100%;">
             <h4 style="margin:0; color:#174EA6;">🏆 신용등급 판정 결과</h4>
             <p style="font-size:18px; margin:10px 0;">KCB: <b>{kcb_g}등급</b> | NICE: <b>{nice_g}등급</b></p>
-            <p style="font-size:14px; color:#6c757d;">상태: 세금체납({tax_val}) / 금융연체({fin_val})</p>
-        </div>
-        """, unsafe_allow_html=True)
+            <p style="font-size:14px; color:#6c757d;">상태: 세금체납({tax_val}) / 금융연체({fin_val})</p></div>""", unsafe_allow_html=True)
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
@@ -258,17 +237,15 @@ if check_password():
     # --- 7. 비즈니스 정보 ---
     st.header("7. 비즈니스 정보")
     st.text_area("[아이템]", key="in_item_desc")
-    
     st.markdown("**[주거래처 정보(매출위주)]**")
     client_col1, client_col2, client_col3 = st.columns(3)
     with client_col1: st.text_input("거래처 1", key="in_client_1")
     with client_col2: st.text_input("거래처 2", key="in_client_2")
     with client_col3: st.text_input("거래처 3", key="in_client_3")
-    
     st.text_area("[판매루트]", key="in_sales_route")
     st.text_area("[시장현황]", key="in_market_status")
     st.text_area("[차별화]", key="in_diff_point")
     st.text_area("[앞으로의 계획]", key="in_future_plan")
 
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.success("✅ 대시보드 모든 설정이 완료되었습니다.")
+    st.success("✅ 모든 정보 입력이 완료되었습니다.")
