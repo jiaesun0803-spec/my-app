@@ -3,6 +3,7 @@ import json
 import os
 import time
 import pandas as pd
+import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
 
@@ -25,10 +26,10 @@ def check_password():
         return False
     return True
 
-# --- 금액 변환 로직 (56000 -> 5억 6,000만원) ---
+# --- 금액 변환 로직 (소수점 완벽 제거: float -> int 변환 강제) ---
 def format_kr_currency(value):
     try:
-        val = int(value)
+        val = int(float(value)) # 소수점이 들어와도 정수로 강제 변환
         if val == 0: return "0원"
         uk = val // 10000
         man = val % 10000
@@ -42,25 +43,14 @@ def format_kr_currency(value):
         return str(value)
 
 if check_password():
-    # --- 파일 관리 (API 키 & 데이터베이스) ---
-    KEY_FILE = "gemini_key.txt"
+    # --- 파일 관리 및 신용등급 로직 ---
     DB_FILE = "company_db.json"
-    
-    def load_key():
-        if os.path.exists(KEY_FILE):
-            with open(KEY_FILE, "r", encoding="utf-8") as f: return f.read().strip()
-        return ""
-        
-    def save_key(key):
-        with open(KEY_FILE, "w", encoding="utf-8") as f: f.write(key.strip())
-
     def load_db():
         if os.path.exists(DB_FILE):
             try:
                 with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
             except: return {}
         return {}
-        
     def save_db(db_data):
         with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db_data, f, ensure_ascii=False, indent=4)
 
@@ -89,19 +79,14 @@ if check_password():
             else: return 10
 
     # ==========================================
-    # 1. 사이드바 (API 설정 및 업체관리)
+    # 1. 사이드바 (API 설정, 업체관리, DB 백업/복구)
     # ==========================================
     st.sidebar.header("⚙️ AI 엔진 설정")
-    # API 키를 파일에서 불러와 세션에 유지
-    if "api_key" not in st.session_state: 
-        st.session_state["api_key"] = load_key()
-        
+    if "api_key" not in st.session_state: st.session_state["api_key"] = ""
     api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
-    if st.sidebar.button("💾 API 키 영구 저장"):
+    if st.sidebar.button("💾 API 키 적용"):
         st.session_state["api_key"] = api_key_input
-        save_key(api_key_input)
-        st.sidebar.success("✅ API 키 영구 저장 완료!")
-        time.sleep(1)
+        st.sidebar.success("✅ API 키 적용 완료!")
         st.rerun()
 
     if st.session_state["api_key"]:
@@ -130,6 +115,25 @@ if check_password():
             for k in list(st.session_state.keys()):
                 if k.startswith("in_"): del st.session_state[k]
             st.rerun()
+
+    # --- DB 백업 및 복구 기능 (안전장치) ---
+    st.sidebar.markdown("---")
+    st.sidebar.header("💽 DB 임시 백업/복구")
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r", encoding="utf-8") as f: db_json = f.read()
+        st.sidebar.download_button("📥 현재 DB 백업", data=db_json, file_name="company_db.json", mime="application/json", use_container_width=True)
+    
+    uploaded_file = st.sidebar.file_uploader("📤 기존 DB 복구", type=["json"])
+    if uploaded_file is not None:
+        if st.sidebar.button("🚀 업로드한 DB로 복구하기", use_container_width=True):
+            try:
+                restored_db = json.load(uploaded_file)
+                save_db(restored_db)
+                st.sidebar.success("✅ DB 복구 완료!")
+                time.sleep(1)
+                st.rerun()
+            except:
+                st.sidebar.error("❌ 잘못된 파일 형식입니다.")
 
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
@@ -163,7 +167,7 @@ if check_password():
         st.subheader(f"📌 분석 대상 기업: {c_name}")
         
         if not st.session_state["api_key"]:
-            st.error("⚠️ 좌측 사이드바에 API 키를 입력하고 [영구 저장]을 눌러주세요.")
+            st.error("⚠️ 좌측 사이드바에 API 키를 입력하고 [적용]을 눌러주세요.")
         else:
             try:
                 with st.status("🚀 AI 전문가가 시각화 리포트를 생성 중입니다...", expanded=True) as status:
@@ -181,7 +185,7 @@ if check_password():
 
                     model = genai.GenerativeModel(target_model)
                     
-                    # 변수 할당 및 포맷팅
+                    # 변수 할당 및 포맷팅 (소수점 제거 완벽 적용)
                     c_ind = d.get('in_industry', '미입력')
                     rep_name = d.get('in_rep_name', '미입력')
                     biz_no = d.get('in_raw_biz_no', '미입력')
@@ -189,10 +193,11 @@ if check_password():
                     corp_text = f" ({corp_no})" if corp_no else ""
                     address = d.get('in_biz_addr', '미입력')
                     
-                    # 단위 변환 적용
-                    s_23 = format_kr_currency(d.get('in_sales_2023', 0))
-                    s_24 = format_kr_currency(d.get('in_sales_2024', 0))
+                    # 매출 데이터 변환
+                    s_cur = format_kr_currency(d.get('in_sales_current', 0))
                     s_25 = format_kr_currency(d.get('in_sales_2025', 0))
+                    s_24 = format_kr_currency(d.get('in_sales_2024', 0))
+                    s_23 = format_kr_currency(d.get('in_sales_2023', 0))
                     req_fund = format_kr_currency(d.get('in_req_amount', 0))
                     
                     kcb_s = d.get('in_kcb_score', 0)
@@ -201,9 +206,9 @@ if check_password():
                     market = d.get('in_market_status', '미입력')
                     diff = d.get('in_diff_point', '미입력')
                     
-                    total_debt = int(d.get('in_debt_kosme', 0)) + int(d.get('in_debt_semas', 0)) + int(d.get('in_debt_koreg', 0)) + int(d.get('in_debt_kodit', 0)) + int(d.get('in_debt_kibo', 0)) + int(d.get('in_debt_etc', 0)) + int(d.get('in_debt_credit', 0)) + int(d.get('in_debt_coll', 0))
+                    total_debt = int(float(d.get('in_debt_kosme', 0))) + int(float(d.get('in_debt_semas', 0))) + int(float(d.get('in_debt_koreg', 0))) + int(float(d.get('in_debt_kodit', 0))) + int(float(d.get('in_debt_kibo', 0))) + int(float(d.get('in_debt_etc', 0))) + int(float(d.get('in_debt_credit', 0))) + int(float(d.get('in_debt_coll', 0)))
                     
-                    # HTML 기반 프롬프트
+                    # HTML 기반 강력한 프롬프트
                     prompt = f"""
                     당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                     출력 시 각 카테고리 제목에는 이모지나 부연 설명을 절대 붙이지 말고 오직 숫자와 제목만 적으세요 (예: '1. 기업현황분석').
@@ -212,7 +217,7 @@ if check_password():
                     [데이터]
                     - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
                     - 사업자번호: {biz_no}{corp_text} / 주소: {address}
-                    - 매출액: 23년 {s_23}, 24년 {s_24}, 25년예상 {s_25}
+                    - 매출액: 23년 {s_23}, 24년 {s_24}, 25년 {s_25}, 금년 {s_cur}
                     - 총 기대출: {format_kr_currency(total_debt)}
                     - 비즈니스 아이템: {item} / 시장현황: {market} / 차별화: {diff}
                     - 필요자금: {req_fund}
@@ -289,7 +294,6 @@ if check_password():
                     </div>
 
                     ### 9. 성장비전 및 AI 컨설턴트 코멘트
-                    (성장 로드맵을 작성하고, 마지막 최종 코멘트는 아래 둥근 박스에 넣으세요)
                     단기/중기/장기 로드맵 텍스트 작성 후,
                     <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:20px; border-radius:15px; margin-top:15px;">
                       <b>💡 AI 컨설턴트 최종 코멘트:</b><br>
@@ -311,8 +315,8 @@ if check_password():
                 st.subheader("📊 [첨부] 향후 1년간 월별 매출 상승 곡선 (8번 항목 참조)")
                 
                 try:
-                    val_24 = int(d.get('in_sales_2024', 0))
-                    val_25 = int(d.get('in_sales_2025', 0))
+                    val_24 = int(float(d.get('in_sales_2024', 0)))
+                    val_25 = int(float(d.get('in_sales_2025', 0)))
                 except:
                     val_24, val_25 = 1000, 2000
                 
@@ -408,42 +412,44 @@ if check_password():
             with cc1: st.radio("세금체납", ["무", "유"], horizontal=True, key="in_tax_status")
             with cc2: st.radio("금융연체", ["무", "유"], horizontal=True, key="in_fin_status")
             sc1, sc2 = st.columns(2)
-            with sc1: kcb = st.number_input("KCB 점수", 0, 1000, 800, key="in_kcb_score")
-            with sc2: nice = st.number_input("NICE 점수", 0, 1000, 800, key="in_nice_score")
+            # value=0, step=1 로 소수점 원천 차단
+            with sc1: kcb = st.number_input("KCB 점수", value=0, step=1, key="in_kcb_score")
+            with sc2: nice = st.number_input("NICE 점수", value=0, step=1, key="in_nice_score")
         with cr2:
             st.info(f"#### 🏆 등급 판정 결과\n\n* **KCB (올크레딧):** {get_credit_grade(kcb, 'KCB')}등급\n* **NICE (나이스):** {get_credit_grade(nice, 'NICE')}등급")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # 4. 재무 현황
+        # 4. 재무 현황 (4칸 배열 및 순서 완벽 복원, 소수점 차단)
         st.header("4. 재무현황")
-        m1, m2, m3 = st.columns(3)
-        with m1: st.number_input("23년 매출(만원)", key="in_sales_2023")
-        with m2: st.number_input("24년 매출(만원)", key="in_sales_2024")
-        with m3: st.number_input("25년 매출(만원)", key="in_sales_2025")
+        m1, m2, m3, m4 = st.columns(4)
+        with m1: st.number_input("금년 매출(만원)", value=0, step=1, key="in_sales_current")
+        with m2: st.number_input("25년도 매출합계(만원)", value=0, step=1, key="in_sales_2025")
+        with m3: st.number_input("24년도 매출합계(만원)", value=0, step=1, key="in_sales_2024")
+        with m4: st.number_input("23년도 매출합계(만원)", value=0, step=1, key="in_sales_2023")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # 5. 기대출현황
+        # 5. 기대출현황 (소수점 차단)
         st.header("5. 기대출현황")
         d1, d2, d3, d4 = st.columns(4)
-        with d1: st.number_input("중진공", key="in_debt_kosme")
-        with d2: st.number_input("소진공", key="in_debt_semas")
-        with d3: st.number_input("신용보증재단", key="in_debt_koreg")
-        with d4: st.number_input("신용보증기금", key="in_debt_kodit")
+        with d1: st.number_input("중진공(만원)", value=0, step=1, key="in_debt_kosme")
+        with d2: st.number_input("소진공(만원)", value=0, step=1, key="in_debt_semas")
+        with d3: st.number_input("신용보증재단(만원)", value=0, step=1, key="in_debt_koreg")
+        with d4: st.number_input("신용보증기금(만원)", value=0, step=1, key="in_debt_kodit")
         d5, d6, d7, d8 = st.columns(4)
-        with d5: st.number_input("기술보증기금", key="in_debt_kibo")
-        with d6: st.number_input("기타", key="in_debt_etc")
-        with d7: st.number_input("신용대출", key="in_debt_credit")
-        with d8: st.number_input("담보대출", key="in_debt_coll")
+        with d5: st.number_input("기술보증기금(만원)", value=0, step=1, key="in_debt_kibo")
+        with d6: st.number_input("기타(만원)", value=0, step=1, key="in_debt_etc")
+        with d7: st.number_input("신용대출(만원)", value=0, step=1, key="in_debt_credit")
+        with d8: st.number_input("담보대출(만원)", value=0, step=1, key="in_debt_coll")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # 6. 필요자금
+        # 6. 필요자금 (소수점 차단)
         st.header("6. 필요자금")
         p1, p2, p3 = st.columns([1, 1, 2])
         with p1: st.selectbox("자금구분", ["운전자금", "시설자금"], key="in_fund_type")
-        with p2: st.number_input("필요자금액(만원)", key="in_req_amount")
+        with p2: st.number_input("필요자금액(만원)", value=0, step=1, key="in_req_amount")
         with p3: st.text_input("자금사용용도", key="in_fund_purpose")
 
         st.markdown("<br>", unsafe_allow_html=True)
