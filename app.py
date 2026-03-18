@@ -3,7 +3,6 @@ import json
 import os
 import time
 import pandas as pd
-import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
 
@@ -43,14 +42,25 @@ def format_kr_currency(value):
         return str(value)
 
 if check_password():
-    # --- 파일 관리 및 신용등급 로직 ---
+    # --- 파일 관리 (API 키 & 데이터베이스) ---
+    KEY_FILE = "gemini_key.txt"
     DB_FILE = "company_db.json"
+    
+    def load_key():
+        if os.path.exists(KEY_FILE):
+            with open(KEY_FILE, "r", encoding="utf-8") as f: return f.read().strip()
+        return ""
+        
+    def save_key(key):
+        with open(KEY_FILE, "w", encoding="utf-8") as f: f.write(key.strip())
+
     def load_db():
         if os.path.exists(DB_FILE):
             try:
                 with open(DB_FILE, "r", encoding="utf-8") as f: return json.load(f)
             except: return {}
         return {}
+        
     def save_db(db_data):
         with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db_data, f, ensure_ascii=False, indent=4)
 
@@ -82,11 +92,16 @@ if check_password():
     # 1. 사이드바 (API 설정 및 업체관리)
     # ==========================================
     st.sidebar.header("⚙️ AI 엔진 설정")
-    if "api_key" not in st.session_state: st.session_state["api_key"] = ""
+    # API 키를 파일에서 불러와 세션에 유지
+    if "api_key" not in st.session_state: 
+        st.session_state["api_key"] = load_key()
+        
     api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
-    if st.sidebar.button("💾 API 키 적용"):
+    if st.sidebar.button("💾 API 키 영구 저장"):
         st.session_state["api_key"] = api_key_input
-        st.sidebar.success("✅ API 키 적용 완료!")
+        save_key(api_key_input)
+        st.sidebar.success("✅ API 키 영구 저장 완료!")
+        time.sleep(1)
         st.rerun()
 
     if st.session_state["api_key"]:
@@ -148,7 +163,7 @@ if check_password():
         st.subheader(f"📌 분석 대상 기업: {c_name}")
         
         if not st.session_state["api_key"]:
-            st.error("⚠️ 좌측 사이드바에 API 키를 입력하고 [적용]을 눌러주세요.")
+            st.error("⚠️ 좌측 사이드바에 API 키를 입력하고 [영구 저장]을 눌러주세요.")
         else:
             try:
                 with st.status("🚀 AI 전문가가 시각화 리포트를 생성 중입니다...", expanded=True) as status:
@@ -188,7 +203,7 @@ if check_password():
                     
                     total_debt = int(d.get('in_debt_kosme', 0)) + int(d.get('in_debt_semas', 0)) + int(d.get('in_debt_koreg', 0)) + int(d.get('in_debt_kodit', 0)) + int(d.get('in_debt_kibo', 0)) + int(d.get('in_debt_etc', 0)) + int(d.get('in_debt_credit', 0)) + int(d.get('in_debt_coll', 0))
                     
-                    # HTML 기반 프롬프트 (대표님 요청사항 100% 반영)
+                    # HTML 기반 프롬프트
                     prompt = f"""
                     당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                     출력 시 각 카테고리 제목에는 이모지나 부연 설명을 절대 붙이지 말고 오직 숫자와 제목만 적으세요 (예: '1. 기업현황분석').
@@ -295,7 +310,6 @@ if check_password():
                 st.markdown("<br><br>", unsafe_allow_html=True)
                 st.subheader("📊 [첨부] 향후 1년간 월별 매출 상승 곡선 (8번 항목 참조)")
                 
-                # 24년과 25년 매출을 기반으로 12개월 상승 데이터 임의 생성
                 try:
                     val_24 = int(d.get('in_sales_2024', 0))
                     val_25 = int(d.get('in_sales_2025', 0))
@@ -320,7 +334,6 @@ if check_password():
                     marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
                 ))
                 
-                # 가로형 텍스트를 위한 레이아웃 설정 (tickangle=0)
                 fig.update_layout(
                     xaxis_title="진행 월",
                     yaxis_title="예상 매출액",
