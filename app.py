@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
-import re
 
 # ==========================================
 # 0. 기본 설정 및 보안
@@ -201,13 +200,7 @@ if check_password():
                     corp_text = f" ({corp_no})" if corp_no else ""
                     address = d.get('in_biz_addr', '미입력')
                     
-                    lease_status = d.get('in_lease_status', '자가')
-                    if lease_status == '임대':
-                        deposit_kr = format_kr_currency(d.get('in_lease_deposit', 0))
-                        rent_kr = format_kr_currency(d.get('in_lease_rent', 0))
-                        lease_text = f"[임대: 보증금 {deposit_kr} / 월임대료 {rent_kr}]"
-                    else:
-                        lease_text = "[자가]"
+                    # 임대료 텍스트는 리포트에서 완전히 제거 (대표님 요청)
                     
                     s_cur = format_kr_currency(d.get('in_sales_current', 0))
                     s_25 = format_kr_currency(d.get('in_sales_2025', 0))
@@ -261,20 +254,19 @@ if check_password():
                         template="plotly_white", margin=dict(l=20, r=20, t=40, b=20)
                     )
 
-                    # [핵심] 프롬프트 고도화 (에러 방지 마커 [GRAPH_INSERT_POINT] 사용)
+                    # [핵심] 프롬프트 고도화 (개조식 강제, 26년 긍정 전망)
                     prompt = f"""
                     당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                     마크다운과 HTML 태그(div, table 등)를 사용하여 아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
 
                     [데이터 및 시간 인지 규칙 - 매우 중요!!!]
-                    - 현재 시점은 **2026년**입니다.
-                    - 23년({s_23}), 24년({s_24}), 25년({s_25}) 매출은 **과거 실적**입니다.
-                    - '금년 매출({s_cur})'이 현재 시점(2026년)의 매출입니다. 
-                    - 과거 실적을 바탕으로 앞으로(2026~2027)를 전망하세요.
+                    - 현재 시점은 **2026년 시작 단계**입니다.
+                    - 23년({s_23}), 24년({s_24}), 25년({s_25}) 매출은 **과거 실적**입니다. 과거의 부진이나 감점 요소를 절대 언급하지 마세요.
+                    - 3, 4, 5, 6, 9번 항목은 절대 줄글(서술형)로 길게 쓰지 마세요! 반드시 문장 앞에 '-' 기호를 붙여 핵심만 짧고 간결하게 작성하는 **개조식(보고서형)**으로 작성하세요.
 
                     [기업 정보]
                     - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
-                    - 사업자번호: {biz_no}{corp_text} / 주소: {address} {lease_text}
+                    - 사업자번호: {biz_no}{corp_text} / 주소: {address}
                     - 비즈니스 아이템: {item} / 시장현황: {market} / 차별화: {diff}
                     - 신청자금: {req_fund} ({fund_type})
 
@@ -284,9 +276,9 @@ if check_password():
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
                       <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>대표자명:</b> {rep_name} <br>
                       <b>업종:</b> {c_ind} &nbsp;|&nbsp; <b>사업자등록번호:</b> {biz_no}{corp_text} <br>
-                      <b>사업장 주소:</b> {address} <span style="color:#1565c0; font-weight:bold;">{lease_text}</span>
+                      <b>사업장 주소:</b> {address}
                     </div>
-                    (매출, 대출 등 숫자는 출력하지 말고, 기업의 건전성과 잠재력에 대한 분석 코멘트만 3~4줄 작성)
+                    (매출, 대출 숫자는 기재하지 마세요. 2026년은 시작 단계이므로 과거에 대한 부정적 평가는 배제하고, AI의 지식력을 동원해 이 기업의 뛰어난 비전과 향후 긍정적인 기대감을 심어주는 희망찬 코멘트로 3~4줄 작성하세요.)
 
                     ### 2. SWOT 분석
                     <table style="width:100%; text-align:center; border-collapse: separate; border-spacing: 10px;">
@@ -302,51 +294,51 @@ if check_password():
 
                     ### 3. 시장현황 및 경쟁력
                     <div style="display:flex; gap:15px; margin-bottom:10px;">
-                      <div style="flex:1; background-color:#f3e5f5; padding:20px; border-radius:15px;"><b>📊 시장 현황</b><br><br>(내용 요약)</div>
-                      <div style="flex:1; background-color:#e8eaf6; padding:20px; border-radius:15px;"><b>⚔️ 경쟁 상황</b><br><br>(내용 요약)</div>
+                      <div style="flex:1; background-color:#f3e5f5; padding:20px; border-radius:15px;"><b>📊 시장 현황</b><br><br>(반드시 '-' 기호로 시작하는 개조식 요약 문장들)</div>
+                      <div style="flex:1; background-color:#e8eaf6; padding:20px; border-radius:15px;"><b>⚔️ 경쟁 상황</b><br><br>(반드시 '-' 기호로 시작하는 개조식 요약 문장들)</div>
                     </div>
 
                     ### 4. 핵심경쟁력분석
                     <div style="display:flex; gap:15px; margin-bottom:10px; text-align:center;">
                       <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
-                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 1 (핵심 키워드)</div>
-                        <div style="padding:15px; font-size:0.9em; text-align:left;">(상세 내용 정리)</div>
+                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 1 (키워드)</div>
+                        <div style="padding:15px; font-size:0.9em; text-align:left;">(반드시 '-' 기호로 시작하는 개조식 요약)</div>
                       </div>
                       <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
-                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 2 (핵심 키워드)</div>
-                        <div style="padding:15px; font-size:0.9em; text-align:left;">(상세 내용 정리)</div>
+                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 2 (키워드)</div>
+                        <div style="padding:15px; font-size:0.9em; text-align:left;">(반드시 '-' 기호로 시작하는 개조식 요약)</div>
                       </div>
                       <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
-                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 3 (핵심 키워드)</div>
-                        <div style="padding:15px; font-size:0.9em; text-align:left;">(상세 내용 정리)</div>
+                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 3 (키워드)</div>
+                        <div style="padding:15px; font-size:0.9em; text-align:left;">(반드시 '-' 기호로 시작하는 개조식 요약)</div>
                       </div>
                     </div>
 
                     ### 5. 정책자금 추천
-                    (해당 업종에 맞는 기관 3곳 추천)
+                    (해당 업종에 맞는 기관 3곳 추천. 사유는 반드시 '-' 로 시작하는 개조식으로 간결하게!)
                     1. <b style="font-size:1.2em; color:#1565c0;">[기관명] / {req_fund}</b>
-                       <div style="margin-top:5px; margin-bottom:15px; color:#555;">추천사유: (작성)</div>
+                       <div style="margin-top:5px; margin-bottom:15px; color:#555;">- (추천사유 개조식 작성)</div>
                     (2번, 3번도 동일 양식)
 
                     ### 6. 추천 인증 및 교육
                     <div style="background-color:#fff8e1; padding:20px; border-radius:15px; margin-bottom:10px;">
-                      (한도 확대를 위한 인증/교육 전략을 Bullet point로 작성)
+                      (한도 확대를 위한 인증/교육 전략을 반드시 '-' 기호로 시작하는 개조식으로 요약 작성)
                     </div>
 
                     ### 7. 자금 사용계획
-                    (신청 자금이 '{fund_type}'입니다. '{fund_type}' 목적에 맞는 항목으로만 세부 계획을 세우세요. 운전자금=인건비/마케팅 등, 시설자금=부동산/기계/공사 등 혼합 금지)
+                    (신청 자금이 '{fund_type}'입니다. '{fund_type}' 목적에 맞는 항목으로만 세부 계획을 세우세요. 운전자금=인건비/마케팅/원부자재 등, 시설자금=부동산/기계/공사설비 등 혼합 금지)
                     <table style="width:100%; border-collapse: collapse; text-align:left;">
                      <tr style="background-color:#eceff1;">
                        <th style="padding:15px; border:1px solid #ccc; border-radius:10px 0 0 0;">구분 ({fund_type})</th>
                        <th style="padding:15px; border:1px solid #ccc; border-radius:0 10px 0 0;">상세 사용계획</th>
                      </tr>
                      <tr>
-                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">세부항목 1</td>
-                       <td style="padding:15px; border:1px solid #ccc; font-size:0.85em;">(작성)</td>
+                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 1)</td>
+                       <td style="padding:15px; border:1px solid #ccc; font-size:0.85em;">- (개조식 작성)</td>
                      </tr>
                      <tr>
-                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">세부항목 2</td>
-                       <td style="padding:15px; border:1px solid #ccc; font-size:0.85em;">(작성)</td>
+                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 2)</td>
+                       <td style="padding:15px; border:1px solid #ccc; font-size:0.85em;">- (개조식 작성)</td>
                      </tr>
                     </table>
 
@@ -381,9 +373,9 @@ if check_password():
 
                     ### 9. 성장비전 및 AI 컨설턴트 코멘트
                     <div style="display:flex; gap:15px; text-align:center; margin-bottom:20px;">
-                       <div style="flex:1; padding:20px; background-color:#e8f5e9; border-radius:15px;"><b>🌱 단기 비전</b><br><br>(내용)</div>
-                       <div style="flex:1; padding:20px; background-color:#fff3e0; border-radius:15px;"><b>🚀 중기 비전</b><br><br>(내용)</div>
-                       <div style="flex:1; padding:20px; background-color:#ffebee; border-radius:15px;"><b>👑 장기 비전</b><br><br>(내용)</div>
+                       <div style="flex:1; padding:20px; background-color:#e8f5e9; border-radius:15px;"><b>🌱 단기 비전</b><br><br><div style="text-align:left;">- (개조식 요약)<br>- (개조식 요약)</div></div>
+                       <div style="flex:1; padding:20px; background-color:#fff3e0; border-radius:15px;"><b>🚀 중기 비전</b><br><br><div style="text-align:left;">- (개조식 요약)<br>- (개조식 요약)</div></div>
+                       <div style="flex:1; padding:20px; background-color:#ffebee; border-radius:15px;"><b>👑 장기 비전</b><br><br><div style="text-align:left;">- (개조식 요약)<br>- (개조식 요약)</div></div>
                     </div>
                     
                     <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:20px; border-radius:15px; margin-top:15px;">
@@ -392,15 +384,15 @@ if check_password():
                     </div>
                     """
                     
-                    st.write("📍 지시하신 서식(분할 박스, 화살표 로드맵) 기반 보고서 생성 중...")
+                    st.write("📍 지시하신 서식(개조식 요약, 긍정적 전망, 분할 박스) 기반 보고서 생성 중...")
                     response = model.generate_content(prompt)
                     status.update(label="✅ 분석 및 시각화 보고서 생성 완료!", state="complete")
                 
-                # [그래프를 8번 항목 밑에 자연스럽게 삽입하는 로직 (에러 방지 적용)]
+                # [그래프를 8번 항목 밑에 자연스럽게 삽입하는 로직]
                 try:
                     response_text = response.text
                 except Exception as e:
-                    st.error("AI 응답을 가져오는 중 오류가 발생했습니다. (Safety 필터 차단 등)")
+                    st.error("AI 응답을 가져오는 중 오류가 발생했습니다.")
                     response_text = ""
 
                 if "[GRAPH_INSERT_POINT]" in response_text:
@@ -414,11 +406,11 @@ if check_password():
 
                 st.balloons()
                 
-                # --- [다운로드 버튼 기능] ---
+                # --- [다운로드 버튼 기능 (PDF 최적화 HTML)] ---
                 st.divider()
-                st.subheader("💾 리포트 저장")
+                st.subheader("💾 리포트 저장 (PDF 권장)")
+                st.info("💡 **가장 예쁘게 저장하는 꿀팁:** 다운로드한 HTML 파일을 크롬(Chrome)에서 열고, 우측 상단의 **[🖨️ PDF로 저장하기]** 버튼을 누르시면 디자인이 100% 유지된 A4 사이즈 보고서가 완성됩니다!")
                 
-                # 파일명 특수문자 안전처리
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
@@ -428,20 +420,28 @@ if check_password():
                     <meta charset="utf-8">
                     <title>{c_name} 기업분석리포트</title>
                     <style>
-                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }}
-                        h3 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 5px; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; }}
+                        h3 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 5px; margin-top: 30px; }}
+                        .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
+                        .print-btn:hover {{ background-color: #123C85; }}
+                        @media print {{
+                            .print-btn {{ display: none; }} /* 인쇄 시 버튼 숨김 */
+                            body {{ padding: 0; }}
+                            @page {{ size: A4; margin: 1.5cm; }}
+                        }}
                     </style>
                 </head>
                 <body>
+                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h2>📋 AI 기업분석 결과보고서: {c_name}</h2>
                     <hr>
-                    {response_text.replace('[GRAPH_INSERT_POINT]', '<div style="padding:20px; background:#f0f0f0; text-align:center; border-radius:10px;">[매출 상승 곡선 그래프는 웹 대시보드에서 확인 가능합니다]</div>')}
+                    {response_text.replace('[GRAPH_INSERT_POINT]', '<div style="padding:20px; margin: 20px 0; background:#f0f0f0; text-align:center; border-radius:10px; font-weight:bold; color:#555;">[📈 1년 매출 상승 곡선 차트는 웹 대시보드 시스템에서 확인 가능합니다]</div>')}
                 </body>
                 </html>
                 """
                 
                 st.download_button(
-                    label="📥 완성된 리포트 다운로드 (HTML 형식)",
+                    label="📥 보고서 다운로드 (열어서 PDF로 저장하세요)",
                     data=html_export,
                     file_name=f"{safe_file_name}_기업분석리포트.html",
                     mime="text/html",
