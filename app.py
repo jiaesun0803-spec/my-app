@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
+import re
 
 # ==========================================
 # 0. 기본 설정 및 보안
@@ -26,10 +27,18 @@ def check_password():
         return False
     return True
 
-# --- 금액 변환 로직 (소수점 완벽 제거) ---
+# --- 금액 변환 및 안전 로직 (콤마, 빈칸, 소수점 완벽 방어) ---
+def safe_int(value):
+    try:
+        clean_val = str(value).replace(',', '').strip()
+        if not clean_val: return 0
+        return int(float(clean_val))
+    except:
+        return 0
+
 def format_kr_currency(value):
     try:
-        val = int(float(value)) 
+        val = safe_int(value)
         if val == 0: return "0원"
         uk = val // 10000
         man = val % 10000
@@ -68,6 +77,7 @@ if check_password():
         with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db_data, f, ensure_ascii=False, indent=4)
 
     def get_credit_grade(score, type="NICE"):
+        score = safe_int(score)
         if type == "NICE":
             if score >= 900: return 1
             elif score >= 870: return 2
@@ -159,7 +169,7 @@ if check_password():
             st.rerun()
         
         d = st.session_state["permanent_data"]
-        c_name = d.get('in_company_name', '미입력')
+        c_name = d.get('in_company_name', '미입력').strip()
         
         st.title("📋 시각화 기반 AI 기업분석 리포트")
         st.subheader(f"📌 분석 대상 기업: {c_name}")
@@ -183,7 +193,7 @@ if check_password():
 
                     model = genai.GenerativeModel(target_model)
                     
-                    # 변수 할당
+                    # 변수 할당 (안전한 파싱)
                     c_ind = d.get('in_industry', '미입력')
                     rep_name = d.get('in_rep_name', '미입력')
                     biz_no = d.get('in_raw_biz_no', '미입력')
@@ -207,25 +217,32 @@ if check_password():
                     fund_type = d.get('in_fund_type', '운전자금')
                     req_fund = format_kr_currency(d.get('in_req_amount', 0))
                     
-                    kcb_s = d.get('in_kcb_score', 0)
-                    nice_s = d.get('in_nice_score', 0)
+                    kcb_s = safe_int(d.get('in_kcb_score', 0))
+                    nice_s = safe_int(d.get('in_nice_score', 0))
                     item = d.get('in_item_desc', '미입력')
                     market = d.get('in_market_status', '미입력')
                     diff = d.get('in_diff_point', '미입력')
                     
-                    total_debt = int(float(d.get('in_debt_kosme', 0))) + int(float(d.get('in_debt_semas', 0))) + int(float(d.get('in_debt_koreg', 0))) + int(float(d.get('in_debt_kodit', 0))) + int(float(d.get('in_debt_kibo', 0))) + int(float(d.get('in_debt_etc', 0))) + int(float(d.get('in_debt_credit', 0))) + int(float(d.get('in_debt_coll', 0)))
+                    total_debt_val = sum([
+                        safe_int(d.get('in_debt_kosme', 0)),
+                        safe_int(d.get('in_debt_semas', 0)),
+                        safe_int(d.get('in_debt_koreg', 0)),
+                        safe_int(d.get('in_debt_kodit', 0)),
+                        safe_int(d.get('in_debt_kibo', 0)),
+                        safe_int(d.get('in_debt_etc', 0)),
+                        safe_int(d.get('in_debt_credit', 0)),
+                        safe_int(d.get('in_debt_coll', 0))
+                    ])
+                    total_debt = format_kr_currency(total_debt_val)
                     
                     # ---------------------------------------------------------
                     # [그래프 생성] 8번 항목 내에 들어갈 차트를 미리 만들어 둠
                     # ---------------------------------------------------------
-                    try:
-                        val_24 = int(float(d.get('in_sales_2024', 0)))
-                        val_25 = int(float(d.get('in_sales_2025', 0)))
-                    except:
-                        val_24, val_25 = 1000, 2000
+                    val_cur = safe_int(d.get('in_sales_current', 0))
+                    if val_cur <= 0: val_cur = 1000
                     
-                    start_val = val_24 / 12 if val_24 > 0 else 1000
-                    end_val = val_25 / 12 if val_25 > 0 else start_val * 1.5
+                    start_val = val_cur / 12
+                    end_val = start_val * 1.5
                     step = (end_val - start_val) / 11
                     monthly_vals = [int(start_val + step * i) for i in range(12)]
                     monthly_labels = [f"{i}월" for i in range(1, 13)]
@@ -244,7 +261,7 @@ if check_password():
                         template="plotly_white", margin=dict(l=20, r=20, t=40, b=20)
                     )
 
-                    # [핵심] 프롬프트 고도화 (타임라인 교정, 분할 박스, 그래프 위치 지정)
+                    # [핵심] 프롬프트 고도화 (에러 방지 마커 [GRAPH_INSERT_POINT] 사용)
                     prompt = f"""
                     당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                     마크다운과 HTML 태그(div, table 등)를 사용하여 아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
@@ -360,6 +377,8 @@ if check_password():
                       </div>
                     </div>
                     
+                    [GRAPH_INSERT_POINT]
+
                     ### 9. 성장비전 및 AI 컨설턴트 코멘트
                     <div style="display:flex; gap:15px; text-align:center; margin-bottom:20px;">
                        <div style="flex:1; padding:20px; background-color:#e8f5e9; border-radius:15px;"><b>🌱 단기 비전</b><br><br>(내용)</div>
@@ -377,13 +396,18 @@ if check_password():
                     response = model.generate_content(prompt)
                     status.update(label="✅ 분석 및 시각화 보고서 생성 완료!", state="complete")
                 
-                # [그래프를 8번 항목 밑에 자연스럽게 삽입하는 로직]
-                response_text = response.text
-                if "" in response_text:
-                    parts = response_text.split("")
+                # [그래프를 8번 항목 밑에 자연스럽게 삽입하는 로직 (에러 방지 적용)]
+                try:
+                    response_text = response.text
+                except Exception as e:
+                    st.error("AI 응답을 가져오는 중 오류가 발생했습니다. (Safety 필터 차단 등)")
+                    response_text = ""
+
+                if "[GRAPH_INSERT_POINT]" in response_text:
+                    parts = response_text.partition("[GRAPH_INSERT_POINT]")
                     st.markdown(parts[0], unsafe_allow_html=True)
                     st.plotly_chart(fig, use_container_width=True)
-                    st.markdown(parts[1], unsafe_allow_html=True)
+                    st.markdown(parts[2], unsafe_allow_html=True)
                 else:
                     st.markdown(response_text, unsafe_allow_html=True)
                     st.plotly_chart(fig, use_container_width=True)
@@ -394,7 +418,10 @@ if check_password():
                 st.divider()
                 st.subheader("💾 리포트 저장")
                 
-                # HTML 파일 생성을 위한 보일러플레이트
+                # 파일명 특수문자 안전처리
+                safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
+                if not safe_file_name: safe_file_name = "업체"
+                
                 html_export = f"""
                 <html>
                 <head>
@@ -408,7 +435,7 @@ if check_password():
                 <body>
                     <h2>📋 AI 기업분석 결과보고서: {c_name}</h2>
                     <hr>
-                    {response_text.replace('', '<div style="padding:20px; background:#f0f0f0; text-align:center; border-radius:10px;">[매출 상승 곡선 그래프는 시스템 대시보드에서 확인 가능합니다]</div>')}
+                    {response_text.replace('[GRAPH_INSERT_POINT]', '<div style="padding:20px; background:#f0f0f0; text-align:center; border-radius:10px;">[매출 상승 곡선 그래프는 웹 대시보드에서 확인 가능합니다]</div>')}
                 </body>
                 </html>
                 """
@@ -416,7 +443,7 @@ if check_password():
                 st.download_button(
                     label="📥 완성된 리포트 다운로드 (HTML 형식)",
                     data=html_export,
-                    file_name=f"{c_name}_기업분석리포트.html",
+                    file_name=f"{safe_file_name}_기업분석리포트.html",
                     mime="text/html",
                     type="primary"
                 )
