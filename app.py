@@ -26,10 +26,10 @@ def check_password():
         return False
     return True
 
-# --- 금액 변환 로직 (소수점 완벽 제거: float -> int 변환 강제) ---
+# --- 금액 변환 로직 (소수점 완벽 제거) ---
 def format_kr_currency(value):
     try:
-        val = int(float(value)) # 소수점이 들어와도 정수로 강제 변환
+        val = int(float(value)) 
         if val == 0: return "0원"
         uk = val // 10000
         man = val % 10000
@@ -47,7 +47,6 @@ if check_password():
     KEY_FILE = "gemini_key.txt"
     DB_FILE = "company_db.json"
     
-    # API 키 불러오기/저장 로직
     def load_key():
         if os.path.exists(KEY_FILE):
             try:
@@ -58,7 +57,6 @@ if check_password():
     def save_key(key):
         with open(KEY_FILE, "w", encoding="utf-8") as f: f.write(key.strip())
 
-    # DB 불러오기/저장 로직
     def load_db():
         if os.path.exists(DB_FILE):
             try:
@@ -69,7 +67,6 @@ if check_password():
     def save_db(db_data):
         with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db_data, f, ensure_ascii=False, indent=4)
 
-    # 신용등급 산출 로직
     def get_credit_grade(score, type="NICE"):
         if type == "NICE":
             if score >= 900: return 1
@@ -95,17 +92,16 @@ if check_password():
             else: return 10
 
     # ==========================================
-    # 1. 사이드바 (API 설정, 업체관리) - 백업기능 제거
+    # 1. 사이드바 (API 설정, 업체관리)
     # ==========================================
     st.sidebar.header("⚙️ AI 엔진 설정")
-    # 세션 시작 시 파일에서 API 키를 읽어옴
     if "api_key" not in st.session_state: 
         st.session_state["api_key"] = load_key()
         
     api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
     if st.sidebar.button("💾 API 키 영구 저장"):
         st.session_state["api_key"] = api_key_input
-        save_key(api_key_input) # 파일에 쓰기
+        save_key(api_key_input)
         st.sidebar.success("✅ API 키 영구 저장 완료!")
         time.sleep(1)
         st.rerun()
@@ -172,8 +168,8 @@ if check_password():
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하고 [영구 저장]을 눌러주세요.")
         else:
             try:
-                with st.status("🚀 AI 전문가가 시각화 리포트를 생성 중입니다...", expanded=True) as status:
-                    # 모델 탐색 로직 (404 에러 방지)
+                with st.status("🚀 잼(Jam)이 시각화 리포트를 생성 중입니다...", expanded=True) as status:
+                    # 모델 탐색
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
@@ -187,7 +183,7 @@ if check_password():
 
                     model = genai.GenerativeModel(target_model)
                     
-                    # 변수 할당 및 포맷팅
+                    # 변수 할당
                     c_ind = d.get('in_industry', '미입력')
                     rep_name = d.get('in_rep_name', '미입력')
                     biz_no = d.get('in_raw_biz_no', '미입력')
@@ -195,7 +191,6 @@ if check_password():
                     corp_text = f" ({corp_no})" if corp_no else ""
                     address = d.get('in_biz_addr', '미입력')
                     
-                    # 임대여부 및 보증금/월세 텍스트 생성
                     lease_status = d.get('in_lease_status', '자가')
                     if lease_status == '임대':
                         deposit_kr = format_kr_currency(d.get('in_lease_deposit', 0))
@@ -204,11 +199,12 @@ if check_password():
                     else:
                         lease_text = "[자가]"
                     
-                    # 단위 변환 적용 (소수점 원천 차단)
                     s_cur = format_kr_currency(d.get('in_sales_current', 0))
                     s_25 = format_kr_currency(d.get('in_sales_2025', 0))
                     s_24 = format_kr_currency(d.get('in_sales_2024', 0))
                     s_23 = format_kr_currency(d.get('in_sales_2023', 0))
+                    
+                    fund_type = d.get('in_fund_type', '운전자금')
                     req_fund = format_kr_currency(d.get('in_req_amount', 0))
                     
                     kcb_s = d.get('in_kcb_score', 0)
@@ -219,32 +215,61 @@ if check_password():
                     
                     total_debt = int(float(d.get('in_debt_kosme', 0))) + int(float(d.get('in_debt_semas', 0))) + int(float(d.get('in_debt_koreg', 0))) + int(float(d.get('in_debt_kodit', 0))) + int(float(d.get('in_debt_kibo', 0))) + int(float(d.get('in_debt_etc', 0))) + int(float(d.get('in_debt_credit', 0))) + int(float(d.get('in_debt_coll', 0)))
                     
-                    # HTML 기반 강력한 프롬프트
+                    # ---------------------------------------------------------
+                    # [그래프 생성] 8번 항목 내에 들어갈 차트를 미리 만들어 둠
+                    # ---------------------------------------------------------
+                    try:
+                        val_24 = int(float(d.get('in_sales_2024', 0)))
+                        val_25 = int(float(d.get('in_sales_2025', 0)))
+                    except:
+                        val_24, val_25 = 1000, 2000
+                    
+                    start_val = val_24 / 12 if val_24 > 0 else 1000
+                    end_val = val_25 / 12 if val_25 > 0 else start_val * 1.5
+                    step = (end_val - start_val) / 11
+                    monthly_vals = [int(start_val + step * i) for i in range(12)]
+                    monthly_labels = [f"{i}월" for i in range(1, 13)]
+
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
+                        text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
+                        textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
+                        marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
+                    ))
+                    fig.update_layout(
+                        title="📈 향후 1년간 월별 예상 매출 상승 곡선",
+                        xaxis_title="진행 월", yaxis_title="예상 매출액",
+                        xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
+                        template="plotly_white", margin=dict(l=20, r=20, t=40, b=20)
+                    )
+
+                    # [핵심] 프롬프트 고도화 (타임라인 교정, 분할 박스, 그래프 위치 지정)
                     prompt = f"""
                     당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
-                    출력 시 각 카테고리 제목에는 이모지나 부연 설명을 절대 붙이지 말고 오직 숫자와 제목만 적으세요 (예: '1. 기업현황분석').
                     마크다운과 HTML 태그(div, table 등)를 사용하여 아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
 
-                    [데이터]
+                    [데이터 및 시간 인지 규칙 - 매우 중요!!!]
+                    - 현재 시점은 **2026년**입니다.
+                    - 23년({s_23}), 24년({s_24}), 25년({s_25}) 매출은 **과거 실적**입니다.
+                    - '금년 매출({s_cur})'이 현재 시점(2026년)의 매출입니다. 
+                    - 과거 실적을 바탕으로 앞으로(2026~2027)를 전망하세요.
+
+                    [기업 정보]
                     - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
-                    - 사업자번호: {biz_no}{corp_text} 
-                    - 주소 및 사업장형태: {address} {lease_text}
-                    - 매출액: 23년 {s_23}, 24년 {s_24}, 25년예상 {s_25}, 금년 {s_cur}
-                    - 총 기대출: {format_kr_currency(total_debt)}
+                    - 사업자번호: {biz_no}{corp_text} / 주소: {address} {lease_text}
                     - 비즈니스 아이템: {item} / 시장현황: {market} / 차별화: {diff}
-                    - 필요자금: {req_fund}
+                    - 신청자금: {req_fund} ({fund_type})
 
                     [출력 양식 및 규칙]
                     
                     ### 1. 기업현황분석
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
-                      <b>기업명:</b> {c_name} <br>
-                      <b>대표자명:</b> {rep_name} <br>
-                      <b>업종:</b> {c_ind} <br>
-                      <b>사업자등록번호:</b> {biz_no}{corp_text} <br>
+                      <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>대표자명:</b> {rep_name} <br>
+                      <b>업종:</b> {c_ind} &nbsp;|&nbsp; <b>사업자등록번호:</b> {biz_no}{corp_text} <br>
                       <b>사업장 주소:</b> {address} <span style="color:#1565c0; font-weight:bold;">{lease_text}</span>
                     </div>
-                    (여기에 매출/대출 숫자는 노출하지 말고, 위 데이터를 바탕으로 한 기업의 건전성과 현재 상태에 대한 '분석 코멘트'만 3~4줄 작성하세요.)
+                    (매출, 대출 등 숫자는 출력하지 말고, 기업의 건전성과 잠재력에 대한 분석 코멘트만 3~4줄 작성)
 
                     ### 2. SWOT 분석
                     <table style="width:100%; text-align:center; border-collapse: separate; border-spacing: 10px;">
@@ -259,105 +284,142 @@ if check_password():
                     </table>
 
                     ### 3. 시장현황 및 경쟁력
-                    <div style="background-color:#f3e5f5; padding:20px; border-radius:15px; margin-bottom:10px;">
-                      (이 둥근 사각형 박스 안에 시장현황과 경쟁력을 Bullet point로 작성하세요)
+                    <div style="display:flex; gap:15px; margin-bottom:10px;">
+                      <div style="flex:1; background-color:#f3e5f5; padding:20px; border-radius:15px;"><b>📊 시장 현황</b><br><br>(내용 요약)</div>
+                      <div style="flex:1; background-color:#e8eaf6; padding:20px; border-radius:15px;"><b>⚔️ 경쟁 상황</b><br><br>(내용 요약)</div>
                     </div>
 
                     ### 4. 핵심경쟁력분석
-                    <div style="background-color:#e0f7fa; padding:20px; border-radius:15px; margin-bottom:10px;">
-                      (이 둥근 사각형 박스 안에 핵심 경쟁력과 차별화 포인트를 작성하세요)
+                    <div style="display:flex; gap:15px; margin-bottom:10px; text-align:center;">
+                      <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
+                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 1 (핵심 키워드)</div>
+                        <div style="padding:15px; font-size:0.9em; text-align:left;">(상세 내용 정리)</div>
+                      </div>
+                      <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
+                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 2 (핵심 키워드)</div>
+                        <div style="padding:15px; font-size:0.9em; text-align:left;">(상세 내용 정리)</div>
+                      </div>
+                      <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
+                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 3 (핵심 키워드)</div>
+                        <div style="padding:15px; font-size:0.9em; text-align:left;">(상세 내용 정리)</div>
+                      </div>
                     </div>
 
                     ### 5. 정책자금 추천
-                    (아래와 같이 순번을 매기고, 기관/금액은 크고 굵게, 사유는 그 아래에 일반 글씨로 작성. 총 3개 추천)
+                    (해당 업종에 맞는 기관 3곳 추천)
                     1. <b style="font-size:1.2em; color:#1565c0;">[기관명] / {req_fund}</b>
                        <div style="margin-top:5px; margin-bottom:15px; color:#555;">추천사유: (작성)</div>
-                    (2번, 3번도 동일한 양식으로 작성)
+                    (2번, 3번도 동일 양식)
 
                     ### 6. 추천 인증 및 교육
                     <div style="background-color:#fff8e1; padding:20px; border-radius:15px; margin-bottom:10px;">
-                      (이 둥근 사각형 박스 안에 한도 확대를 위한 인증/교육 전략을 작성하세요)
+                      (한도 확대를 위한 인증/교육 전략을 Bullet point로 작성)
                     </div>
 
                     ### 7. 자금 사용계획
+                    (신청 자금이 '{fund_type}'입니다. '{fund_type}' 목적에 맞는 항목으로만 세부 계획을 세우세요. 운전자금=인건비/마케팅 등, 시설자금=부동산/기계/공사 등 혼합 금지)
                     <table style="width:100%; border-collapse: collapse; text-align:left;">
                      <tr style="background-color:#eceff1;">
-                       <th style="padding:15px; border:1px solid #ccc; border-radius:10px 0 0 0;">구분</th>
+                       <th style="padding:15px; border:1px solid #ccc; border-radius:10px 0 0 0;">구분 ({fund_type})</th>
                        <th style="padding:15px; border:1px solid #ccc; border-radius:0 10px 0 0;">상세 사용계획</th>
                      </tr>
                      <tr>
-                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">운전자금/시설자금</td>
+                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">세부항목 1</td>
+                       <td style="padding:15px; border:1px solid #ccc; font-size:0.85em;">(작성)</td>
+                     </tr>
+                     <tr>
+                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">세부항목 2</td>
                        <td style="padding:15px; border:1px solid #ccc; font-size:0.85em;">(작성)</td>
                      </tr>
                     </table>
 
                     ### 8. 매출 1년 전망
-                    <div style="display:flex; justify-content:space-between; align-items:center; text-align:center; flex-wrap:wrap;">
-                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1; margin:5px; font-weight:bold;">1단계<br>(내용)</div>
-                      <div style="font-size:1.5em;">➡️</div>
-                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1; margin:5px; font-weight:bold;">2단계<br>(내용)</div>
-                      <div style="font-size:1.5em;">➡️</div>
-                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1; margin:5px; font-weight:bold;">3단계<br>(내용)</div>
-                      <div style="font-size:1.5em;">➡️</div>
-                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1; margin:5px; font-weight:bold;">4단계<br>(내용)</div>
+                    <div style="display:flex; justify-content:space-between; align-items:stretch; text-align:center; flex-wrap:wrap; gap:10px;">
+                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
+                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">1단계</div>
+                        <div style="margin:15px 0; font-size:0.95em;">(진행 내용)</div>
+                        <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
+                      </div>
+                      <div style="font-size:2em; align-self:center;">➡️</div>
+                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
+                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">2단계</div>
+                        <div style="margin:15px 0; font-size:0.95em;">(진행 내용)</div>
+                        <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
+                      </div>
+                      <div style="font-size:2em; align-self:center;">➡️</div>
+                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
+                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">3단계</div>
+                        <div style="margin:15px 0; font-size:0.95em;">(진행 내용)</div>
+                        <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
+                      </div>
+                      <div style="font-size:2em; align-self:center;">➡️</div>
+                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
+                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">4단계</div>
+                        <div style="margin:15px 0; font-size:0.95em;">(진행 내용)</div>
+                        <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">최종목표: OOO만원</div>
+                      </div>
                     </div>
-
+                    
                     ### 9. 성장비전 및 AI 컨설턴트 코멘트
-                    단기/중기/장기 로드맵 텍스트 작성 후,
+                    <div style="display:flex; gap:15px; text-align:center; margin-bottom:20px;">
+                       <div style="flex:1; padding:20px; background-color:#e8f5e9; border-radius:15px;"><b>🌱 단기 비전</b><br><br>(내용)</div>
+                       <div style="flex:1; padding:20px; background-color:#fff3e0; border-radius:15px;"><b>🚀 중기 비전</b><br><br>(내용)</div>
+                       <div style="flex:1; padding:20px; background-color:#ffebee; border-radius:15px;"><b>👑 장기 비전</b><br><br>(내용)</div>
+                    </div>
+                    
                     <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:20px; border-radius:15px; margin-top:15px;">
                       <b>💡 AI 컨설턴트 최종 코멘트:</b><br>
                       (작성)
                     </div>
                     """
                     
-                    st.write("📍 지시하신 서식(도형, 화살표, 표) 기반 보고서 생성 중...")
+                    st.write("📍 지시하신 서식(분할 박스, 화살표 로드맵) 기반 보고서 생성 중...")
                     response = model.generate_content(prompt)
                     status.update(label="✅ 분석 및 시각화 보고서 생성 완료!", state="complete")
                 
-                # HTML이 포함된 마크다운 렌더링
-                st.markdown(response.text, unsafe_allow_html=True)
-                
-                # ---------------------------------------------------------
-                # [8번 항목 보조] 월별 매출 상승 곡선 그래프 (Plotly)
-                # ---------------------------------------------------------
-                st.markdown("<br><br>", unsafe_allow_html=True)
-                st.subheader("📊 [첨부] 향후 1년간 월별 매출 상승 곡선 (8번 항목 참조)")
-                
-                try:
-                    val_24 = int(float(d.get('in_sales_2024', 0)))
-                    val_25 = int(float(d.get('in_sales_2025', 0)))
-                except:
-                    val_24, val_25 = 1000, 2000
-                
-                start_val = val_24 / 12 if val_24 > 0 else 1000
-                end_val = val_25 / 12 if val_25 > 0 else start_val * 1.5
-                step = (end_val - start_val) / 11
-                monthly_vals = [int(start_val + step * i) for i in range(12)]
-                monthly_labels = [f"{i}월" for i in range(1, 13)]
+                # [그래프를 8번 항목 밑에 자연스럽게 삽입하는 로직]
+                response_text = response.text
+                if "" in response_text:
+                    parts = response_text.split("")
+                    st.markdown(parts[0], unsafe_allow_html=True)
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.markdown(parts[1], unsafe_allow_html=True)
+                else:
+                    st.markdown(response_text, unsafe_allow_html=True)
+                    st.plotly_chart(fig, use_container_width=True)
 
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=monthly_labels, 
-                    y=monthly_vals,
-                    mode='lines+markers+text',
-                    text=[format_kr_currency(v) for v in monthly_vals],
-                    textposition="top center",
-                    textfont=dict(size=11),
-                    line=dict(color='#1E88E5', width=4, shape='spline'),
-                    marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
-                ))
-                
-                fig.update_layout(
-                    xaxis_title="진행 월",
-                    yaxis_title="예상 매출액",
-                    xaxis=dict(tickangle=0, showgrid=False),
-                    yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
-                    template="plotly_white",
-                    margin=dict(l=20, r=20, t=30, b=20)
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                
                 st.balloons()
+                
+                # --- [다운로드 버튼 기능] ---
+                st.divider()
+                st.subheader("💾 리포트 저장")
+                
+                # HTML 파일 생성을 위한 보일러플레이트
+                html_export = f"""
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>{c_name} 기업분석리포트</title>
+                    <style>
+                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; }}
+                        h3 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 5px; }}
+                    </style>
+                </head>
+                <body>
+                    <h2>📋 AI 기업분석 결과보고서: {c_name}</h2>
+                    <hr>
+                    {response_text.replace('', '<div style="padding:20px; background:#f0f0f0; text-align:center; border-radius:10px;">[매출 상승 곡선 그래프는 시스템 대시보드에서 확인 가능합니다]</div>')}
+                </body>
+                </html>
+                """
+                
+                st.download_button(
+                    label="📥 완성된 리포트 다운로드 (HTML 형식)",
+                    data=html_export,
+                    file_name=f"{c_name}_기업분석리포트.html",
+                    mime="text/html",
+                    type="primary"
+                )
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
@@ -387,7 +449,6 @@ if check_password():
             st.text_input("사업개시일", placeholder="2020.01.01", key="in_start_date")
             st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
             
-            # [수정 포인트] 임대 선택 시 보증금/월임대료 입력란 노출
             lease_status = st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
             if lease_status == "임대":
                 lc1, lc2 = st.columns(2)
