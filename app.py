@@ -231,18 +231,15 @@ if check_password():
                     마크다운과 HTML 태그를 사용하여 아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
 
                     [데이터 및 시간 인지 규칙]
-                    - 현재 시점은 2026년 시작 단계입니다. 23년({s_23}), 24년({s_24}), 25년({s_25}) 매출은 과거 실적입니다. 과거의 부진은 언급하지 마세요.
+                    - 현재 시점은 2026년 시작 단계입니다. 23년({s_23}), 24년({s_24}), 25년({s_25}) 매출은 과거 실적입니다.
 
-                    [작성 규칙 - 절대 엄수!]
+                    [작성 규칙]
                     1. 어투/문체: 모든 문장 끝은 '~있음', '~가능', '~함' 등 명사형(음/슴체)으로 마무리하세요.
-                    2. 내용 풍성하게: 외부 지식을 동원하여 각 항목을 구체적이고 풍성하게 작성하세요.
-                    3. 마침표 줄바꿈: 문장이 마침표('.')로 끝날 때마다 반드시 줄바꿈 문자(<br>)를 추가하세요.
-                    4. 기호 삽입: 3, 4, 5, 6, 9번 항목은 반드시 모든 문장 앞에 '-' 기호를 붙이세요.
+                    2. 마침표 줄바꿈: 문장이 마침표('.')로 끝날 때마다 반드시 줄바꿈 문자(<br>)를 추가하세요.
+                    3. A4 분량 압축: 각 항목의 세부 내용은 무조건 1~2줄 이내로 핵심만 아주 짧게 작성하세요.
 
                     [기업 정보]
                     - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
-                    - 사업자번호: {biz_no}{corp_text} / 주소: {address}
-                    - 아이템: {item} / 시장현황: {market} / 차별화: {diff}
                     - 신청자금: {req_fund} ({fund_type})
 
                     [출력 양식]
@@ -266,95 +263,95 @@ if check_password():
                         <td colspan="3" style="padding:15px;">{address} <span style="color:#1565c0; font-weight:bold;">{lease_text}</span></td>
                       </tr>
                     </table>
-                    (매출 숫자는 기재하지 말고 향후 긍정적인 기대감을 심어주는 코멘트 명사형 3~4줄 작성, 마침표 뒤 줄바꿈)
+                    (매출 숫자는 기재하지 말고 향후 긍정적인 기대감을 심어주는 코멘트 명사형 작성, 1줄 요약)
 
                     ## 2. SWOT 분석
                     <table style="width:100%; text-align:center; border-collapse: separate; border-spacing: 10px;">
                       <tr>
-                        <td style="background-color:#e3f2fd; padding:20px; border-radius:15px; width:50%;"><b>S (강점)</b><br>내용작성(음/슴체)</td>
-                        <td style="background-color:#ffebee; padding:20px; border-radius:15px; width:50%;"><b>W (약점)</b><br>내용작성(음/슴체)</td>
+                        <td style="background-color:#e3f2fd; padding:15px; border-radius:15px; width:50%;"><b>S (강점)</b><br>내용작성(1줄)</td>
+                        <td style="background-color:#ffebee; padding:15px; border-radius:15px; width:50%;"><b>W (약점)</b><br>내용작성(1줄)</td>
                       </tr>
                       <tr>
-                        <td style="background-color:#e8f5e9; padding:20px; border-radius:15px;"><b>O (기회)</b><br>내용작성(음/슴체)</td>
-                        <td style="background-color:#fff3e0; padding:20px; border-radius:15px;"><b>T (위협)</b><br>내용작성(음/슴체)</td>
+                        <td style="background-color:#e8f5e9; padding:15px; border-radius:15px;"><b>O (기회)</b><br>내용작성(1줄)</td>
+                        <td style="background-color:#fff3e0; padding:15px; border-radius:15px;"><b>T (위협)</b><br>내용작성(1줄)</td>
                       </tr>
                     </table>
 
                     ## 3. 시장현황 및 경쟁력
                     <div style="display:flex; gap:15px; margin-bottom:10px;">
-                      <div style="flex:1; background-color:#f3e5f5; padding:20px; border-radius:15px;"><b>📊 시장 현황</b><br><br>(- 기호 시작, 명사형 종결, 마침표 뒤 줄바꿈)</div>
-                      <div style="flex:1; background-color:#e8eaf6; padding:20px; border-radius:15px;"><b>⚔️ 경쟁 상황</b><br><br>(- 기호 시작, 명사형 종결, 마침표 뒤 줄바꿈)</div>
+                      <div style="flex:1; background-color:#f3e5f5; padding:15px; border-radius:15px;"><b>📊 시장 현황</b><br><br>(- 기호 시작, 1~2줄 핵심 요약)</div>
+                      <div style="flex:1; background-color:#e8eaf6; padding:15px; border-radius:15px;"><b>⚔️ 경쟁 상황</b><br><br>(- 기호 시작, 1~2줄 핵심 요약)</div>
                     </div>
 
                     ## 4. 핵심경쟁력분석
                     <div style="display:flex; gap:15px; margin-bottom:10px; text-align:center;">
                       <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
-                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 1 (키워드)</div>
-                        <div style="padding:15px; font-size:0.9em; text-align:left;">(- 기호 시작, 명사형 종결, 마침표 줄바꿈)</div>
+                        <div style="background-color:#e0f7fa; padding:10px; font-weight:bold;">포인트 1 (키워드)</div>
+                        <div style="padding:10px; font-size:0.9em; text-align:left;">(- 1줄 요약)</div>
                       </div>
                       <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
-                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 2 (키워드)</div>
-                        <div style="padding:15px; font-size:0.9em; text-align:left;">(- 기호 시작, 명사형 종결, 마침표 줄바꿈)</div>
+                        <div style="background-color:#e0f7fa; padding:10px; font-weight:bold;">포인트 2 (키워드)</div>
+                        <div style="padding:10px; font-size:0.9em; text-align:left;">(- 1줄 요약)</div>
                       </div>
                       <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
-                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold;">포인트 3 (키워드)</div>
-                        <div style="padding:15px; font-size:0.9em; text-align:left;">(- 기호 시작, 명사형 종결, 마침표 줄바꿈)</div>
+                        <div style="background-color:#e0f7fa; padding:10px; font-weight:bold;">포인트 3 (키워드)</div>
+                        <div style="padding:10px; font-size:0.9em; text-align:left;">(- 1줄 요약)</div>
                       </div>
                     </div>
 
                     ## 5. 정책자금 추천
                     1. <b style="font-size:1.2em; color:#1565c0;">[기관명] / {req_fund}</b>
-                       <div style="margin-top:5px; margin-bottom:15px; color:#555;">- (추천사유 개조식 명사형 종결)</div>
+                       <div style="margin-top:5px; margin-bottom:15px; color:#555;">- (추천사유 1줄 요약)</div>
                     (2번, 3번도 동일 양식)
 
                     ## 6. 추천 인증 및 교육
-                    <div style="background-color:#fff8e1; padding:20px; border-radius:15px; margin-bottom:10px;">
-                      (- 기호 시작, 전략 명사형 작성, 마침표 뒤 줄바꿈)
+                    <div style="background-color:#fff8e1; padding:15px; border-radius:15px; margin-bottom:10px;">
+                      (- 기호 시작, 전략 명사형 1~2줄 요약)
                     </div>
 
                     ## 7. 자금 사용계획 (총 신청자금: {req_fund})
                     <table style="width:100%; border-collapse: collapse; text-align:left;">
                      <tr style="background-color:#eceff1;">
-                       <th style="padding:15px; border:1px solid #ccc; border-radius:10px 0 0 0;">구분 ({fund_type})</th>
-                       <th style="padding:15px; border:1px solid #ccc;">상세 사용계획</th>
-                       <th style="padding:15px; border:1px solid #ccc; border-radius:0 10px 0 0;">배정 금액</th>
+                       <th style="padding:10px; border:1px solid #ccc; border-radius:10px 0 0 0;">구분 ({fund_type})</th>
+                       <th style="padding:10px; border:1px solid #ccc;">상세 사용계획</th>
+                       <th style="padding:10px; border:1px solid #ccc; border-radius:0 10px 0 0;">배정 금액</th>
                      </tr>
                      <tr>
-                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 1)</td>
-                       <td style="padding:15px; border:1px solid #ccc; font-size:0.85em;">- (명사형 작성)</td>
-                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
+                       <td style="padding:10px; border:1px solid #ccc; font-weight:bold;">(세부항목 1)</td>
+                       <td style="padding:10px; border:1px solid #ccc; font-size:0.85em;">- (1줄 요약)</td>
+                       <td style="padding:10px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
                      </tr>
                      <tr>
-                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 2)</td>
-                       <td style="padding:15px; border:1px solid #ccc; font-size:0.85em;">- (명사형 작성)</td>
-                       <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
+                       <td style="padding:10px; border:1px solid #ccc; font-weight:bold;">(세부항목 2)</td>
+                       <td style="padding:10px; border:1px solid #ccc; font-size:0.85em;">- (1줄 요약)</td>
+                       <td style="padding:10px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
                      </tr>
                     </table>
 
                     ## 8. 매출 1년 전망
                     <div style="display:flex; justify-content:space-between; align-items:stretch; text-align:center; flex-wrap:wrap; gap:10px;">
-                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">1단계 (1~3개월)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(상세하고 풍성한 진행 내용, 명사형)</div>
-                        <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
+                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1;">
+                        <div style="font-size:1.2em; font-weight:bold; color:#1565c0;">1단계</div>
+                        <div style="margin:10px 0; font-size:0.95em; text-align:left;">(1줄 요약)</div>
+                        <div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div>
                       </div>
                       <div style="font-size:2em; align-self:center;">➡️</div>
-                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">2단계 (4~6개월)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(상세하고 풍성한 진행 내용, 명사형)</div>
-                        <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
+                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1;">
+                        <div style="font-size:1.2em; font-weight:bold; color:#1565c0;">2단계</div>
+                        <div style="margin:10px 0; font-size:0.95em; text-align:left;">(1줄 요약)</div>
+                        <div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div>
                       </div>
                       <div style="font-size:2em; align-self:center;">➡️</div>
-                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">3단계 (7~9개월)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(상세하고 풍성한 진행 내용, 명사형)</div>
-                        <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
+                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1;">
+                        <div style="font-size:1.2em; font-weight:bold; color:#1565c0;">3단계</div>
+                        <div style="margin:10px 0; font-size:0.95em; text-align:left;">(1줄 요약)</div>
+                        <div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div>
                       </div>
                       <div style="font-size:2em; align-self:center;">➡️</div>
-                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">4단계 (10~12개월)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(상세하고 풍성한 진행 내용, 명사형)</div>
-                        <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">최종목표: OOO만원</div>
+                      <div style="background-color:#e8eaf6; padding:15px; border-radius:15px; flex:1;">
+                        <div style="font-size:1.2em; font-weight:bold; color:#1565c0;">4단계</div>
+                        <div style="margin:10px 0; font-size:0.95em; text-align:left;">(1줄 요약)</div>
+                        <div style="color:#d32f2f; font-weight:bold;">최종목표: OOO만원</div>
                       </div>
                     </div>
                     
@@ -362,14 +359,13 @@ if check_password():
 
                     ## 9. 성장비전 및 AI 컨설턴트 코멘트
                     <div style="display:flex; gap:15px; text-align:center; margin-bottom:20px;">
-                       <div style="flex:1; padding:20px; background-color:#e8f5e9; border-radius:15px;"><b>🌱 단기 비전</b><br><br><div style="text-align:left;">- (명사형 요약)<br>- (명사형 요약)</div></div>
-                       <div style="flex:1; padding:20px; background-color:#fff3e0; border-radius:15px;"><b>🚀 중기 비전</b><br><br><div style="text-align:left;">- (명사형 요약)<br>- (명사형 요약)</div></div>
-                       <div style="flex:1; padding:20px; background-color:#ffebee; border-radius:15px;"><b>👑 장기 비전</b><br><br><div style="text-align:left;">- (명사형 요약)<br>- (명사형 요약)</div></div>
+                       <div style="flex:1; padding:15px; background-color:#e8f5e9; border-radius:15px;"><b>🌱 단기 비전</b><br><br><div style="text-align:left;">- (1줄 요약)</div></div>
+                       <div style="flex:1; padding:15px; background-color:#fff3e0; border-radius:15px;"><b>🚀 중기 비전</b><br><br><div style="text-align:left;">- (1줄 요약)</div></div>
+                       <div style="flex:1; padding:15px; background-color:#ffebee; border-radius:15px;"><b>👑 장기 비전</b><br><br><div style="text-align:left;">- (1줄 요약)</div></div>
                     </div>
                     
-                    <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:20px; border-radius:15px; margin-top:15px;">
-                      <b>💡 AI 컨설턴트 최종 코멘트:</b><br>
-                      (마침표 뒤 줄바꿈, 명사형 종결)
+                    <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:15px; border-radius:15px; margin-top:10px;">
+                      <b>💡 AI 컨설턴트 코멘트:</b> (1~2줄 핵심 당찬 포부)
                     </div>
                     """
                     
@@ -394,11 +390,11 @@ if check_password():
                 st.balloons()
                 
                 st.divider()
-                st.subheader("💾 리포트 저장 (화면 비율 100% 동일 인쇄)")
+                st.subheader("💾 리포트 저장 (PDF 인쇄 시 화면 그대로 1페이지 출력!)")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [수정] 강제 폰트 축소 완전히 제거, 큰 제목 화면과 동일 유지
+                # [수정] 폰트 크기 절대 픽셀(px)로 고정하여 다운로드 시 줄어드는 현상 원천 차단!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -407,8 +403,8 @@ if check_password():
                     <title>{c_name} 기업분석리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; }}
-                        h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; }}
+                        h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
                         h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 40px; font-size: 26px; font-weight: bold; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
                         .print-btn:hover {{ background-color: #123C85; }}
@@ -417,20 +413,21 @@ if check_password():
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
                             body {{ padding: 0 !important; font-size: 16px !important; color: black !important; }} 
-                            h1 {{ margin: 0 0 15px 0 !important; font-size: 28px !important; padding: 0 !important; }}
-                            h2 {{ margin: 25px 0 10px 0 !important; font-size: 24px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 15px !important; margin-bottom: 15px !important; border-radius: 10px !important; page-break-inside: avoid; }}
-                            table {{ font-size: 14px !important; margin-bottom: 10px !important; }}
-                            th, td {{ padding: 8px !important; }}
-                            br {{ display: block; content: ""; margin-top: 4px; }}
+                            /* 폰트 크기 강제 고정! 절대 안 작아짐 */
+                            h1 {{ margin: 0 0 15px 0 !important; font-size: 32px !important; }}
+                            h2 {{ margin: 20px 0 10px 0 !important; font-size: 26px !important; padding-bottom: 5px !important; }}
+                            div {{ padding: 10px 15px !important; margin-bottom: 10px !important; border-radius: 10px !important; page-break-inside: avoid; font-size: 15px !important; line-height: 1.4 !important; }}
+                            table {{ font-size: 14px !important; margin-bottom: 5px !important; }}
+                            th, td {{ padding: 6px !important; }}
+                            br {{ display: block; content: ""; margin-top: 2px; }}
                         }}
                     </style>
                 </head>
                 <body>
                     <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h1>📋 AI 기업분석 결과보고서: {c_name}</h1>
-                    <hr style="margin-bottom: 30px;">
-                    {response_text.replace('[GRAPH_INSERT_POINT]', '<div style="padding:15px; margin: 15px 0; background:#e3f2fd; text-align:center; border-radius:10px; font-weight:bold; color:#1565c0; border: 1px dashed #1565c0;">[📈 1년 매출 상승 곡선 차트는 웹 대시보드 시스템에서 확인 가능합니다]</div>')}
+                    <hr style="margin-bottom: 20px;">
+                    {response_text.replace('[GRAPH_INSERT_POINT]', '<div style="padding:10px; margin: 10px 0; background:#e3f2fd; text-align:center; border-radius:8px; font-weight:bold; color:#1565c0; border: 1px dashed #1565c0;">[📈 1년 매출 상승 곡선 차트는 웹 대시보드 시스템에서 확인 가능합니다]</div>')}
                 </body>
                 </html>
                 """
@@ -502,26 +499,26 @@ if check_password():
                     has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
                     cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                     
-                    # 2. [수정] 한도 절대 강제 및 포맷팅(내용 추가, 줄바꿈) 완벽 통제 프롬프트
+                    # 2. [대오각성] 순위(슬롯) 완벽 통제 및 한도 엄수 프롬프트
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 마크다운과 HTML 태그를 활용해 매칭 리포트를 출력하세요.
 
                     [작성 및 포맷팅 규칙 - 절대 엄수!!!]
                     1. 어투: 모든 문장은 '~있음', '~가능', '~함' 등 명사형(음/슴체)으로 간결하게 작성.
-                    2. 글머리 기호 및 줄바꿈: 2, 3, 4번 항목의 **모든 문장 앞에는 반드시 '-' 기호를 붙이고, 문장이 마침표('.')로 끝날 때마다 무조건 HTML 태그 `<br>`을 삽입하여 줄바꿈** 하세요. (예: - ~하였습니다.<br>- ~필요합니다.<br>)
-                    3. 내용 풍성하게: 외부 지식을 동원하여 각 기관별 추천 사유, 합격 전략, 보완 조언을 3~4문장 이상으로 상세하고 풍성하게 채워주세요. 내용이 짧으면 절대 안 됩니다.
+                    2. 기호 및 줄바꿈: 2, 3, 4번 항목의 모든 문장 앞에는 반드시 '-' 기호를 붙이고, 문장이 마침표('.')로 끝날 때마다 무조건 HTML 태그 `<br>`을 삽입하여 시원하게 줄바꿈 하세요.
+                    3. 내용 분량: A4 1장에 딱 맞도록 각 세부 항목은 **1~2줄 이내로 매우 짧고 핵심만** 작성하세요. 길어지면 안 됩니다.
 
-                    [절대 매칭 비법 DB - 한도 및 컷오프 룰 (가장 중요!)]
-                    1. 기관별 절대 한도 제한 (이 한도 수치를 어기면 안 됨!)
-                       - 소진공(신용취약소상공인자금): 최대 3,000만 원까지만 한도 배정 (NICE 839점 이하만 추천)
-                       - 신보(신용보증기금) 및 기보(기술보증기금): 최소 1억 원 이상부터 융자 가능 (산출 한도가 1억 미만이면 추천 목록에서 무조건 제외!)
-                       - 지역신용보증재단: 최대 2억 원까지만 한도 배정
-                       - 중진공(직접대출): 최소 5,000만 원 이상부터 한도 배정
-                    2. 신보/기보 한도 산출 공식: 제조업은 '금년 매출의 1/4', 기타 업종은 '금년 매출의 1/6~1/10'로 계산하되, 여기서 반드시 [총 기대출({total_debt})]을 차감한 금액만 한도로 제시할 것. (차감 후 1억 미만이면 신보/기보 탈락)
-                    3. 보증기관 우선순위 룰: '기보' 또는 '신보'를 1~2순위에 배치하고, '지역신보'는 3~4순위로 미룰 것.
-                    4. 중복 금지: 기보 대출이 있으면 신보 추천 금지, 신보 대출이 있으면 기보 추천 금지.
-                    5. 세금체납({tax_status}), 금융연체({fin_status})가 '유'인 경우: 모든 자금 추천을 중지하고 연체 해소 전략만 출력.
+                    [절대 매칭 비법 DB - 순위 및 한도 룰 (가장 중요!)]
+                    1. 🚫 중복 금지: 1순위부터 4순위까지의 기관명은 무조건 모두 달라야 합니다. (지역신보가 2번 나오는 등 중복 절대 불가!)
+                    2. 🥇 1순위 지정 (직접대출): 1순위는 무조건 '중소벤처기업진흥공단(중진공)' 또는 '소상공인시장진흥공단(소진공)' 중 택 1 하세요.
+                       - 중진공: 최소 5,000만 원 이상부터 배정.
+                       - 소진공: NICE 839점 이하면 '신용취약소상공인자금(최대 3천만 원 캡!)' 추천.
+                    3. 🥈 2순위 지정 (메이저 보증): 2순위는 무조건 '신용보증기금(신보)' 또는 '기술보증기금(기보)' 중 택 1 하세요.
+                       - 신보/기보 한도: 최소 1억 원 이상부터 융자 가능. 신보는 제조업 '매출의 1/4', 기타 '매출의 1/6~1/10' 계산 후 총 기대출({total_debt})을 뺀 금액 산출. 만약 차감 후 한도가 1억 미만이면 신보/기보를 추천에서 아예 빼버리고 다른 특화기관으로 대체하세요.
+                       - 중복 금지: 기존 기보 대출이 있으면 신보 추천 금지, 신보 대출이 있으면 기보 추천 금지.
+                    4. 🥉 3~4순위 지정 (후순위 플랜 B): 3순위와 4순위에는 '지역신용보증재단(최대 2억 원)' 및 기타 특화기관(농신보 등)을 배치하세요. (지역신보는 절대 1~2순위에 넣지 말 것!)
+                    5. 🚫 컷오프: 세금체납({tax_status}), 금융연체({fin_status})가 '유'인 경우 모든 추천을 비우고 연체 해소 조언만 강력하게 작성.
 
                     [입력 데이터]
                     - 기업명: {c_name} / 업종: {c_ind} / 아이템: {item}
@@ -536,38 +533,37 @@ if check_password():
                       <b>NICE 점수:</b> {nice_score}점 &nbsp;|&nbsp; <b>기술/벤처 인증:</b> {cert_status} <br>
                       <b>금년매출:</b> {s_cur} &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.15em;">필요자금: {fund_req}</b>
                     </div>
-                    (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 스펙 평가. 풍성하게 3~4줄 작성, 문장마다 마침표 뒤 줄바꿈)
+                    (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 스펙 평가. 1~2줄 핵심 요약, 마침표 뒤 줄바꿈)
 
                     ## 2. 우선순위 추천 정책자금 (1~2순위)
                     <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; margin-bottom:15px;">
                       <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
-                      - (추천 사유 상세 작성. 마침표 뒤 `<br>`)<br>
-                      - (합격 꿀팁 및 전략 상세 작성. 마침표 뒤 `<br>`)
+                      - (추천 사유 1줄 요약. 마침표 뒤 `<br>`)<br>
+                      - (합격 꿀팁 및 전략 1줄 요약. 마침표 뒤 `<br>`)
                     </div>
                     <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; margin-bottom:15px;">
                       <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
-                      - (추천 사유 상세 작성. 마침표 뒤 `<br>`)<br>
-                      - (합격 꿀팁 및 전략 상세 작성. 마침표 뒤 `<br>`)
+                      - (추천 사유 1줄 요약. 마침표 뒤 `<br>`)<br>
+                      - (합격 꿀팁 및 전략 1줄 요약. 마침표 뒤 `<br>`)
                     </div>
 
                     ## 3. 후순위 추천 (플랜 B - 3~4순위)
                     <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; margin-bottom:15px;">
                       <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
-                      - (추천 사유 상세 작성. 마침표 뒤 `<br>`)<br>
-                      - (접근 전략 상세 작성. 마침표 뒤 `<br>`)
+                      - (추천 사유 1줄 요약. 마침표 뒤 `<br>`)<br>
+                      - (접근 전략 1줄 요약. 마침표 뒤 `<br>`)
                     </div>
                     <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; margin-bottom:15px;">
                       <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
-                      - (추천 사유 상세 작성. 마침표 뒤 `<br>`)<br>
-                      - (접근 전략 상세 작성. 마침표 뒤 `<br>`)
+                      - (추천 사유 1줄 요약. 마침표 뒤 `<br>`)<br>
+                      - (접근 전략 1줄 요약. 마침표 뒤 `<br>`)
                     </div>
 
                     ## 4. 심사 전 필수 체크리스트 및 보완 가이드
                     <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:15px;">
                       <b style="font-size:1.1em; color:#c62828;">🚨 AI 컨설턴트 보완 조언:</b><br><br>
-                      - (보완 전략 1 상세 작성. 마침표 뒤 `<br>`)<br>
-                      - (보완 전략 2 상세 작성. 마침표 뒤 `<br>`)<br>
-                      - (보완 전략 3 상세 작성. 마침표 뒤 `<br>`)
+                      - (보완 전략 1 1줄 요약. 마침표 뒤 `<br>`)<br>
+                      - (보완 전략 2 1줄 요약. 마침표 뒤 `<br>`)
                     </div>
                     """
                     
@@ -584,7 +580,7 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [수정] 폰트 축소 완전히 제거, 웹 화면의 큰 카테고리 글씨(h2)가 그대로 PDF로 박히게 함.
+                # [수정] 폰트 크기 절대 픽셀(px)로 고정하여 다운로드 시 줄어드는 현상 원천 차단!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -593,8 +589,8 @@ if check_password():
                     <title>{c_name} 정책자금 매칭 리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; }}
-                        h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; }}
+                        h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
                         h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 40px; font-size: 26px; font-weight: bold; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
                         .print-btn:hover {{ background-color: #123C85; }}
@@ -602,19 +598,19 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            /* 글자 크기 강제 축소 코드 싹 제거! 화면과 동일하게 시원한 폰트 크기 유지 */
                             body {{ padding: 0 !important; font-size: 16px !important; color: black !important; }} 
-                            h1 {{ margin: 0 0 15px 0 !important; font-size: 28px !important; padding: 0 !important; }}
-                            h2 {{ margin: 25px 0 10px 0 !important; font-size: 24px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 15px !important; margin-bottom: 15px !important; border-radius: 10px !important; page-break-inside: avoid; }}
-                            br {{ display: block; content: ""; margin-top: 4px; }}
+                            /* 폰트 크기 강제 고정! 절대 안 작아짐 */
+                            h1 {{ margin: 0 0 15px 0 !important; font-size: 32px !important; }}
+                            h2 {{ margin: 20px 0 10px 0 !important; font-size: 26px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 15px 18px !important; margin-bottom: 12px !important; border-radius: 10px !important; page-break-inside: avoid; font-size: 15px !important; line-height: 1.5 !important; }}
+                            br {{ display: block; content: ""; margin-top: 2px; }}
                         }}
                     </style>
                 </head>
                 <body>
                     <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
-                    <hr style="margin-bottom: 30px;">
+                    <hr style="margin-bottom: 20px;">
                     {response.text}
                 </body>
                 </html>
