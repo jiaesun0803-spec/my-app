@@ -421,7 +421,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 신규 2. 정책자금 매칭 리포트 - 지식 및 절대규칙 완벽 세팅]
+    # [모드 B: 신규 2. 정책자금 매칭 리포트]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -476,6 +476,7 @@ if check_password():
                     s_cur = format_kr_currency(s_cur_val)
                     
                     c_ind = d.get('in_industry', '미입력')
+                    biz_type = d.get('in_biz_type', '개인')
                     item = d.get('in_item_desc', '미입력')
                     nice_score = safe_int(d.get('in_nice_score', 0))
                     fund_type = d.get('in_fund_type', '운전자금')
@@ -486,7 +487,7 @@ if check_password():
                     has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
                     cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                     
-                    # 2. [완벽 제어 프롬프트] 1억 한도 절대 강제!
+                    # 2. [완벽 제어 프롬프트] 매출 5억 룰, 기보 벤처 예외 룰, P-CBO 룰 탑재
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 제공된 [출력 양식]의 HTML 태그만 사용하여 리포트를 출력하세요.
@@ -499,17 +500,19 @@ if check_password():
 
                     [절대 매칭 비법 DB - 순위 및 한도 룰 (가장 중요!)]
                     1. 🥇 1순위 지정 (직접대출 강제): 1순위는 무조건 금리가 저렴한 '중소벤처기업진흥공단(중진공)' 또는 '소상공인시장진흥공단(소진공)' 중 택 1 하세요.
-                       - [중진공 컷오프 룰]: 비제조업(도소매업, 서비스업 등)은 연매출이 50억 이상이면서 상시근로자가 5인 이상이어야 중진공 신청이 가능합니다. **현재 기업 업종이 '{c_ind}'이고 매출이 {s_cur_val}만원이므로, 만약 비제조업인데 매출 50억 미만이라면 중진공은 절대 추천하지 말고 무조건 소진공을 1순위로 추천하세요!!**
+                       - [중진공 컷오프 룰]: 비제조업(도소매업, 서비스업 등)은 연매출이 50억 이상이면서 상시근로자가 5인 이상이어야 중진공 신청이 가능합니다. 현재 기업 업종이 '{c_ind}'이고 매출이 {s_cur_val}만원이므로, 만약 비제조업인데 매출 50억 미만이라면 중진공은 절대 추천하지 말고 무조건 소진공을 1순위로 추천하세요.
                        - [소진공 룰]: 대표자 NICE 점수가 839점 이하면 '신용취약소상공인자금(최대 3,000만 원 한도 고정)'을 무조건 추천하세요. 그 이상 점수면 일반경영안정자금 등(7천~2억 한도) 추천.
                     2. 🥈 2순위 지정 (메이저 보증 강제): 2순위는 무조건 '신용보증기금(신보)' 또는 '기술보증기금(기보)' 중 택 1 하세요.
-                       - [기보 컷오프 룰]: 기보는 제조업, 기술벤처 전용입니다. **업종이 도소매업인 경우 기보(기술보증기금)는 절대 추천 불가입니다! 도소매업이면 무조건 신용보증기금(신보)을 추천하세요.**
-                       - [신보/기보 한도 절대 룰 - 경고!!!]: 기보와 신보는 **최소 대출 단위가 무조건 1억 원 이상**입니다. (신보는 제조업 '매출의 1/4', 기타 업종 '매출의 1/6~1/10' 계산 후 총 기대출({total_debt})을 뺀 금액). **계산된 한도가 1억 원 미만이거나, 신청 희망자금({fund_req})이 1억 원 미만인 경우 기보/신보를 절대 추천하지 마세요(탈락).** 결과물에 신보/기보 예상 한도를 '5천만원' 등으로 기재하면 절대 안 됩니다. 이 경우 2순위 자리를 다른 기관(지역신보 등)으로 대체하세요.
+                       - [매출 5억 기준 룰]: 매출액이 5억 원(50,000만원) 이상인 경우 지역신보보다는 무조건 신용보증기금(신보)을 강력하게 추천하세요.
+                       - [기보 타겟 및 예외 룰]: 기술보증기금(기보)은 기본적으로 '제조업'과 'IT업' 중심입니다. 하지만 도소매/서비스업 등 타 업종이더라도 '벤처인증'이나 '특허'를 보유하고 있다면 신보보다 기보를 우선적으로 추천하세요!
+                       - [유동화자금(P-CBO) 룰]: 기보/신보 대출 한도가 이미 꽉 차 있는 상태인데, 매출이 성장 중인 '법인기업'({biz_type})이라면 중진공 스케일업금융이나 P-CBO 같은 '유동화자금'을 2순위 또는 3순위로 강력하게 추천하세요.
+                       - [신보/기보 한도 절대 룰]: 기보와 신보는 최소 대출 단위가 무조건 1억 원 이상입니다. 계산된 한도(제조업 매출 1/4, 기타 1/6~1/10에서 총 기대출 {total_debt} 차감)가 1억 원 미만이거나, 신청 희망자금({fund_req})이 1억 원 미만인 경우 기보/신보를 추천에서 제외하세요(탈락).
                        - [중복 금지]: 기존 기보 대출이 있으면 신보 추천 금지, 신보 대출이 있으면 기보 추천 금지.
-                    3. 🥉 3~4순위 지정 (지역신보는 무조건 후순위!): 3순위에는 '지역신용보증재단(최대 2억 원)'을 배치하세요. (지역신보를 먼저 쓰면 기보/신보가 막히는 치명적 문제 때문에 절대 1~2순위에 넣지 말 것). 4순위는 특화기관 배치.
+                    3. 🥉 3~4순위 지정 (지역신보 및 특화): 3순위에는 '지역신용보증재단(최대 2억 원)'을 배치하되 매출 5억 이상이면 신보에 집중하도록 가이드하세요. 4순위는 특화기관 배치. 지역신보 선사용 시 신보/기보가 막히므로 절대 1~2순위에 넣지 마세요.
                     4. 🚫 연체 컷오프: 세금체납({tax_status}), 금융연체({fin_status})가 '유'인 경우 1~4순위를 전부 비우고 연체 해소 조언만 강력하게 작성.
 
                     [입력 데이터]
-                    - 기업명: {c_name} / 업종: {c_ind} / 아이템: {item}
+                    - 기업명: {c_name} / 사업자유형: {biz_type} / 업종: {c_ind} / 아이템: {item}
                     - 세금체납: {tax_status} / 금융연체: {fin_status} / NICE 점수: {nice_score}점
                     - 기술/벤처 인증: {cert_status} 
                     - 금년 매출: {s_cur} / 총 기대출 합계: {total_debt} / 희망자금: {fund_req}
@@ -517,7 +520,7 @@ if check_password():
                     [출력 양식 - HTML 태그 및 양식 100% 동일하게 유지. 마크다운(##, **) 절대 쓰지 말것]
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
-                      <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>업종:</b> {c_ind} <br>
+                      <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>업종:</b> {c_ind} ({biz_type}) <br>
                       <b>NICE 점수:</b> {nice_score}점 &nbsp;|&nbsp; <b>기술/벤처 인증:</b> {cert_status} <br>
                       <b>금년매출:</b> {s_cur} &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.15em;">필요자금: {fund_req}</b>
                     </div>
@@ -571,7 +574,6 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [완벽 수정] CSS 강제 폰트 축소 전면 제거. 웹 화면의 거대한 카테고리 제목(h2)과 본문이 PDF에 완벽하게 일치하게 인쇄됨.
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -589,7 +591,6 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            /* 인쇄 전용 강제 축소 로직 완전 폐기! 화면과 100% 동일한 크기로 출력 */
                             body {{ padding: 0 !important; font-size: 15px !important; color: black !important; max-width: 100% !important; line-height: 1.5 !important; }} 
                             h1 {{ margin: 0 0 20px 0 !important; font-size: 28px !important; }}
                             h2 {{ margin: 25px 0 10px 0 !important; font-size: 24px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
