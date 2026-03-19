@@ -398,13 +398,14 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; margin: 0 !important; max-width: 100% !important; font-size: 14.5px !important; line-height: 1.5 !important; }}
-                            h1 {{ margin: 0 0 20px 0 !important; font-size: 28px !important; }}
-                            h2 {{ margin: 25px 0 10px 0 !important; font-size: 24px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 12px 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; page-break-inside: avoid; }}
-                            table {{ font-size: 13px !important; margin-bottom: 10px !important; }}
-                            th, td {{ padding: 6px !important; }}
-                            br {{ display: block; content: ""; margin-top: 3px; }}
+                            body {{ padding: 0 !important; margin: 0 !important; max-width: 100% !important; font-size: 13.5px !important; line-height: 1.4 !important; zoom: 0.82; }}
+                            h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
+                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
+                            table {{ font-size: 12.5px !important; margin-bottom: 8px !important; }}
+                            th, td {{ padding: 5px !important; }}
+                            br {{ display: block; content: ""; margin-top: 2px; }}
+                            hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
                         }}
                     </style>
                 </head>
@@ -498,7 +499,7 @@ if check_password():
                         except:
                             pass
                     
-                    # 2. [완벽 제어 프롬프트] 슬롯 강제 지정 및 1억 컷오프 절대 준수!
+                    # 2. [완벽 제어 프롬프트] 분량 압축(2~3줄) 강제 룰 적용!
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 제공된 [출력 양식]의 HTML 태그만 사용하여 리포트를 출력하세요.
@@ -507,7 +508,7 @@ if check_password():
                     1. 마크다운 사용 금지: 제목 기호(##), 볼드체(**), 리스트(-) 등 **마크다운 기호를 절대 사용하지 마세요.** 출력 양식에 제공된 `<h2>`, `<b>`, `&bull;`, `<br>` 등의 순수 HTML 태그만 사용해야 합니다. 
                     2. 어투: 모든 문장은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 간결하게 작성하세요.
                     3. 줄바꿈: 문장이 마침표('.')로 끝날 때마다 무조건 HTML 태그 `<br>`을 삽입하여 시원하게 줄바꿈 하세요.
-                    4. 내용 분량: A4 1장에 완벽하게 들어갈 수 있도록 각 세부 항목(추천사유, 합격꿀팁 등)은 무조건 외부지식을 동원해 3~4줄로 상세하게 적되 불필요한 서론은 빼세요.
+                    4. 내용 분량 (A4 1장 절대 사수): A4 1장에 완벽하게 들어갈 수 있도록 각 세부 항목(추천사유, 합격꿀팁 등)은 무조건 외부지식을 동원하되 **2~3줄 이내로 팩트만 압축해서** 작성하세요. 절대 4줄 이상 길게 쓰지 마세요.
 
                     [절대 매칭 비법 DB - 기관별 한도 및 순위 룰 (가장 중요!)]
                     ※ 순위 슬롯을 절대 마음대로 바꾸거나 빼지 마세요! (1순위:직접대출, 2순위:신보/기보, 3순위:지역신보, 4순위:유동화/특화)
@@ -541,20 +542,20 @@ if check_password():
                       <b>금년매출:</b> {s_cur} &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.15em;">필요자금: {fund_req}</b>
                     </div>
                     <div style="margin-bottom:20px;">
-                      (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 스펙 평가. 풍성하게 3~4문장 작성, 문장마다 마침표 뒤 줄바꿈 &lt;br&gt;)
+                      (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 스펙 평가. 2~3줄 요약, 문장마다 마침표 뒤 줄바꿈 &lt;br&gt;)
                     </div>
 
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. 우선순위 추천 정책자금 (1~2순위)</h2>
                     <div style="display:flex; gap:15px; margin-bottom:15px; align-items:stretch;">
                       <div style="flex:1; background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32;">
                         <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
-                        &bull; (추천 사유 외부지식 동원하여 3~4문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (합격 꿀팁 및 전략 3~4문장 이상 상세 작성. 소진공/중진공 중복가능 언급. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                        &bull; (합격 꿀팁 및 전략 2~3줄 상세 작성. 소진공/중진공 중복가능 언급. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                       </div>
                       <div style="flex:1; background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32;">
                         <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [신용보증기금 또는 기술보증기금] / [보증 상품명] / 예상 한도 (최소 1억 원 이상)</b><br><br>
-                        &bull; (추천 사유 외부지식 동원하여 3~4문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (합격 꿀팁 및 심사절차 3~4문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                        &bull; (합격 꿀팁 및 심사절차 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                       </div>
                     </div>
 
@@ -562,21 +563,21 @@ if check_password():
                     <div style="display:flex; gap:15px; margin-bottom:15px; align-items:stretch;">
                       <div style="flex:1; background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00;">
                         <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신용보증재단] / [세부 자금명] / 예상 한도 (최대 2억 원)</b><br><br>
-                        &bull; (추천 사유 3~4문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (기금 우선, 재단 나중 순서의 중요성 등 전략 3~4문장 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                        &bull; (기금 우선, 재단 나중 순서의 중요성 등 전략 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                       </div>
                       <div style="flex:1; background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00;">
                         <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [추천 기관명] / [세부 자금명(또는 P-CBO)] / 예상 한도</b><br><br>
-                        &bull; (추천 사유 2~3문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (접근 전략 2~3문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                        &bull; (접근 전략 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                       </div>
                     </div>
 
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 심사 전 필수 체크리스트 및 보완 가이드</h2>
                     <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:15px;">
                       <b style="font-size:1.1em; color:#c62828;">🚨 AI 컨설턴트 보완 조언:</b><br><br>
-                      &bull; (보완 전략 1 외부지식 동원하여 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                      &bull; (보완 전략 2 외부지식 동원하여 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                      &bull; (보완 전략 1 2~3줄 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                      &bull; (보완 전략 2 2~3줄 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                     </div>
                     """
                     
@@ -593,6 +594,8 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
+                # [완벽 수정] CSS 강제 폰트 축소 전면 제거. 웹 화면의 거대한 카테고리 제목(h2)과 본문이 PDF에 완벽하게 일치하게 인쇄됨.
+                # flexbox와 약간의 여백 깎기를 통해 무조건 A4 1장에 들어오도록 조정!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -610,18 +613,19 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.5 !important; }} 
-                            h1 {{ margin: 0 0 15px 0 !important; font-size: 26px !important; }}
-                            h2 {{ margin: 20px 0 8px 0 !important; font-size: 22px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 15px 20px !important; margin-bottom: 12px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.5 !important; }}
-                            br {{ display: block; content: ""; margin-top: 4px; }}
+                            body {{ padding: 0 !important; font-size: 13.5px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.82; }} 
+                            h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
+                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
+                            br {{ display: block; content: ""; margin-top: 2px; }}
+                            hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
                         }}
                     </style>
                 </head>
                 <body>
                     <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
-                    <hr style="margin-bottom: 30px;">
+                    <hr style="margin-bottom: 15px;">
                     {response.text}
                 </body>
                 </html>
