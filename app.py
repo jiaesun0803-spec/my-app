@@ -398,7 +398,7 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [수정] PDF 추출 시 카테고리 폰트(h2) 대폭 확대 및 시원한 줄간격(margin) 부여
+                # [수정] 다운로드 버튼 텍스트 깔끔하게 정리, 강제 폰트 축소 전면 제거! 화면 비율 그대로 인쇄
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -407,23 +407,20 @@ if check_password():
                     <title>{c_name} 기업분석리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; }}
-                        h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; }}
-                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 50px; font-size: 26px; font-weight: bold; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; font-size: 17px; }}
+                        h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 34px; }}
+                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 50px; font-size: 28px; font-weight: bold; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
                         .print-btn:hover {{ background-color: #123C85; }}
                         
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            /* 폰트와 간격 시원하게 확대 */
-                            body {{ padding: 0; line-height: 1.6 !important; font-size: 13px !important; zoom: 0.8; }} 
-                            h1 {{ margin-top: 0 !important; font-size: 28px !important; margin-bottom: 20px !important; }}
-                            h2 {{ margin-top: 30px !important; font-size: 24px !important; padding-bottom: 5px !important; margin-bottom: 15px !important; }}
-                            div {{ padding: 15px !important; margin-bottom: 15px !important; border-radius: 10px !important; page-break-inside: avoid; }}
-                            table {{ font-size: 13px !important; }}
-                            table th, table td {{ padding: 10px !important; }}
-                            br {{ display: block; content: ""; margin-top: 4px; }}
+                            /* 글자 크기 강제 축소 코드 싹 제거! 큰 폰트 유지하고 배율만 깔끔하게 줄임 */
+                            body {{ padding: 0; max-width: 100%; zoom: 0.85; }} 
+                            h1 {{ margin-top: 0 !important; }}
+                            h2 {{ margin-top: 30px; }}
+                            div {{ page-break-inside: avoid; margin-bottom: 20px; }}
                         }}
                     </style>
                 </head>
@@ -474,6 +471,7 @@ if check_password():
 
                     model = genai.GenerativeModel(target_model)
                     
+                    # 1. 컷오프 및 계산용 데이터 추출
                     tax_status = d.get('in_tax_status', '무')
                     fin_status = d.get('in_fin_status', '무')
                     
@@ -502,6 +500,7 @@ if check_password():
                     has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
                     cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                     
+                    # 2. 한도 산출 공식 및 기관별 규칙 탑재 프롬프트 (필요자금 추가 셋팅)
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 대표님이 직접 작성하신 [절대 매칭 비법 DB]를 100% 반영하여, 마크다운과 HTML 태그를 활용해 매칭 리포트를 출력하세요.
@@ -539,27 +538,27 @@ if check_password():
                     (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 및 스펙 평가 3~4줄 명사형 작성, 마침표 뒤 줄바꿈)
 
                     ## 2. 우선순위 추천 정책자금 (1~2순위)
-                    <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; margin-bottom:10px;">
-                      <b style="font-size:1.1em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도 (매출 및 기대출 팩트 반영)</b><br><br>
+                    <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; margin-bottom:15px;">
+                      <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도 (매출 및 기대출 팩트 반영)</b><br><br>
                       - (추천 사유 및 합격 꿀팁 명사형 종결, 마침표 뒤 줄바꿈)
                     </div>
                     <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; margin-bottom:15px;">
-                      <b style="font-size:1.1em; color:#2e7d32;">🥈 2순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
+                      <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
                       - (추천 사유 및 합격 꿀팁 명사형 종결, 마침표 뒤 줄바꿈)
                     </div>
 
                     ## 3. 후순위 추천 (플랜 B - 3~4순위)
-                    <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; margin-bottom:10px;">
-                      <b style="font-size:1.1em; color:#ef6c00;">🥉 3순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
+                    <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; margin-bottom:15px;">
+                      <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
                       - (추천 사유 및 접근 전략 명사형 종결, 마침표 뒤 줄바꿈)
                     </div>
                     <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; margin-bottom:15px;">
-                      <b style="font-size:1.1em; color:#ef6c00;">🏅 4순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
+                      <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
                       - (추천 사유 및 접근 전략 명사형 종결, 마침표 뒤 줄바꿈)
                     </div>
 
                     ## 4. 심사 전 필수 체크리스트 및 보완 가이드
-                    <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:10px;">
+                    <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:15px;">
                       <b style="font-size:1.1em; color:#c62828;">🚨 AI 컨설턴트 보완 조언:</b><br><br>
                       - (세금 완납, 신용 관리, 기대출 한도 등 기업 상황 조언. 명사형 종결, 마침표 뒤 줄바꿈)
                     </div>
@@ -578,7 +577,7 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [수정] PDF 추출 시 카테고리 폰트(h2) 대폭 확대 및 시원한 줄간격(margin) 부여
+                # [수정] 다운로드 버튼 텍스트 깔끔하게 정리, 강제 폰트 축소 전면 제거! 화면 비율 그대로 인쇄
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -587,28 +586,27 @@ if check_password():
                     <title>{c_name} 정책자금 매칭 리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; }}
-                        h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; }}
-                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 50px; font-size: 26px; font-weight: bold; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; font-size: 17px; }}
+                        h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 34px; }}
+                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 50px; font-size: 28px; font-weight: bold; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
                         .print-btn:hover {{ background-color: #123C85; }}
                         
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            /* 폰트와 간격 시원하게 확대 */
-                            body {{ padding: 0; line-height: 1.6 !important; font-size: 13px !important; zoom: 0.8; }} 
-                            h1 {{ margin-top: 0 !important; font-size: 28px !important; margin-bottom: 20px !important; }}
-                            h2 {{ margin-top: 30px !important; font-size: 24px !important; padding-bottom: 5px !important; margin-bottom: 15px !important; }}
-                            div {{ padding: 15px !important; margin-bottom: 15px !important; border-radius: 10px !important; page-break-inside: avoid; }}
-                            br {{ display: block; content: ""; margin-top: 4px; }}
+                            /* 글자 크기 강제 축소 코드 싹 제거! 큰 폰트 유지하고 배율만 깔끔하게 줄임 */
+                            body {{ padding: 0; max-width: 100%; zoom: 0.85; }} 
+                            h1 {{ margin-top: 0 !important; }}
+                            h2 {{ margin-top: 30px; }}
+                            div {{ page-break-inside: avoid; margin-bottom: 20px; }}
                         }}
                     </style>
                 </head>
                 <body>
                     <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
-                    <hr style="margin-bottom: 20px;">
+                    <hr style="margin-bottom: 30px;">
                     {response.text}
                 </body>
                 </html>
