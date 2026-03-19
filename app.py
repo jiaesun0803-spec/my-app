@@ -406,22 +406,18 @@ if check_password():
                     <title>{c_name} 기업분석리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; }}
                         h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; }}
-                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 50px; font-size: 26px; font-weight: bold; }}
+                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 40px; font-size: 26px; font-weight: bold; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
                         .print-btn:hover {{ background-color: #123C85; }}
                         
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0; line-height: 1.4 !important; font-size: 12px !important; zoom: 0.85; }}
-                            h1 {{ margin-bottom: 15px !important; font-size: 22px !important; margin-top: 0 !important; }}
-                            h2 {{ margin-top: 15px !important; font-size: 16px !important; padding-bottom: 3px !important; margin-bottom: 8px !important; }}
-                            div {{ padding: 12px !important; margin-bottom: 8px !important; border-radius: 10px !important; }}
-                            table {{ font-size: 12px !important; }}
-                            table th, table td {{ padding: 8px !important; }}
-                            br {{ display: block; content: ""; margin-top: 2px; }}
+                            /* 글자 크기 강제 축소 제거. 화면 비율 그대로 유지하면서 A4에 맞게 전체 zoom만 조절 */
+                            body {{ padding: 0; zoom: 0.8; }} 
+                            div {{ page-break-inside: avoid; }}
                         }}
                     </style>
                 </head>
@@ -439,7 +435,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 신규 2. 정책자금 매칭 리포트 - 한도 규칙 고도화]
+    # [모드 B: 신규 2. 정책자금 매칭 리포트]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -502,7 +498,7 @@ if check_password():
                     has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
                     cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                     
-                    # 2. 한도 산출 공식 및 기관별 규칙 탑재 프롬프트 (대표님 피드백 완벽 반영)
+                    # 2. 한도 산출 공식 및 기관별 규칙 탑재 프롬프트 + [필요자금 추가 반영]
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 대표님이 직접 작성하신 [절대 매칭 비법 DB]를 100% 반영하여, 마크다운과 HTML 태그를 활용해 매칭 리포트를 출력하세요.
@@ -535,7 +531,7 @@ if check_password():
                     <div style="background-color:#f8f9fa; padding:15px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
                       <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>업종:</b> {c_ind} <br>
                       <b>NICE 점수:</b> {nice_score}점 &nbsp;|&nbsp; <b>기술/벤처 인증:</b> {cert_status} <br>
-                      <b>금년매출:</b> {s_cur} &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span>
+                      <b>금년매출:</b> {s_cur} &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.15em;">필요자금: {fund_req}</b>
                     </div>
                     (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 및 스펙 평가 3~4줄 명사형 작성, 마침표 뒤 줄바꿈)
 
@@ -574,11 +570,12 @@ if check_password():
                 
                 # --- [다운로드 버튼 기능] ---
                 st.divider()
-                st.subheader("💾 매칭 리포트 저장 (A4 1페이지 최적화 PDF)")
+                st.subheader("💾 매칭 리포트 저장 (PDF 권장)")
                 
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
+                # [수정] 폰트 축소를 해제하여 화면에서 보던 글자 크기 그대로 인쇄되게 유지
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -587,7 +584,7 @@ if check_password():
                     <title>{c_name} 정책자금 매칭 리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; }}
                         h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; }}
                         h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 40px; font-size: 26px; font-weight: bold; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
@@ -596,11 +593,9 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0; line-height: 1.4 !important; font-size: 12px !important; zoom: 0.85; }}
-                            h1 {{ margin-bottom: 10px !important; font-size: 22px !important; margin-top: 0 !important; }}
-                            h2 {{ margin-top: 10px !important; font-size: 16px !important; padding-bottom: 3px !important; margin-bottom: 5px !important; }}
-                            div {{ padding: 12px !important; margin-bottom: 8px !important; border-radius: 10px !important; }}
-                            br {{ display: block; content: ""; margin-top: 2px; }}
+                            /* 글자 크기 강제 축소 제거. 화면 비율 그대로 유지하면서 A4에 맞게 전체 zoom만 조절 */
+                            body {{ padding: 0; zoom: 0.8; }} 
+                            div {{ page-break-inside: avoid; }}
                         }}
                     </style>
                 </head>
