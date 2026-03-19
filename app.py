@@ -170,14 +170,21 @@ if check_password():
         else:
             try:
                 with st.status("🚀 잼(Jam)이 시각화 리포트를 생성 중입니다...", expanded=True) as status:
-                    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    # 모델 탐색
+                    try:
+                        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    except Exception as e:
+                        raise Exception(f"API 키 권한 오류입니다. 새 API 키를 적용해주세요. (상세: {e})")
+
                     if 'models/gemini-1.5-flash' in available_models: target_model = 'gemini-1.5-flash'
                     elif 'models/gemini-1.5-pro' in available_models: target_model = 'gemini-1.5-pro'
                     elif 'models/gemini-pro' in available_models: target_model = 'gemini-pro'
-                    else: target_model = available_models[0].replace('models/', '')
+                    elif len(available_models) > 0: target_model = available_models[0].replace('models/', '')
+                    else: raise Exception("사용 가능한 생성형 모델이 없습니다.")
 
                     model = genai.GenerativeModel(target_model)
                     
+                    # 변수 할당
                     c_ind = d.get('in_industry', '미입력')
                     rep_name = d.get('in_rep_name', '미입력')
                     biz_no = d.get('in_raw_biz_no', '미입력')
@@ -391,7 +398,6 @@ if check_password():
                 
                 st.divider()
                 st.subheader("💾 리포트 저장 (PDF 권장)")
-                
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
@@ -445,9 +451,18 @@ if check_password():
         else:
             try:
                 with st.status("🚀 잼(Jam)이 정책자금 컷오프 기준을 심사 중입니다...", expanded=True) as status:
-                    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    # [수정] 1번 모드와 동일한 완벽한 모델 탐색 방어 로직 적용
+                    try:
+                        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    except Exception as e:
+                        raise Exception(f"API 키 권한 오류입니다. (상세: {e})")
+
                     if 'models/gemini-1.5-flash' in available_models: target_model = 'gemini-1.5-flash'
-                    else: target_model = 'gemini-pro'
+                    elif 'models/gemini-1.5-pro' in available_models: target_model = 'gemini-1.5-pro'
+                    elif 'models/gemini-pro' in available_models: target_model = 'gemini-pro'
+                    elif len(available_models) > 0: target_model = available_models[0].replace('models/', '')
+                    else: raise Exception("사용 가능한 생성형 모델이 없습니다.")
+
                     model = genai.GenerativeModel(target_model)
                     
                     # 1. 컷오프 데이터 사전 추출 및 가공
@@ -461,7 +476,7 @@ if check_password():
                     nice_score = safe_int(d.get('in_nice_score', 0))
                     fund_req = format_kr_currency(d.get('in_req_amount', 0))
                     
-                    has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False) # 벤처, 이노비즈, ISO
+                    has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
                     cert_status = "보유" if has_cert else "미보유"
                     
                     # 2. 강력한 매칭 로직 프롬프트 구성
