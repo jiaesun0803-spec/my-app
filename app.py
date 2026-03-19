@@ -334,26 +334,26 @@ if check_password():
                     ## 8. 매출 1년 전망
                     <div style="display:flex; justify-content:space-between; align-items:stretch; text-align:center; flex-wrap:wrap; gap:10px;">
                       <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">1단계 (1~3)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(진행 내용)</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">1단계 (1~3개월)</div>
+                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(상세하고 풍성한 진행 내용, 명사형)</div>
                         <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                       </div>
                       <div style="font-size:2em; align-self:center;">➡️</div>
                       <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">2단계 (4~6)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(진행 내용)</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">2단계 (4~6개월)</div>
+                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(상세하고 풍성한 진행 내용, 명사형)</div>
                         <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                       </div>
                       <div style="font-size:2em; align-self:center;">➡️</div>
                       <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">3단계 (7~9)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(진행 내용)</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">3단계 (7~9개월)</div>
+                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(상세하고 풍성한 진행 내용, 명사형)</div>
                         <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                       </div>
                       <div style="font-size:2em; align-self:center;">➡️</div>
                       <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">4단계 (10~12)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(진행 내용)</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:#1565c0;">4단계 (10~12개월)</div>
+                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(상세하고 풍성한 진행 내용, 명사형)</div>
                         <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">최종목표: OOO만원</div>
                       </div>
                     </div>
@@ -394,11 +394,10 @@ if check_password():
                 st.balloons()
                 
                 st.divider()
-                st.subheader("💾 리포트 저장 (A4 1페이지 최적화 PDF)")
+                st.subheader("💾 리포트 저장 (PDF 권장)")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [수정] A4 1페이지로 완벽하게 떨어지도록 압축 인쇄 CSS(zoom, padding 축소) 탑재!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -427,20 +426,20 @@ if check_password():
                     </style>
                 </head>
                 <body>
-                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기 (A4 1장 최적화)</button>
+                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h1>📋 AI 기업분석 결과보고서: {c_name}</h1>
                     <hr style="margin-bottom: 30px;">
                     {response_text.replace('[GRAPH_INSERT_POINT]', '<div style="padding:15px; margin: 15px 0; background:#e3f2fd; text-align:center; border-radius:10px; font-weight:bold; color:#1565c0; border: 1px dashed #1565c0;">[📈 1년 매출 상승 곡선 차트는 웹 대시보드 시스템에서 확인 가능합니다]</div>')}
                 </body>
                 </html>
                 """
-                st.download_button(label="📥 보고서 다운로드 (A4 1페이지 맞춤 PDF)", data=html_export, file_name=f"{safe_file_name}_기업분석리포트.html", mime="text/html", type="primary")
+                st.download_button(label="📥 기업분석리포트 다운로드", data=html_export, file_name=f"{safe_file_name}_기업분석리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 신규 2. 정책자금 매칭 리포트]
+    # [모드 B: 신규 2. 정책자금 매칭 리포트 - 한도 규칙 고도화]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -459,7 +458,7 @@ if check_password():
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
-                with st.status("🚀 잼(Jam)이 직접대출 및 보증기관 컷오프/한도 기준을 심사 중입니다...", expanded=True) as status:
+                with st.status("🚀 잼(Jam)이 기관별 컷오프 및 한도 구간을 심사 중입니다...", expanded=True) as status:
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
@@ -480,6 +479,7 @@ if check_password():
                     kibo_debt = safe_int(d.get('in_debt_kibo', 0))
                     kodit_debt = safe_int(d.get('in_debt_kodit', 0))
                     
+                    # 기대출 합계 로직
                     total_debt_val = sum([
                         safe_int(d.get('in_debt_kosme', 0)),
                         safe_int(d.get('in_debt_semas', 0)),
@@ -502,6 +502,7 @@ if check_password():
                     has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
                     cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                     
+                    # 2. 한도 산출 공식 및 기관별 규칙 탑재 프롬프트 (대표님 피드백 완벽 반영)
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 대표님이 직접 작성하신 [절대 매칭 비법 DB]를 100% 반영하여, 마크다운과 HTML 태그를 활용해 매칭 리포트를 출력하세요.
@@ -513,10 +514,12 @@ if check_password():
 
                     [절대 매칭 비법 DB - 이 기준을 바탕으로 분석할 것!]
                     1. 💎 최우선 고려: 금리가 저렴한 "직접대출 (중진공, 소진공)"을 우선 검토할 것!
-                    - [소진공]: '신용취약소상공인자금'은 반드시 대표자의 NICE 점수가 839점 이하일 때만 추천할 것!
+                    - [중진공(직접대출)]: 기술력 있는 중소기업. **최소 신청 금액은 5,000만 원 이상**부터 시작.
+                    - [소진공(직접대출)]: 5인 미만 소상공인. 상품에 따라 최대한도가 3천만, 7천만, 1억, 2억으로 설정되어 있음. ('신용취약소상공인자금'은 반드시 NICE 839점 이하일 때만 추천할 것!)
                     2. 🛡️ 보증서 발급 기관 (기보, 신보, 지역신보)
-                    - [보증기관 우선순위 룰 - 매우 중요!]: 보증기관을 추천할 때는 반드시 '기술보증기금(기보)' 또는 '신용보증기금(신보)'를 '지역신용보증재단(지역신보)'보다 높은 순위(2순위 등)에 배치하세요. 지역신보는 3~4순위(후순위)로 미루세요. (이유: 신보/기보를 먼저 이용한 후 지역신보 추가 이용은 가능하나, 지역신보를 먼저 이용하면 신보/기보 보증이 막히는 현업 실무를 100% 반영할 것)
-                    - [신보 한도 산출 공식]: 신보(KODIT)를 추천할 경우, 예상 한도는 '제조업=금년 매출의 1/4', '기타 업종=금년 매출의 1/6~1/10' 수준으로 계산하되, 여기서 반드시 **총 기대출({total_debt})을 차감하여 남은 여력만큼만 보수적으로 한도를 제시**할 것.
+                    - [보증기관 우선순위 룰 - 매우 중요!]: '기보' 또는 '신보'를 '지역신보'보다 우선(1~2순위) 배치하고, 지역신보는 후순위(3~4순위)로 미루세요. (지역신보 선사용 시 기보/신보 막힘 방지)
+                    - [신보/기보 한도 룰]: 기보와 신보는 **최소 1억 원 이상부터** 지원 가능. (희망자금이나 남은 한도가 1억 미만이면 추천 불가). 신보(KODIT) 예상 한도는 '제조업=금년 매출의 1/4', '기타=매출의 1/6~1/10' 계산 후 **총 기대출({total_debt}) 차감**하여 제시.
+                    - [지역신보 한도 룰]: 지역신용보증재단은 **최대 2억 원까지만** 지원 가능.
                     3. 🚫 컷오프 (절대 불가) 기준 적용
                     - 세금 체납, 금융 연체가 있으면 1~4순위 추천 대신 연체 해결 전략만 강하게 제시할 것.
                     - 기보 대출 잔액이 있으면 신보 추천 금지. 신보 대출 잔액이 있으면 기보 추천 금지.
@@ -538,7 +541,7 @@ if check_password():
 
                     ## 2. 우선순위 추천 정책자금 (1~2순위)
                     <div style="background-color:#e8f5e9; padding:15px; border-radius:15px; border-left:5px solid #2e7d32; margin-bottom:10px;">
-                      <b style="font-size:1.1em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
+                      <b style="font-size:1.1em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도 (매출 및 기대출 팩트 반영)</b><br><br>
                       - (추천 사유 및 합격 꿀팁 명사형 종결, 마침표 뒤 줄바꿈)
                     </div>
                     <div style="background-color:#e8f5e9; padding:15px; border-radius:15px; border-left:5px solid #2e7d32; margin-bottom:15px;">
@@ -576,7 +579,6 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [수정] A4 1페이지로 완벽하게 떨어지도록 압축 인쇄 CSS(zoom, padding 축소) 탑재!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -603,14 +605,14 @@ if check_password():
                     </style>
                 </head>
                 <body>
-                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기 (A4 1장 최적화)</button>
+                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
                     <hr style="margin-bottom: 20px;">
                     {response.text}
                 </body>
                 </html>
                 """
-                st.download_button(label="📥 매칭 리포트 다운로드 (A4 1페이지 맞춤 PDF)", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
+                st.download_button(label="📥 매칭 리포트 다운로드", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
