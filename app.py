@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
+from datetime import datetime
 
 # ==========================================
 # 0. 기본 설정 및 보안
@@ -376,7 +377,7 @@ if check_password():
                 st.balloons()
                 
                 st.divider()
-                st.subheader("💾 리포트 저장 (화면 폰트 100% 보존 1페이지 출력)")
+                st.subheader("💾 리포트 저장 (화면 폰트 100% 보존 출력)")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
@@ -487,7 +488,17 @@ if check_password():
                     has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
                     cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                     
-                    # 2. [완벽 제어 프롬프트] 신보/기보 1억 한도 절대 강제 및 대체 기관 지시
+                    # 업력 계산 로직
+                    start_date_str = d.get('in_start_date', '').strip()
+                    biz_years = 0
+                    if start_date_str:
+                        try:
+                            biz_start_year = int(start_date_str[:4])
+                            biz_years = max(0, 2026 - biz_start_year)
+                        except:
+                            pass
+                    
+                    # 2. [완벽 제어 프롬프트] 매출 4억 룰, P-CBO 업력 룰, 중진공 스케일업 업력/매출 룰
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 제공된 [출력 양식]의 HTML 태그만 사용하여 리포트를 출력하세요.
@@ -504,25 +515,29 @@ if check_password():
                        - [중진공 컷오프 룰]: 비제조업(도소매업, 서비스업 등)은 연매출이 50억 이상이면서 상시근로자가 5인 이상이어야 신청 가능합니다. 현재 업종이 '{c_ind}'이고 매출이 {s_cur_val}만원이므로, 비제조업인데 매출 50억 미만이면 무조건 소진공을 1순위로 추천하세요.
                        - [소진공 룰]: 소진공은 최대 한도 7천만 원을 원칙으로 하되, 신용취약(NICE 839 이하)은 3,000만 원으로 제한합니다. 절대 1억 5천 등의 존재하지 않는 한도를 지어내지 마세요.
                     2. 🥈 2순위 지정 (메이저 보증 - 조건부): '신용보증기금(신보)' 또는 '기술보증기금(기보)' 중 택 1 하되 아래 **1억 컷오프 룰**을 무조건 통과해야 합니다.
-                       - [신보/기보 한도 산출 공식 및 1억 컷오프 - 경고!!!]: 신보와 기보는 **최소 시작 금액이 1억 원**입니다. **제조업은 '매출액의 1/2', 그 외 업종은 '매출액의 1/10'** 수준으로 계산합니다. 이 계산된 금액에서 **총 기대출({total_debt})을 반드시 빼서 남은 금액**이 예상 한도입니다! 
+                       - [신보/기보 한도 산출 공식 및 1억 컷오프 - 경고!!!]: 신보와 기보는 **최소 시작 금액이 1억 원**입니다. **제조업은 '매출액의 1/2', 그 외 업종은 '매출액의 1/6~1/10'** 수준으로 계산합니다. 이 계산된 금액에서 **총 기대출({total_debt})을 반드시 빼서 남은 금액**이 예상 한도입니다! 
                        - **만약 차감 후 예상 한도가 1억 원 미만이거나, 애초에 희망자금({fund_req})이 1억 원 미만이라면 신보와 기보를 무조건 2순위 추천에서 제외(탈락)시키고, 2순위 자리에 '지역신용보증재단'이나 타 특화자금을 대신 넣으세요!!** (신보 5천만 원 같은 내용은 절대 출력 금지)
-                       - [매출 5억 룰]: 한도 1억이 넘는다는 가정하에, 매출액 5억 이상이면 무조건 신보를 강력하게 추천하세요.
+                       - [매출 4억 룰 - 핵심!]: 한도 1억이 넘는다는 가정하에, 매출액 4억(40,000만 원) 이상이면 무조건 신용보증기금(신보)을 강력하게 추천하세요.
+                       - [기보 타겟 및 예외 룰]: 기보는 제조업/IT업 중심이나, 타 업종이라도 '벤처인증'이나 '특허'가 있다면 신보보다 기보를 우선 추천.
                        - [중복 금지]: 신보와 기보는 기금으로서 절대 중복 이용이 불가합니다.
-                    3. 🥉 3~4순위 지정 (플랜 B 및 유동화자금): 
-                       - [보증기관 순서 룰 - 핵심]: 신보/기보(기금)와 지역신용보증재단(재단)은 중복 이용이 가능하나, **반드시 '신보/기보 먼저 ➡️ 지역신보 나중' 순서로 진행**해야 합니다. (지역신보를 먼저 쓰면 신보/기보 한도가 막힘). 만약 1억 컷오프로 신보/기보가 탈락하지 않았다면 지역신보는 무조건 3~4순위로 미루고, 컨설턴트 코멘트에 이 순서의 중요성을 강조하세요.
-                       - [유동화자금(P-CBO) 룰]: 기대출이 가득 차 한도가 없지만, 매출성장 등 성장성이 보이는 '법인기업'({biz_type})이라면 중진공 스케일업금융이나 P-CBO 상품을 대체재로 강력 추천하세요.
-                    4. 🚫 연체 컷오프: 세금체납({tax_status}), 금융연체({fin_status}) '유'인 경우 1~4순위 전부 비우고 연체 해소 조언만 작성.
+                    3. 🚀 [유동화자금(P-CBO/스케일업) 룰 - 법인전용]: 기존 대출이 꽉 차 한도가 없지만, 매출성장 등 성장성이 보이는 '법인기업'({biz_type})의 경우 아래 조건에 맞게 추천하세요.
+                       - 신보 P-CBO: 업력이 4년 이상인 경우에만 추천 가능.
+                       - 중진공 스케일업금융: 업력이 5년 이상이고, 매출이 20억(200,000만 원) 이상인 경우에만 추천 가능.
+                    4. 🥉 3~4순위 지정 (플랜 B): 
+                       - [보증기관 순서 룰 - 핵심!!!]: 보증기관은 **반드시 '신보/기보 먼저 ➡️ 지역신보 나중' 순서로 진행**해야만 두 기관을 중복 이용할 수 있습니다. (지역신보를 먼저 쓰면 신보/기보 한도가 막혀버려 절대 진행 불가). 만약 1억 컷오프로 신보/기보가 탈락하지 않았다면 지역신보는 무조건 3~4순위로 미루고, 컨설턴트 코멘트에 이 순서의 중요성을 강조하세요.
+                       - 4순위는 특화기관 등 배치.
+                    5. 🚫 연체 컷오프: 세금체납({tax_status}), 금융연체({fin_status}) '유'인 경우 1~4순위 전부 비우고 연체 해소 조언만 작성.
 
                     [입력 데이터]
-                    - 기업명: {c_name} / 사업자유형: {biz_type} / 업종: {c_ind} / 아이템: {item}
+                    - 기업명: {c_name} / 사업자유형: {biz_type} / 업종: {c_ind} / 업력: 약 {biz_years}년
                     - 세금체납: {tax_status} / 금융연체: {fin_status} / NICE 점수: {nice_score}점
-                    - 기술/벤처 인증: {cert_status} 
+                    - 기술/벤처 인증: {cert_status} / 아이템: {item}
                     - 금년 매출: {s_cur} / 총 기대출 합계: {total_debt} / 희망자금: {fund_req}
 
                     [출력 양식 - HTML 태그 및 양식 100% 동일하게 유지. 마크다운(##, **) 절대 쓰지 말것]
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
-                      <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>업종:</b> {c_ind} ({biz_type}) <br>
+                      <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>업종:</b> {c_ind} ({biz_type}) &nbsp;|&nbsp; <b>업력:</b> 약 {biz_years}년 <br>
                       <b>NICE 점수:</b> {nice_score}점 &nbsp;|&nbsp; <b>기술/벤처 인증:</b> {cert_status} <br>
                       <b>금년매출:</b> {s_cur} &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.15em;">필요자금: {fund_req}</b>
                     </div>
@@ -579,8 +594,6 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [완벽 수정] CSS 강제 폰트 축소 전면 제거. 웹 화면의 거대한 카테고리 제목(h2)과 본문이 PDF에 완벽하게 일치하게 인쇄됨.
-                # flexbox를 활용하여 늘어난 텍스트 양에도 A4 1장에 완벽하게 안착!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
