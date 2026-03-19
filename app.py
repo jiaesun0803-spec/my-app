@@ -51,20 +51,9 @@ def format_kr_currency(value):
         return str(value)
 
 if check_password():
-    # --- 파일 관리 (API 키 및 업체 DB) ---
-    KEY_FILE = "gemini_key.txt"
+    # --- 파일 관리 (업체 DB) ---
     DB_FILE = "company_db.json"
     
-    def load_key():
-        if os.path.exists(KEY_FILE):
-            try:
-                with open(KEY_FILE, "r", encoding="utf-8") as f: return f.read().strip()
-            except: return ""
-        return ""
-        
-    def save_key(key):
-        with open(KEY_FILE, "w", encoding="utf-8") as f: f.write(key.strip())
-
     def load_db():
         if os.path.exists(DB_FILE):
             try:
@@ -104,14 +93,15 @@ if check_password():
     # 1. 사이드바 (API 설정, 업체관리)
     # ==========================================
     st.sidebar.header("⚙️ AI 엔진 설정")
+    
+    # [수정] 텍스트 파일이 아닌 Streamlit 자체 금고(Secrets)에서 키를 불러옵니다.
     if "api_key" not in st.session_state: 
-        st.session_state["api_key"] = load_key()
+        st.session_state["api_key"] = st.secrets.get("GEMINI_API_KEY", "")
         
     api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
-    if st.sidebar.button("💾 API 키 영구 저장"):
+    if st.sidebar.button("💾 임시 적용 (클라우드 설정 권장)"):
         st.session_state["api_key"] = api_key_input
-        save_key(api_key_input)
-        st.sidebar.success("✅ API 키 영구 저장 완료!")
+        st.sidebar.success("✅ 이번 접속 동안 API 키가 유지됩니다.")
         time.sleep(1)
         st.rerun()
 
@@ -174,7 +164,7 @@ if check_password():
         st.subheader(f"📌 분석 대상 기업: {c_name}")
         
         if not st.session_state["api_key"]:
-            st.error("⚠️ 좌측 사이드바에 API 키를 입력하고 [영구 저장]을 눌러주세요.")
+            st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
                 with st.status("🚀 잼(Jam)이 시각화 리포트를 생성 중입니다...", expanded=True) as status:
@@ -219,8 +209,20 @@ if check_password():
                     market = d.get('in_market_status', '미입력')
                     diff = d.get('in_diff_point', '미입력')
                     
+                    total_debt_val = sum([
+                        safe_int(d.get('in_debt_kosme', 0)),
+                        safe_int(d.get('in_debt_semas', 0)),
+                        safe_int(d.get('in_debt_koreg', 0)),
+                        safe_int(d.get('in_debt_kodit', 0)),
+                        safe_int(d.get('in_debt_kibo', 0)),
+                        safe_int(d.get('in_debt_etc', 0)),
+                        safe_int(d.get('in_debt_credit', 0)),
+                        safe_int(d.get('in_debt_coll', 0))
+                    ])
+                    total_debt = format_kr_currency(total_debt_val)
+                    
                     # ---------------------------------------------------------
-                    # [그래프 생성] 8번 항목 내에 들어갈 차트를 미리 만들어 둠
+                    # [그래프 생성]
                     # ---------------------------------------------------------
                     val_cur = safe_int(d.get('in_sales_current', 0))
                     if val_cur <= 0: val_cur = 1000
@@ -398,11 +400,11 @@ if check_password():
                     </div>
                     """
                     
-                    st.write("📍 지시하신 서식(음/슴체, 상세 내용 확대, 데이터 기반 테이블)으로 전문 리포트 작성 중...")
+                    st.write("📍 지시하신 서식으로 전문 리포트 작성 중...")
                     response = model.generate_content(prompt)
                     status.update(label="✅ 분석 및 시각화 보고서 생성 완료!", state="complete")
                 
-                # [그래프 삽입 로직: 8번 항목 하단에 완벽 위치]
+                # [그래프 삽입 로직]
                 try:
                     response_text = response.text
                 except:
@@ -413,7 +415,7 @@ if check_password():
                     parts = response_text.partition("[GRAPH_INSERT_POINT]")
                     st.markdown(parts[0], unsafe_allow_html=True)
                     st.plotly_chart(fig, use_container_width=True)
-                    st.markdown("<br><br>", unsafe_allow_html=True) # 8번과 9번 사이 여백 확보
+                    st.markdown("<br><br>", unsafe_allow_html=True) 
                     st.markdown(parts[2], unsafe_allow_html=True)
                 else:
                     st.markdown(response_text, unsafe_allow_html=True)
@@ -421,7 +423,7 @@ if check_password():
 
                 st.balloons()
                 
-                # --- [다운로드 버튼 기능 (PDF 색상 인쇄 100% 최적화)] ---
+                # --- [다운로드 버튼 기능] ---
                 st.divider()
                 st.subheader("💾 리포트 저장 (PDF 권장)")
                 st.info("💡 **완벽한 디자인으로 PDF 저장하는 방법:** 다운로드한 HTML 파일을 크롬(Chrome)에서 열고, 우측 상단의 **[🖨️ PDF로 저장하기]** 버튼을 누르시면 화면의 둥근 모서리와 색상이 100% 보존된 A4 사이즈 보고서가 완성됩니다!")
@@ -429,7 +431,6 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # CSS에 -webkit-print-color-adjust: exact; 추가하여 PDF 저장 시 배경색 강제 활성화!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
