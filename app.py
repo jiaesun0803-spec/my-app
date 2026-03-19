@@ -397,10 +397,10 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; margin: 0 !important; max-width: 100% !important; font-size: 15px !important; line-height: 1.5 !important; }}
-                            h1 {{ margin: 0 0 20px 0 !important; font-size: 28px !important; }}
-                            h2 {{ margin: 25px 0 10px 0 !important; font-size: 24px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 12px 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; page-break-inside: avoid; }}
+                            body {{ padding: 0 !important; margin: 0 !important; max-width: 100% !important; font-size: 14.5px !important; line-height: 1.5 !important; }}
+                            h1 {{ margin: 0 0 20px 0 !important; font-size: 26px !important; }}
+                            h2 {{ margin: 25px 0 10px 0 !important; font-size: 22px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 12px 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.5 !important; }}
                             table {{ font-size: 13px !important; margin-bottom: 10px !important; }}
                             th, td {{ padding: 6px !important; }}
                             br {{ display: block; content: ""; margin-top: 3px; }}
@@ -421,7 +421,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 신규 2. 정책자금 매칭 리포트]
+    # [모드 B: 신규 2. 정책자금 매칭 리포트 - 지식 뻥튀기 및 좌우분할 레이아웃 탑재]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -440,7 +440,7 @@ if check_password():
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
-                with st.status("🚀 잼(Jam)이 기관별 컷오프, 한도, 유동화자금(P-CBO) 예외 룰을 철저히 심사 중입니다...", expanded=True) as status:
+                with st.status("🚀 잼(Jam)이 풍성한 외부 지식을 동원하여 추천 사유를 심사 중입니다...", expanded=True) as status:
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
@@ -487,7 +487,7 @@ if check_password():
                     has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
                     cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                     
-                    # 2. [완벽 제어 프롬프트] 기금/재단 한도 및 우선순위, 중복가능여부 명시
+                    # 3. [공간 창출 매직 프롬프트] 좌우 분할 레이아웃으로 내용 뻥튀기 지시
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 제공된 [출력 양식]의 HTML 태그만 사용하여 리포트를 출력하세요.
@@ -496,22 +496,22 @@ if check_password():
                     1. 마크다운 사용 금지: 제목 기호(##), 볼드체(**), 리스트(-) 등 **마크다운 기호를 절대 사용하지 마세요.** 출력 양식에 제공된 `<h2>`, `<b>`, `&bull;`, `<br>` 등의 순수 HTML 태그만 사용해야 합니다. 
                     2. 어투: 모든 문장은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 간결하게 작성하세요.
                     3. 줄바꿈: 문장이 마침표('.')로 끝날 때마다 무조건 HTML 태그 `<br>`을 삽입하여 시원하게 줄바꿈 하세요.
-                    4. 내용 분량: A4 1장에 완벽하게 들어갈 수 있도록 각 세부 항목(추천사유, 합격꿀팁 등)은 무조건 1~2줄 이내로 핵심만 아주 짧고 명확하게 작성하세요. 절대 길게 쓰지 마세요.
+                    4. 내용의 깊이(GPT 외부지식 풀가동): 추천 사유, 꿀팁, 심사 절차 등을 작성할 때 AI가 아는 외부 지식(우대금리, 최신 트렌드, 사업계획서 노하우 등)을 총동원하여 **무조건 3~4문장 이상으로 풍성하고 상세하게** 작성하세요. (HTML 양식에서 좌우 2분할 배치를 통해 공간을 넓혔으므로 텍스트가 많아도 됩니다).
 
                     [절대 매칭 비법 DB - 기관별 한도 및 순위 룰 (가장 중요!)]
-                    1. 🥇 1순위 지정 (직접대출): 금리가 저렴한 '중소벤처기업진흥공단(중진공)' 또는 '소상공인시장진흥공단(소진공)' 중 택 1 하세요.
-                       - [소진공/중진공 중복 룰]: 소진공과 중진공은 기업의 매출과 상시근로자 수(5인/10인 기준)에 따라 타겟이 다르지만, 두 기관의 자금은 **중복 이용이 가능**하다는 점을 꿀팁에 반드시 언급하세요.
-                       - [중진공 컷오프 룰]: 비제조업(도소매업, 서비스업 등)은 연매출이 50억 이상이면서 상시근로자가 5인 이상이어야 신청 가능합니다. 현재 업종이 '{c_ind}'이고 매출이 {s_cur_val}만원이므로, 비제조업인데 매출 50억 미만이면 무조건 소진공을 1순위로 추천하세요.
-                       - [소진공 룰]: 대표자 NICE 점수가 839점 이하면 '신용취약소상공인자금(최대 3,000만 원 한도 고정)'을 무조건 추천. 그 이상이면 일반 상품(7천~2억 한도) 추천.
-                    2. 🥈 2순위 지정 (메이저 보증): 무조건 '신용보증기금(신보)' 또는 '기술보증기금(기보)' 중 택 1 하세요. [세부 자금명]에는 실제 보증 상품명(예: 창업기업보증 등)을 명시하세요.
-                       - [신보/기보 한도 산출 공식 - 절대 규칙]: 신보와 기보는 **제조업은 '매출액의 1/2'**, **그 외 업종은 '매출액의 1/6~1/10'** 수준으로 계산합니다. 이 계산된 금액에서 **총 기대출({total_debt})을 반드시 차감**하여 남은 여력만 한도로 제시하세요! 만약 차감 후 한도가 1억 미만이거나 희망자금({fund_req})이 1억 미만이면 신보/기보를 무조건 추천에서 탈락(제외)시키세요.
-                       - [매출 5억 룰]: 매출액이 5억 원(50,000만원) 이상인 경우 무조건 신보를 강력하게 추천하세요.
-                       - [기보 타겟 및 예외 룰]: 기보는 제조업/IT업 중심이나, 타 업종이라도 '벤처인증'이나 '특허'가 있다면 신보보다 기보를 우선 추천.
-                       - [중복 금지]: 신보와 기보는 기금으로서 절대 중복 이용이 불가합니다.
+                    1. 🥇 1순위 지정 (직접대출): 금리가 저렴한 '중소벤처기업진흥공단(중진공)' 또는 '소상공인시장진흥공단(소진공)' 중 택 1.
+                       - [소진공/중진공 중복 룰]: 두 기관 자금은 중복 이용이 가능하다는 점을 꿀팁에 언급.
+                       - [중진공 컷오프 룰]: 비제조업(도소매, 서비스 등)은 연매출 50억 이상, 상시근로자 5인 이상이어야 신청 가능. 현재 업종이 '{c_ind}'이고 매출이 {s_cur_val}만원이므로, 비제조업인데 매출 50억 미만이면 소진공 1순위.
+                       - [소진공 룰]: 대표자 NICE 839점 이하면 '신용취약소상공인자금(최대 3,000만 원)' 추천. 그 이상이면 일반 상품(7천~2억 한도) 추천.
+                    2. 🥈 2순위 지정 (메이저 보증): 무조건 '신용보증기금(신보)' 또는 '기술보증기금(기보)' 중 택 1.
+                       - [신보/기보 한도 산출 공식]: 제조업은 '매출액의 1/2', 그 외 업종은 '매출액의 1/6~1/10' 계산. 여기서 **총 기대출({total_debt})을 반드시 차감**하여 남은 여력을 한도로 제시! 차감 후 한도가 1억 미만이면 추천 탈락.
+                       - [매출 5억 룰]: 매출액 5억 이상이면 무조건 신보 강력 추천.
+                       - [기보 예외 룰]: 제조업이 아니어도 '벤처인증'이나 '특허'가 있다면 신보 대신 기보 우선 추천.
+                       - [중복 금지]: 신보와 기보는 중복 이용 불가.
                     3. 🥉 3~4순위 지정 (플랜 B 및 유동화자금): 
-                       - [보증기관 순서 룰 - 핵심]: 신보/기보(기금)와 지역신용보증재단(재단)은 중복 이용이 가능하나, **반드시 '신보/기보 먼저 ➡️ 지역신보 나중' 순서로 진행**해야 합니다. (지역신보를 먼저 쓰면 신보/기보 한도가 막히거나 거절될 확률이 매우 높음). 따라서 지역신보는 무조건 3~4순위로 미루고, 컨설턴트 코멘트에 이 순서의 중요성을 강조하세요.
-                       - [유동화자금(P-CBO) 룰]: 기대출이 가득 차 한도가 없지만, 매출성장 등 성장성이 보이는 '법인기업'({biz_type})이라면 중진공 스케일업금융이나 P-CBO 상품을 대체재로 강력 추천하세요.
-                    4. 🚫 연체 컷오프: 세금체납({tax_status}), 금융연체({fin_status}) '유'인 경우 1~4순위 전부 비우고 연체 해소 조언만 작성.
+                       - [보증기관 순서 룰]: 무조건 '신보/기보 먼저 ➡️ 지역신보 나중' 순서로 진행. 지역신보를 1~2순위에 절대 넣지 말 것.
+                       - [유동화자금(P-CBO) 룰]: 기대출이 차서 한도가 없지만, 성장성이 보이는 '법인기업'({biz_type})이라면 중진공 스케일업금융이나 신보/기보 P-CBO 상품을 강력 추천.
+                    4. 🚫 연체 컷오프: 세금체납({tax_status}), 금융연체({fin_status}) '유'인 경우 1~4순위 비우고 연체 해소 조언만 작성.
 
                     [입력 데이터]
                     - 기업명: {c_name} / 사업자유형: {biz_type} / 업종: {c_ind} / 아이템: {item}
@@ -519,7 +519,7 @@ if check_password():
                     - 기술/벤처 인증: {cert_status} 
                     - 금년 매출: {s_cur} / 총 기대출 합계: {total_debt} / 희망자금: {fund_req}
 
-                    [출력 양식 - HTML 태그 및 양식 100% 동일하게 유지. 마크다운(##, **) 절대 쓰지 말것]
+                    [출력 양식 - HTML 태그 절대 준수 (좌우 2분할 레이아웃)]
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
                       <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>업종:</b> {c_ind} ({biz_type}) <br>
@@ -527,38 +527,42 @@ if check_password():
                       <b>금년매출:</b> {s_cur} &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.15em;">필요자금: {fund_req}</b>
                     </div>
                     <div style="margin-bottom:20px;">
-                      (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 스펙 평가. 1~2줄 요약, 문장마다 마침표 뒤 줄바꿈 &lt;br&gt;)
+                      (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 스펙 평가. 풍성하게 3~4문장 작성, 문장마다 마침표 뒤 줄바꿈 &lt;br&gt;)
                     </div>
 
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. 우선순위 추천 정책자금 (1~2순위)</h2>
-                    <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; margin-bottom:15px;">
-                      <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
-                      &bull; (추천 사유 1~2줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                      &bull; (합격 꿀팁 및 전략 1~2줄 상세 작성. 소진공/중진공 중복가능 언급. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                    </div>
-                    <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; margin-bottom:15px;">
-                      <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [추천 기관명] / [실제 보증 상품명(또는 P-CBO)] / 예상 한도 (공식 적용 후 차감액)</b><br><br>
-                      &bull; (추천 사유 1~2줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                      &bull; (합격 꿀팁 및 심사절차 1~2줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                    <div style="display:flex; gap:15px; margin-bottom:15px; align-items:stretch;">
+                      <div style="flex:1; background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32;">
+                        <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
+                        &bull; (추천 사유 외부지식 동원하여 3~4문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                        &bull; (합격 꿀팁 외부지식 동원하여 3~4문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                      </div>
+                      <div style="flex:1; background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32;">
+                        <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [추천 기관명] / [보증 상품명] / 예상 한도 (차감 반영)</b><br><br>
+                        &bull; (추천 사유 외부지식 동원하여 3~4문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                        &bull; (합격 꿀팁 및 심사절차 3~4문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                      </div>
                     </div>
 
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 후순위 추천 (플랜 B - 3~4순위)</h2>
-                    <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; margin-bottom:15px;">
-                      <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신용보증재단 또는 특화기관] / [세부 자금명(또는 P-CBO)] / 예상 한도</b><br><br>
-                      &bull; (추천 사유 1~2줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                      &bull; (기금 우선, 재단 나중 순서의 중요성 1~2줄 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                    </div>
-                    <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; margin-bottom:15px;">
-                      <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
-                      &bull; (추천 사유 1~2줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                      &bull; (접근 전략 1~2줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                    <div style="display:flex; gap:15px; margin-bottom:15px; align-items:stretch;">
+                      <div style="flex:1; background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00;">
+                        <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신용보증재단 또는 특화기관] / [세부 자금명] / 예상 한도</b><br><br>
+                        &bull; (추천 사유 3~4문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                        &bull; (기금 우선, 재단 나중 순서의 중요성 등 전략 3~4문장 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                      </div>
+                      <div style="flex:1; background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00;">
+                        <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
+                        &bull; (추천 사유 2~3문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                        &bull; (접근 전략 2~3문장 이상 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                      </div>
                     </div>
 
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 심사 전 필수 체크리스트 및 보완 가이드</h2>
                     <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:15px;">
                       <b style="font-size:1.1em; color:#c62828;">🚨 AI 컨설턴트 보완 조언:</b><br><br>
-                      &bull; (보완 전략 1 1~2줄 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                      &bull; (보완 전략 2 1~2줄 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                      &bull; (보완 전략 1 외부지식 동원하여 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                      &bull; (보완 전략 2 외부지식 동원하여 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                     </div>
                     """
                     
@@ -575,6 +579,8 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
+                # [완벽 수정] CSS 강제 폰트 축소 전면 제거. 웹 화면의 거대한 카테고리 제목(h2)과 본문이 PDF에 완벽하게 일치하게 인쇄됨.
+                # flexbox를 활용하여 늘어난 텍스트 양에도 A4 1장에 완벽하게 안착!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -595,7 +601,7 @@ if check_password():
                             body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.5 !important; }} 
                             h1 {{ margin: 0 0 15px 0 !important; font-size: 26px !important; }}
                             h2 {{ margin: 20px 0 8px 0 !important; font-size: 22px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 12px 15px !important; margin-bottom: 12px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.5 !important; }}
+                            div {{ padding: 15px 20px !important; margin-bottom: 12px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.5 !important; }}
                             br {{ display: block; content: ""; margin-top: 4px; }}
                         }}
                     </style>
