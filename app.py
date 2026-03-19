@@ -170,7 +170,6 @@ if check_password():
         else:
             try:
                 with st.status("🚀 잼(Jam)이 시각화 리포트를 생성 중입니다...", expanded=True) as status:
-                    # 모델 탐색
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
@@ -184,7 +183,6 @@ if check_password():
 
                     model = genai.GenerativeModel(target_model)
                     
-                    # 변수 할당
                     c_ind = d.get('in_industry', '미입력')
                     rep_name = d.get('in_rep_name', '미입력')
                     biz_no = d.get('in_raw_biz_no', '미입력')
@@ -207,7 +205,6 @@ if check_password():
                     market = d.get('in_market_status', '미입력')
                     diff = d.get('in_diff_point', '미입력')
                     
-                    # 그래프
                     val_cur = safe_int(d.get('in_sales_current', 0))
                     if val_cur <= 0: val_cur = 1000
                     start_val = val_cur / 12
@@ -450,8 +447,7 @@ if check_password():
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
-                with st.status("🚀 잼(Jam)이 정책자금 컷오프 기준을 심사 중입니다...", expanded=True) as status:
-                    # [수정] 1번 모드와 동일한 완벽한 모델 탐색 방어 로직 적용
+                with st.status("🚀 잼(Jam)이 정책자금 컷오프 기준 및 매칭 로직을 심사 중입니다...", expanded=True) as status:
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
@@ -473,24 +469,47 @@ if check_password():
                     kodit_debt = safe_int(d.get('in_debt_kodit', 0))
                     
                     c_ind = d.get('in_industry', '미입력')
+                    item = d.get('in_item_desc', '미입력')
                     nice_score = safe_int(d.get('in_nice_score', 0))
+                    fund_type = d.get('in_fund_type', '운전자금')
                     fund_req = format_kr_currency(d.get('in_req_amount', 0))
                     
                     has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
-                    cert_status = "보유" if has_cert else "미보유"
+                    cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                     
-                    # 2. 강력한 매칭 로직 프롬프트 구성
+                    # 2. 대표님의 비법 DB가 탑재된 강력한 프롬프트
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
-                    아래 [데이터]와 [매칭 및 컷오프 룰]을 엄격하게 적용하여, 마크다운과 HTML 태그를 활용해 결과물을 출력하세요.
+                    아래 [입력 데이터]와 대표님이 직접 작성하신 [절대 매칭 비법 DB]를 100% 반영하여, 마크다운과 HTML 태그를 활용해 매칭 리포트를 출력하세요.
 
-                    [매칭 및 컷오프 룰 - 절대 준수!]
+                    [작성 규칙]
                     1. 어투: 모든 문장은 '~있음', '~가능', '~함', '~불가함' 등 명사형(음/슴체)으로 간결하게 작성하세요. (서술형 절대 금지)
-                    2. 마침표 줄바꿈: 문장이 마침표('.')로 끝날 때마다 반드시 줄바꿈 문자(<br>)를 추가하여 한 줄에 한 문장씩 배치하세요.
+                    2. 마침표 줄바꿈: 문장이 마침표('.')로 끝날 때마다 반드시 줄바꿈 문자(<br>)를 추가하세요.
                     3. 2, 3, 4번 항목은 반드시 문장 앞에 '-' 기호를 붙여 개조식 요약형으로 작성하세요.
-                    4. **[절대 불가 필터]**: 세금체납({tax_status}) 또는 금융연체({fin_status})가 '유'인 경우, 2순위/3순위 추천은 모두 **'진행 불가 (체납/연체 해소 필수)'**로 명시하고 4번 항목에서 연체 해소 전략만 집중적으로 조언하세요.
-                    5. **[기보/신보 중복 금지]**: 현재 신용보증기금 대출잔액({kodit_debt}만원)이 1만원이라도 있으면 기술보증기금(기보) 추천은 절대 금지. 기보 대출({kibo_debt}만원)이 있으면 신용보증기금(신보) 추천 절대 금지.
-                    6. **[업종/인증 매칭]**: 업종이 '{c_ind}'이고 기술 인증(벤처/이노비즈)이 '{cert_status}' 상태임을 고려하여, 제조업/인증보유는 기보나 중진공을 우선하고, 도소매/서비스업/인증미보유는 신보나 신용보증재단을 우선 추천하세요.
+
+                    [절대 매칭 비법 DB - 이 기준을 바탕으로 분석할 것!]
+                    1. 5대 핵심 기관 (Main Player)
+                    - 중진공: 기술력 있는 중소기업 대상. 직접대출로 금리 저렴. 창업/시설 자금 유리 (수출, 고용 우대)
+                    - 소진공: 5인 미만 소상공인. 문턱이 낮고 생활밀착형 업종 지원 ('지식배움터' 교육 이수 필수)
+                    - 기보: 벤처/R&D 기업. 매출 없어도 특허/기술력/벤처인증 있으면 가능
+                    - 신보: 일반 중소기업. 매출과 성장성 담보 보증 (매출액 대비 적정 한도 체크)
+                    - 지역신보: 지역 내 소상공인. 지자체 이차보전(금리 지원)으로 이자 부담 낮음
+                    2. 산업별 특화 기관 (Niche Market) - 해당 업종이면 1순위로 고려!
+                    - 농축수산/식품가공: 농림수산업자신용보증기금(농신보)
+                    - 수출/무역: 한국무역보험공사(K-SURE)
+                    - 환경/에너지/재활용: 한국환경산업기술원, 한국에너지공단
+                    - 헬스장/스포츠용품/체육시설: 국민체육진흥공단(KSPO)
+                    - 관광/여행/숙박: 한국관광협회중앙회
+                    - 저신용(하위 20%)/기초수급자: 서민금융진흥원(미소금융)
+                    3. 컷오프 (절대 불가) 기준 적용
+                    - 세금 체납, 금융 연체, 부실징후(파산/휴폐업), 정책자금 제외업종(유흥/도박 등)이면 1,2순위 추천 대신 연체 해결 전략만 제시.
+
+                    [입력 데이터]
+                    - 기업명: {c_name} / 업종: {c_ind} / 아이템: {item}
+                    - 세금체납: {tax_status} / 금융연체: {fin_status}
+                    - 기술/벤처 인증: {cert_status} 
+                    - 신청자금: {fund_req} ({fund_type})
+                    - 현재 대출 잔액: 기보({kibo_debt}만원), 신보({kodit_debt}만원) -> 기보/신보 중복 이용 불가 원칙 적용할 것!
 
                     [출력 양식]
                     ## 1. 기업 스펙 진단 요약
@@ -499,33 +518,29 @@ if check_password():
                       <b>세금체납:</b> <span style="color:red;">{tax_status}</span> &nbsp;|&nbsp; <b>금융연체:</b> <span style="color:red;">{fin_status}</span><br>
                       <b>기술/벤처 인증:</b> {cert_status} &nbsp;|&nbsp; <b>희망자금:</b> {fund_req}
                     </div>
-                    (위 데이터를 바탕으로 정책자금 합격 가능성에 대한 날카로운 팩트폭격 및 스펙 평가 3~4줄. 명사형 종결, 마침표 뒤 줄바꿈)
+                    (세금/금융연체가 '유'일 경우 "진행 불가" 판정 후 연체 해결부터 하라고 경고. 아닐 경우 [비법 DB]를 바탕으로 한 스펙 진단 결과 3~4줄 명사형 작성, 마침표 뒤 줄바꿈)
 
                     ## 2. 1순위 추천 정책자금 (최적 매칭)
                     <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; margin-bottom:15px;">
                       <b style="font-size:1.2em; color:#2e7d32;">🏆 [추천 기관명] / [추천 자금명] / 예상 한도</b><br><br>
-                      - (추천 사유 명사형 종결, 마침표 뒤 줄바꿈)<br>
-                      - (해당 기관 성향에 맞춘 합격 전략 명사형 종결, 마침표 뒤 줄바꿈)
+                      - (추천 사유 및 [비법 DB]를 활용한 합격 꿀팁 명사형 종결, 마침표 뒤 줄바꿈)
                     </div>
 
                     ## 3. 2순위 추천 (플랜 B)
                     <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; margin-bottom:15px;">
                       <b style="font-size:1.2em; color:#ef6c00;">🥈 [추천 기관명] / [추천 자금명] / 예상 한도</b><br><br>
-                      - (추천 사유 명사형 종결, 마침표 뒤 줄바꿈)<br>
-                      - (플랜 B로서의 접근 전략 명사형 종결, 마침표 뒤 줄바꿈)
+                      - (추천 사유 및 [비법 DB]를 활용한 접근 전략 명사형 종결, 마침표 뒤 줄바꿈)
                     </div>
 
-                    ## 4. 심사 전 반드시 보완해야 할 취약점 (AI 조언)
+                    ## 4. 심사 전 필수 체크리스트 및 보완 가이드
                     <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:15px;">
-                      <b style="font-size:1.1em; color:#c62828;">🚨 AI 컨설턴트 보완 가이드:</b><br><br>
-                      - (가장 시급한 취약점 1 및 구체적 해결책 명사형 종결, 마침표 뒤 줄바꿈)<br>
-                      - (취약점 2 및 구체적 해결책 명사형 종결, 마침표 뒤 줄바꿈)<br>
-                      - (대표자 신용도, 재무비율, 기대출 한도 등 데이터를 기반으로 조언할 것)
+                      <b style="font-size:1.1em; color:#c62828;">🚨 사전 체크리스트 및 AI 보완 조언:</b><br><br>
+                      - (세금 완납, 신용 관리, 실사 준비, 부채비율, 서류 준비 등 비법 DB의 내용을 기업 상황에 맞게 조언. 명사형 종결, 마침표 뒤 줄바꿈)
                     </div>
                     """
                     
                     response = model.generate_content(prompt)
-                    status.update(label="✅ 잼(Jam)의 최적화 매칭 리포트 생성 완료!", state="complete")
+                    status.update(label="✅ 잼(Jam)의 비법 DB 매칭 리포트 생성 완료!", state="complete")
                 
                 st.markdown(response.text, unsafe_allow_html=True)
                 st.balloons()
