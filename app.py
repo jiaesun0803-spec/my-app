@@ -98,8 +98,6 @@ if check_password():
         st.session_state["api_key"] = st.secrets.get("GEMINI_API_KEY", "")
         
     api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
-    
-    # [수정] 사이드바 버튼 명칭 변경
     if st.sidebar.button("💾 API KEY 저장"):
         st.session_state["api_key"] = api_key_input
         st.sidebar.success("✅ 이번 접속 동안 API 키가 유지됩니다.")
@@ -193,7 +191,6 @@ if check_password():
                     corp_text = f" ({corp_no})" if corp_no else ""
                     address = d.get('in_biz_addr', '미입력')
                     
-                    # [수정] 추가사업장이 있을 경우 주소에 포함되도록 센스있게 세팅!
                     add_biz_status = d.get('in_has_additional_biz', '무')
                     add_biz_addr = d.get('in_additional_biz_addr', '').strip()
                     if add_biz_status == '유' and add_biz_addr:
@@ -406,7 +403,7 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.5 !important; zoom: 0.82; }} 
+                            body {{ padding: 0 !important; margin: 0 !important; max-width: 100% !important; font-size: 14.5px !important; line-height: 1.5 !important; zoom: 0.82; }}
                             h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
                             h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
                             div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
@@ -621,19 +618,18 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.82; }} 
+                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.5 !important; zoom: 0.82; }} 
                             h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
                             h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
-                            br {{ display: block; content: ""; margin-top: 2px; }}
-                            hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
+                            div {{ padding: 15px 20px !important; margin-bottom: 12px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.5 !important; }}
+                            br {{ display: block; content: ""; margin-top: 4px; }}
                         }}
                     </style>
                 </head>
                 <body>
                     <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
-                    <hr style="margin-bottom: 15px;">
+                    <hr style="margin-bottom: 30px;">
                     {response.text}
                 </body>
                 </html>
@@ -680,13 +676,13 @@ if check_password():
                 
         with c3:
             st.text_input("전화번호", key="in_biz_tel")
-            st.text_input("팩스번호", key="in_biz_fax")
-            st.text_input("사업장 주소", key="in_biz_addr")
             
-            # [수정] 추가사업장현황 입력 기능 추가
+            # [수정] 추가사업장현황 입력 기능 추가 (팩스번호 자리에 대체)
             has_add_biz = st.radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_additional_biz")
             if has_add_biz == "유":
                 st.text_input("추가 사업장 정보 (예: 공장 주소 등)", key="in_additional_biz_addr")
+                
+            st.text_input("사업장 주소", key="in_biz_addr")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
