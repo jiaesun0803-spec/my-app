@@ -252,26 +252,41 @@ if check_password():
                         template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                     )
                     
-                    # [핵심] 다운로드 HTML용 순수 CSS 막대그래프 생성 (PDF에서 100% 렌더링됨)
+                    # [핵심] 다운로드 HTML용 순수 CSS 막대그래프 생성 (PDF에서 100% 렌더링됨, 깨짐 방지)
                     max_val = max(monthly_vals) if max(monthly_vals) > 0 else 1
                     chart_html = f'''
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin:20px 0; page-break-inside: avoid;">
-                        <div style="text-align:center; font-weight:bold; color:#174EA6; margin-bottom:20px; font-size:18px;">📈 향후 1년간 월별 예상 매출 상승 곡선</div>
-                        <div style="display:flex; flex-direction:row; align-items:flex-end; justify-content:space-around; height:200px; width:100%; border-bottom:1px solid #ccc; padding-bottom:10px;">
+                        <div style="text-align:center; font-weight:bold; color:#174EA6; margin-bottom:15px; font-size:18px;">📈 향후 1년간 월별 예상 매출 상승 곡선</div>
+                        <table style="width:100%; height:180px; border-bottom:2px solid #ccc; border-collapse:collapse; table-layout:fixed;">
+                            <tr>
                     '''
-                    for label, val in zip(monthly_labels, monthly_vals):
-                        height_pct = (val / max_val) * 85  # 높이 비율 (여유공간 15%)
-                        val_str = format_kr_currency(val)
+                    for val in monthly_vals:
+                        # 픽셀(px)로 고정하여 다운로드 시 절대 줄어들지 않도록 함 (최대 140px)
+                        height_px = int((val / max_val) * 140) + 5
+                        # 숫자가 겹치지 않게 '만' 단위로 축약
+                        val_str = format_kr_currency(val).replace('만원', '만')
                         chart_html += f'''
-                            <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; width:7%; height:100%;">
-                                <div style="font-size:11px; color:#555; margin-bottom:5px; white-space:nowrap;">{val_str}</div>
-                                <div style="width:100%; height:{height_pct}%; background-color:#1E88E5; border-radius:4px 4px 0 0; min-height:2px;"></div>
-                                <div style="font-size:12px; font-weight:bold; color:#333; margin-top:8px;">{label}</div>
-                            </div>
+                                <td style="vertical-align:bottom; padding:0 5px; border:none;">
+                                    <div style="font-size:11px; color:#555; margin-bottom:5px; text-align:center; white-space:nowrap; letter-spacing:-0.5px;">{val_str}</div>
+                                    <div style="width:80%; height:{height_px}px; background-color:#1E88E5; border-radius:4px 4px 0 0; margin:0 auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></div>
+                                </td>
                         '''
-                    chart_html += '</div></div>'
+                    chart_html += '''
+                            </tr>
+                        </table>
+                        <table style="width:100%; border-collapse:collapse; table-layout:fixed; margin-top:5px;">
+                            <tr>
+                    '''
+                    for label in monthly_labels:
+                        chart_html += f'''
+                                <td style="text-align:center; font-size:13px; font-weight:bold; color:#333; padding:5px 0; border:none;">{label}</td>
+                        '''
+                    chart_html += '''
+                            </tr>
+                        </table>
+                    </div>
+                    '''
 
-                    # 프롬프트: 마크다운 금지 & Table 레이아웃으로 가로 고정
                     prompt = f"""
                     당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                     아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
@@ -390,22 +405,22 @@ if check_password():
                       <tr>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">1단계 (도입)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                         </td>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">2단계 (성장)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                         </td>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">3단계 (확장)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                         </td>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">4단계 (안착)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">최종목표: OOO만원</div>
                         </td>
                       </tr>
@@ -456,11 +471,10 @@ if check_password():
                 st.balloons()
                 
                 st.divider()
-                st.subheader("💾 리포트 저장 (카테고리별 분할 및 차트 출력)")
+                st.subheader("💾 리포트 저장 (카테고리별 분할 인쇄)")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # CSS에서 flex 덮어쓰기 오작동 코드 삭제, 순수 HTML 구조 출력
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -583,6 +597,7 @@ if check_password():
                         except:
                             pass
                     
+                    # [핵심] Table 레이아웃으로 변경하여 세로형 깨짐 완벽 방어
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 제공된 [출력 양식]의 HTML 태그만 사용하여 리포트를 출력하세요.
@@ -596,7 +611,7 @@ if check_password():
                     [절대 매칭 비법 DB - 기관별 한도 및 순위 룰 (가장 중요!)]
                     ※ 순위 슬롯을 절대 마음대로 바꾸거나 빼지 마세요!
                     1. 🥇 1순위 (직접대출): '중진공' 또는 '소진공' 중 택 1 하세요.
-                       - [소진공/중진공 중복 룰]: 비제조업은 연매출 50억 이상, 상시근로자 5인 이상이어야 중진공 신청 가능. 조건 미달시 소진공 추천. 두 기관의 자금은 중복 이용이 가능하다는 점 언급.
+                       - [소진공/중진공 중복 룰]: 비제조업은 연매출 50억 이상, 상시근로자 5인 이상이어야 신청 가능합니다. 비제조업인데 매출 50억 미만이면 무조건 소진공 추천.
                        - [소진공 룰]: 신용취약(NICE 839 이하)은 3,000만 원 제한. 그 외는 최대 7천만 원 한도.
                     2. 🥈 2순위 (메이저 보증 - 절대 고정!): **무조건 '신용보증기금(신보)' 또는 '기술보증기금(기보)'을 배정하세요.** - [1억 절대 룰 - 경고!]: 신보와 기보는 **무조건 최소 1억 원 이상으로 표기하세요!**
                        - [한도 산출]: 제조업은 매출 1/2, 그 외는 매출 1/6~1/10 수준에서 총 기대출({total_debt})을 차감.
@@ -693,10 +708,11 @@ if check_password():
                         
                         @media print {{ 
                             .print-btn {{ display: none; }} 
-                            @page {{ size: A4; margin: 15mm; }}
-                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.9; }} 
+                            @page {{ size: A4; margin: 10mm; }}
+                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.85; }} 
                             h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
-                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            h2.section-title {{ page-break-before: always !important; margin-top: 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            h2.section-title:first-of-type {{ page-break-before: avoid !important; margin-top: 20px !important; }}
                             div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
                             table {{ font-size: 13px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
                             th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
