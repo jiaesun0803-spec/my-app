@@ -155,7 +155,9 @@ if check_password():
         st.session_state["view_mode"] = "MATCHING"
         st.rerun()
     if st.sidebar.button("📝 3. 사업계획서 생성", use_container_width=True):
-        st.sidebar.info("개발 중인 기능입니다.")
+        st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+        st.session_state["view_mode"] = "PLAN"
+        st.rerun()
 
     # ==========================================
     # 2. 화면 모드 제어 (리포트 vs 대시보드)
@@ -252,7 +254,7 @@ if check_password():
                         template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                     )
                     
-                    # 다운로드 HTML용 순수 CSS 막대그래프 생성 (PDF에서 100% 렌더링됨, 깨짐 방지)
+                    # 다운로드 HTML용 순수 CSS 막대그래프 생성
                     max_val = max(monthly_vals) if max(monthly_vals) > 0 else 1
                     chart_html = f'''
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin:20px 0; page-break-inside: avoid;">
@@ -399,7 +401,7 @@ if check_password():
                     </table>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">6. 매출 1년 전망</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
+                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 10px; margin-bottom:15px; text-align:center;">
                       <tr>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">1단계 (도입)</div>
@@ -469,11 +471,10 @@ if check_password():
                 st.balloons()
                 
                 st.divider()
-                st.subheader("💾 리포트 저장 (카테고리별 분할 및 차트 출력)")
+                st.subheader("💾 리포트 저장 (카테고리별 분할 인쇄)")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # 1번 기업분석리포트는 카테고리별 페이지 분할 유지
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -693,7 +694,7 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [핵심] 2번 리포트는 page-break-before 를 삭제하고 zoom과 margin을 조절해 1장 안에 다 우겨넣음!
+                # 2번 리포트는 page-break-before 를 삭제하고 zoom과 margin을 조절해 1장 안에 다 우겨넣음!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -734,6 +735,168 @@ if check_password():
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
+                
+    # ---------------------------------------------------------
+    # [모드 C: 신규 3. 사업계획서 생성 (PSST 기반)]
+    # ---------------------------------------------------------
+    elif st.session_state["view_mode"] == "PLAN":
+        if st.button("⬅️ 대시보드로 돌아가기"):
+            for k, v in st.session_state["permanent_data"].items():
+                st.session_state[k] = v
+            st.session_state["view_mode"] = "INPUT"
+            st.rerun()
+        
+        d = st.session_state["permanent_data"]
+        c_name = d.get('in_company_name', '미입력').strip()
+        
+        st.title("📝 정부지원사업(PSST) 표준 사업계획서 생성")
+        st.subheader(f"📌 작성 대상 기업: {c_name}")
+        
+        if not st.session_state["api_key"]:
+            st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
+        else:
+            try:
+                with st.status("🚀 잼(Jam)이 대한민국 표준 PSST(Problem-Solution-Scale up-Team) 기반의 사업계획서를 초안을 작성 중입니다...", expanded=True) as status:
+                    try:
+                        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    except Exception as e:
+                        raise Exception(f"API 키 권한 오류입니다. (상세: {e})")
+
+                    if 'models/gemini-1.5-flash' in available_models: target_model = 'gemini-1.5-flash'
+                    elif 'models/gemini-1.5-pro' in available_models: target_model = 'gemini-1.5-pro'
+                    elif 'models/gemini-pro' in available_models: target_model = 'gemini-pro'
+                    elif len(available_models) > 0: target_model = available_models[0].replace('models/', '')
+                    else: raise Exception("사용 가능한 생성형 모델이 없습니다.")
+
+                    model = genai.GenerativeModel(target_model)
+                    
+                    rep_name = d.get('in_rep_name', '미입력')
+                    c_ind = d.get('in_industry', '미입력')
+                    item = d.get('in_item_desc', '미입력')
+                    market = d.get('in_market_status', '미입력')
+                    diff = d.get('in_diff_point', '미입력')
+                    fund_type = d.get('in_fund_type', '운전자금')
+                    fund_purpose = d.get('in_fund_purpose', '미입력')
+                    career = d.get('in_career', '미입력')
+                    req_fund = format_kr_currency(d.get('in_req_amount', 0))
+                    
+                    # PSST 기반 사업계획서 프롬프트
+                    prompt = f"""
+                    당신은 20년 경력의 대한민국 정부지원사업 및 정책자금 심사위원이자 경영컨설턴트입니다. 
+                    아래 [입력 데이터]를 바탕으로, 심사위원을 설득할 수 있는 **PSST(Problem-Solution-Scale up-Team) 프레임워크 기반의 1페이지 사업계획서 초안**을 작성하세요.
+
+                    [작성 규칙]
+                    1. 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 HTML 태그만 사용해야 합니다.
+                    2. 어투: 신뢰감을 주는 명사형(음/슴체)으로 마무리하세요. ('~을 목표로 함', '~방안을 구축함' 등)
+                    3. 내용 분량: 외부 데이터와 시장 트렌드를 가상의 논리적 근거로 추가하여 각 항목의 내용을 4~5문장으로 상세하고 전문적으로 꽉 채우세요.
+
+                    [입력 데이터]
+                    - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
+                    - 비즈니스 아이템: {item}
+                    - 시장 현황: {market}
+                    - 차별화 포인트: {diff}
+                    - 대표자 경력: {career}
+                    - 신청자금 및 용도: {req_fund} ({fund_type} / {fund_purpose})
+
+                    [출력 양식 - HTML 태그 100% 유지]
+                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. Problem (문제 인식)</h2>
+                    <table style="width:100%; border-collapse: collapse; margin-bottom:15px;">
+                      <tr>
+                        <td style="padding:15px; background-color:#ffebee; border-left:5px solid #d32f2f; border-radius:10px;">
+                          <b style="font-size:1.1em; color:#c62828;">📌 타겟 고객의 Pain Point 및 현 시장의 문제점</b><br><br>
+                          <div style="line-height:1.6;">&bull; (입력 데이터를 바탕으로 시장의 근본적인 문제점과 고객의 니즈를 외부지식을 동원해 4~5줄로 날카롭게 분석. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)</div>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. Solution (실현 가능성)</h2>
+                    <table style="width:100%; border-collapse: collapse; margin-bottom:15px;">
+                      <tr>
+                        <td style="padding:15px; background-color:#e3f2fd; border-left:5px solid #1565c0; border-radius:10px;">
+                          <b style="font-size:1.1em; color:#1565c0;">💡 아이템의 핵심 기능 및 차별화된 해결책</b><br><br>
+                          <div style="line-height:1.6;">&bull; (자사 아이템이 위 문제를 어떻게 해결하는지, 타사 대비 압도적인 차별성을 4~5줄로 전문성 있게 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)</div>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. Scale-up (성장 전략)</h2>
+                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
+                      <tr>
+                        <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden;">
+                          <div style="background-color:#e8f5e9; padding:15px; font-weight:bold; font-size:1.1em; border-bottom:1px solid #e0e0e0; color:#2e7d32;">🎯 수익 창출 및 마케팅 전략</div>
+                          <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (시장 진입 전략, 타겟 고객 마케팅 방안, 수익 모델을 4~5줄로 구체적으로 작성)</div>
+                        </td>
+                        <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden;">
+                          <div style="background-color:#fff3e0; padding:15px; font-weight:bold; font-size:1.1em; border-bottom:1px solid #e0e0e0; color:#ef6c00;">💰 자금 소요 및 조달 계획</div>
+                          <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (신청자금 {req_fund}을 활용한 구체적인 {fund_purpose} 실행 계획 및 향후 자금 스케일업 전략 4~5줄 작성)</div>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. Team (팀 및 대표자 역량)</h2>
+                    <table style="width:100%; border-collapse: collapse; margin-bottom:15px;">
+                      <tr>
+                        <td style="padding:15px; background-color:#f3e5f5; border-left:5px solid #6a1b9a; border-radius:10px;">
+                          <b style="font-size:1.1em; color:#6a1b9a;">👑 대표자 전문성 및 사업 추진 의지</b><br><br>
+                          <div style="line-height:1.6;">&bull; (대표자 경력 {career}를 바탕으로 해당 사업을 성공시킬 수밖에 없는 당위성과 기대효과를 4~5줄로 강력하게 어필. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)</div>
+                        </td>
+                      </tr>
+                    </table>
+                    """
+                    
+                    response = model.generate_content(prompt)
+                    status.update(label="✅ PSST 사업계획서 초안 생성 완료!", state="complete")
+                
+                st.markdown(response.text, unsafe_allow_html=True)
+                st.balloons()
+                
+                # --- [다운로드 버튼 기능] ---
+                st.divider()
+                st.subheader("💾 사업계획서 저장 (A4 1페이지 꽉 찬 출력)")
+                
+                safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
+                if not safe_file_name: safe_file_name = "업체"
+                
+                html_export = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>{c_name} 핵심 사업계획서(PSST)</title>
+                    <style>
+                        * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 30px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
+                        h1 {{ color: #111; text-align: center; margin-bottom: 30px; font-size: 32px; font-weight: bold; }}
+                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 30px; font-size: 24px; font-weight: bold; }}
+                        .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
+                        .print-btn:hover {{ background-color: #123C85; }}
+                        
+                        @media print {{ 
+                            .print-btn {{ display: none; }} 
+                            @page {{ size: A4; margin: 10mm; }}
+                            body {{ padding: 0 !important; font-size: 13.5px !important; color: black !important; max-width: 100% !important; line-height: 1.5 !important; zoom: 0.85; }} 
+                            h1 {{ margin: 0 0 15px 0 !important; font-size: 24px !important; }}
+                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.5 !important; }}
+                            table {{ font-size: 13.5px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
+                            th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
+                            br {{ display: block; content: ""; margin-top: 4px; }}
+                            hr {{ margin-bottom: 10px !important; margin-top: 5px !important; }}
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
+                    <h1>📝 핵심 사업계획서 (PSST 기반): {c_name}</h1>
+                    <hr style="margin-bottom: 15px;">
+                    {response.text}
+                </body>
+                </html>
+                """
+                st.download_button(label="📥 사업계획서 다운로드", data=html_export, file_name=f"{safe_file_name}_사업계획서.html", mime="text/html", type="primary")
+
+            except Exception as e:
+                st.error(f"❌ 생성 중 오류 발생: {str(e)}")
 
     # --- [입력 화면 (대시보드)] ---
     else:
@@ -749,7 +912,11 @@ if check_password():
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "MATCHING"
                 st.rerun()
-        with col_t3: st.button("📝 3. 사업계획서 생성", use_container_width=True)
+        with col_t3: 
+            if st.button("📝 3. 사업계획서 생성", use_container_width=True, type="primary"):
+                st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+                st.session_state["view_mode"] = "PLAN"
+                st.rerun()
         st.markdown("<br>", unsafe_allow_html=True)
 
         # 1. 기업현황
@@ -873,4 +1040,4 @@ if check_password():
         st.text_area("[앞으로의 계획]", key="in_future_plan")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.success("✅ 세팅 완료! 좌측에 API 키 저장하시고 상단의 [1/2 리포트 생성] 버튼을 클릭해 주십시오.")
+        st.success("✅ 세팅 완료! 좌측에 API 키 저장하시고 상단 버튼을 클릭해 주십시오.")
