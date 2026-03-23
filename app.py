@@ -209,13 +209,7 @@ if check_password():
                     if add_biz_status == '유' and add_biz_addr:
                         address += f" <br>(추가사업장: {add_biz_addr})"
                     
-                    lease_status = d.get('in_lease_status', '자가')
-                    lease_text = "[임대]" if lease_status == '임대' else "[자가]"
-                    
                     s_cur = format_kr_currency(d.get('in_sales_current', 0))
-                    s_25 = format_kr_currency(d.get('in_sales_2025', 0))
-                    s_24 = format_kr_currency(d.get('in_sales_2024', 0))
-                    s_23 = format_kr_currency(d.get('in_sales_2023', 0))
                     
                     fund_type = d.get('in_fund_type', '운전자금')
                     req_fund = format_kr_currency(d.get('in_req_amount', 0))
@@ -251,15 +245,27 @@ if check_password():
                         template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                     )
                     
-                    # [핵심] 차트를 다운로드된 HTML 파일에서도 렌더링하도록 Plotly HTML 코드로 변환
-                    try:
-                        graph_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
-                        graph_html = f'<div style="margin: 20px 0;">{graph_html}</div>'
-                    except Exception as e:
-                        graph_html = '<div style="padding:15px; margin: 20px 0; background:#e3f2fd; text-align:center; border-radius:10px; font-weight:bold; color:#1565c0; border: 1px dashed #1565c0;">[📈 1년 매출 상승 곡선 차트 확인 - 시스템 화면 참조]</div>'
+                    # [핵심] 다운로드 시 PDF에서 무조건 렌더링되는 HTML/CSS 막대그래프 생성
+                    max_val = max(monthly_vals)
+                    chart_html = f'''
+                    <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin:20px 0;">
+                        <div style="text-align:center; font-weight:bold; color:#333; margin-bottom:20px; font-size:18px;">📈 향후 1년간 월별 예상 매출 상승 곡선</div>
+                        <div style="display:flex; align-items:flex-end; justify-content:space-around; height:200px; width:100%; border-bottom:1px solid #ccc; padding-bottom:10px;">
+                    '''
+                    for label, val in zip(monthly_labels, monthly_vals):
+                        height_pct = (val / max_val) * 90 if max_val > 0 else 0
+                        val_str = format_kr_currency(val)
+                        chart_html += f'''
+                            <div style="display:flex; flex-direction:column; align-items:center; width:7%;">
+                                <div style="font-size:11px; color:#555; margin-bottom:5px; white-space:nowrap;">{val_str}</div>
+                                <div style="width:100%; height:{height_pct}%; background-color:#1E88E5; border-radius:4px 4px 0 0;"></div>
+                                <div style="font-size:12px; font-weight:bold; color:#333; margin-top:8px;">{label}</div>
+                            </div>
+                        '''
+                    chart_html += '</div></div>'
 
-                    # [핵심] 4번, 6번, 7번 박스를 flex가 아닌 'Table(표)' 구조로 강제 고정하여 세로 깨짐 원천 차단
-                    # [핵심] 5번 자금사용계획 구분 비율 축소 및 "사용예정금액" 명칭 변경
+                    # [핵심] 4번, 6번, 7번 등 다단 박스를 <table>로 강제 고정하여 세로로 절대 깨지지 않게 만듦!
+                    # [핵심] 5번 자금사용계획 구분 비율 축소 및 "사용예정금액" 명칭 변경 적용
                     prompt = f"""
                     당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                     아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
@@ -267,7 +273,7 @@ if check_password():
                     [작성 규칙 - 절대 엄수!!!]
                     1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 <h2 class="section-title">, <b>, <div>, <table> 등의 HTML 태그만 사용해야 합니다.
                     2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
-                    3. 내용 풍성하게: 외부 지식(최신 시장 트렌드, 인증 절차, 정책 방향 등)을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 단, 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
+                    3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 단, 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
 
                     [기업 정보]
                     - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
@@ -297,7 +303,7 @@ if check_password():
                     <div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 3~4문장 이상 상세히 작성. 마침표 뒤 줄바꿈 &lt;br&gt;)</div>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. SWOT 분석</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
+                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 10px; margin-bottom:15px; text-align:center;">
                       <tr>
                         <td style="background-color:#e3f2fd; padding:20px; border-radius:15px; vertical-align:top;"><b>S (강점)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 이상의 상세 분석)</div></td>
                         <td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top;"><b>W (약점)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 이상의 상세 분석)</div></td>
@@ -374,26 +380,26 @@ if check_password():
                     </table>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">6. 매출 1년 전망</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 10px; margin-bottom:15px; text-align:center;">
+                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
                       <tr>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">1단계 (도입)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                         </td>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">2단계 (성장)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                         </td>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">3단계 (확장)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                         </td>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">4단계 (안착)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">최종목표: OOO만원</div>
                         </td>
                       </tr>
@@ -448,7 +454,7 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [핵심] 인쇄용 CSS에서 모든 레이아웃 꼬임 유발 코드를 제거하고 순수 HTML 구조를 출력
+                # [핵심] 다운로드용 HTML. 그래프 자리에 차트 HTML을 끼워넣음.
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -467,7 +473,14 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 15mm; }}
-                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; }} 
+                            body {{ padding: 0 !important; font-size: 14px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.85; }} 
+                            h1 {{ margin: 0 0 20px 0 !important; font-size: 26px !important; }}
+                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 12px 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
+                            table {{ font-size: 13px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
+                            th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
+                            br {{ display: block; content: ""; margin-top: 4px; }}
+                            hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
                         }}
                     </style>
                 </head>
@@ -475,7 +488,7 @@ if check_password():
                     <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기 (카테고리별 페이지 분할 적용)</button>
                     <h1>📋 AI 기업분석 결과보고서: {c_name}</h1>
                     <hr style="margin-bottom: 30px;">
-                    {response_text.replace('[GRAPH_INSERT_POINT]', graph_html)}
+                    {response_text.replace('[GRAPH_INSERT_POINT]', chart_html)}
                 </body>
                 </html>
                 """
@@ -561,7 +574,6 @@ if check_password():
                         except:
                             pass
                     
-                    # [핵심] Table 레이아웃으로 변경하여 세로형 깨짐 완벽 방어
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 제공된 [출력 양식]의 HTML 태그만 사용하여 리포트를 출력하세요.
@@ -665,7 +677,7 @@ if check_password():
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
                         body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
                         h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
-                        h2.section-title {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 40px; font-size: 24px; font-weight: bold; page-break-before: always; }}
+                        h2.section-title {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 40px; font-size: 26px; font-weight: bold; page-break-before: always; }}
                         h2.section-title:first-of-type {{ page-break-before: avoid; margin-top: 20px; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
                         .print-btn:hover {{ background-color: #123C85; }}
@@ -673,14 +685,21 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 15mm; }}
-                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; }} 
+                            body {{ padding: 0 !important; font-size: 14px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.85; }} 
+                            h1 {{ margin: 0 0 20px 0 !important; font-size: 26px !important; }}
+                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 12px 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
+                            table {{ font-size: 13px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
+                            th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
+                            br {{ display: block; content: ""; margin-top: 4px; }}
+                            hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
                         }}
                     </style>
                 </head>
                 <body>
-                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기 (카테고리별 페이지 분할 적용)</button>
+                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
-                    <hr style="margin-bottom: 30px;">
+                    <hr style="margin-bottom: 15px;">
                     {response.text}
                 </body>
                 </html>
