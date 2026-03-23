@@ -209,7 +209,13 @@ if check_password():
                     if add_biz_status == '유' and add_biz_addr:
                         address += f" <br>(추가사업장: {add_biz_addr})"
                     
+                    lease_status = d.get('in_lease_status', '자가')
+                    lease_text = "[임대]" if lease_status == '임대' else "[자가]"
+                    
                     s_cur = format_kr_currency(d.get('in_sales_current', 0))
+                    s_25 = format_kr_currency(d.get('in_sales_2025', 0))
+                    s_24 = format_kr_currency(d.get('in_sales_2024', 0))
+                    s_23 = format_kr_currency(d.get('in_sales_2023', 0))
                     
                     fund_type = d.get('in_fund_type', '운전자금')
                     req_fund = format_kr_currency(d.get('in_req_amount', 0))
@@ -232,6 +238,7 @@ if check_password():
                         
                     monthly_labels = [f"{i}월" for i in range(1, 13)]
 
+                    # 화면용 Plotly 그래프 생성
                     fig = go.Figure()
                     fig.add_trace(go.Scatter(
                         x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
@@ -245,27 +252,26 @@ if check_password():
                         template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                     )
                     
-                    # [핵심] 다운로드 시 PDF에서 무조건 렌더링되는 HTML/CSS 막대그래프 생성
-                    max_val = max(monthly_vals)
+                    # [핵심] 다운로드 HTML용 순수 CSS 막대그래프 생성 (PDF에서 100% 렌더링됨)
+                    max_val = max(monthly_vals) if max(monthly_vals) > 0 else 1
                     chart_html = f'''
-                    <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin:20px 0;">
-                        <div style="text-align:center; font-weight:bold; color:#333; margin-bottom:20px; font-size:18px;">📈 향후 1년간 월별 예상 매출 상승 곡선</div>
-                        <div style="display:flex; align-items:flex-end; justify-content:space-around; height:200px; width:100%; border-bottom:1px solid #ccc; padding-bottom:10px;">
+                    <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin:20px 0; page-break-inside: avoid;">
+                        <div style="text-align:center; font-weight:bold; color:#174EA6; margin-bottom:20px; font-size:18px;">📈 향후 1년간 월별 예상 매출 상승 곡선</div>
+                        <div style="display:flex; flex-direction:row; align-items:flex-end; justify-content:space-around; height:200px; width:100%; border-bottom:1px solid #ccc; padding-bottom:10px;">
                     '''
                     for label, val in zip(monthly_labels, monthly_vals):
-                        height_pct = (val / max_val) * 90 if max_val > 0 else 0
+                        height_pct = (val / max_val) * 85  # 높이 비율 (여유공간 15%)
                         val_str = format_kr_currency(val)
                         chart_html += f'''
-                            <div style="display:flex; flex-direction:column; align-items:center; width:7%;">
+                            <div style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; width:7%; height:100%;">
                                 <div style="font-size:11px; color:#555; margin-bottom:5px; white-space:nowrap;">{val_str}</div>
-                                <div style="width:100%; height:{height_pct}%; background-color:#1E88E5; border-radius:4px 4px 0 0;"></div>
+                                <div style="width:100%; height:{height_pct}%; background-color:#1E88E5; border-radius:4px 4px 0 0; min-height:2px;"></div>
                                 <div style="font-size:12px; font-weight:bold; color:#333; margin-top:8px;">{label}</div>
                             </div>
                         '''
                     chart_html += '</div></div>'
 
-                    # [핵심] 4번, 6번, 7번 등 다단 박스를 <table>로 강제 고정하여 세로로 절대 깨지지 않게 만듦!
-                    # [핵심] 5번 자금사용계획 구분 비율 축소 및 "사용예정금액" 명칭 변경 적용
+                    # 프롬프트: 마크다운 금지 & Table 레이아웃으로 가로 고정
                     prompt = f"""
                     당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                     아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
@@ -303,7 +309,7 @@ if check_password():
                     <div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 3~4문장 이상 상세히 작성. 마침표 뒤 줄바꿈 &lt;br&gt;)</div>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. SWOT 분석</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 10px; margin-bottom:15px; text-align:center;">
+                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
                       <tr>
                         <td style="background-color:#e3f2fd; padding:20px; border-radius:15px; vertical-align:top;"><b>S (강점)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 이상의 상세 분석)</div></td>
                         <td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top;"><b>W (약점)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 이상의 상세 분석)</div></td>
@@ -380,26 +386,26 @@ if check_password():
                     </table>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">6. 매출 1년 전망</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
+                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 10px; margin-bottom:15px; text-align:center;">
                       <tr>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">1단계 (도입)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                         </td>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">2단계 (성장)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                         </td>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">3단계 (확장)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
                         </td>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">4단계 (안착)</div>
-                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
+                          <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">(성장 전략 요약 3~4줄)</div>
                           <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">최종목표: OOO만원</div>
                         </td>
                       </tr>
@@ -450,11 +456,11 @@ if check_password():
                 st.balloons()
                 
                 st.divider()
-                st.subheader("💾 리포트 저장 (카테고리별 분할 인쇄)")
+                st.subheader("💾 리포트 저장 (카테고리별 분할 및 차트 출력)")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [핵심] 다운로드용 HTML. 그래프 자리에 차트 HTML을 끼워넣음.
+                # CSS에서 flex 덮어쓰기 오작동 코드 삭제, 순수 HTML 구조 출력
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -473,14 +479,17 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 15mm; }}
-                            body {{ padding: 0 !important; font-size: 14px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.85; }} 
-                            h1 {{ margin: 0 0 20px 0 !important; font-size: 26px !important; }}
-                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 12px 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
-                            table {{ font-size: 13px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
-                            th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
-                            br {{ display: block; content: ""; margin-top: 4px; }}
-                            hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
+                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; }} 
+                            h1 {{ margin: 0 0 30px 0 !important; font-size: 28px !important; }}
+                            
+                            h2.section-title {{ page-break-before: always; margin-top: 0 !important; }}
+                            h2.section-title:first-of-type {{ page-break-before: avoid; margin-top: 20px !important; }}
+                            
+                            h2 {{ font-size: 24px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 15px !important; margin-bottom: 20px !important; border-radius: 10px !important; page-break-inside: avoid; line-height: 1.6 !important; }}
+                            table {{ font-size: 14px !important; margin-bottom: 15px !important; width: 100% !important; table-layout: fixed !important; }}
+                            th, td {{ padding: 10px !important; word-wrap: break-word; }}
+                            br {{ display: block; content: ""; margin-top: 5px; }}
                         }}
                     </style>
                 </head>
@@ -587,7 +596,7 @@ if check_password():
                     [절대 매칭 비법 DB - 기관별 한도 및 순위 룰 (가장 중요!)]
                     ※ 순위 슬롯을 절대 마음대로 바꾸거나 빼지 마세요!
                     1. 🥇 1순위 (직접대출): '중진공' 또는 '소진공' 중 택 1 하세요.
-                       - [중진공 컷오프 룰]: 비제조업은 연매출 50억 이상, 상시근로자 5인 이상이어야 신청 가능합니다. 비제조업인데 매출 50억 미만이면 무조건 소진공 추천.
+                       - [소진공/중진공 중복 룰]: 비제조업은 연매출 50억 이상, 상시근로자 5인 이상이어야 중진공 신청 가능. 조건 미달시 소진공 추천. 두 기관의 자금은 중복 이용이 가능하다는 점 언급.
                        - [소진공 룰]: 신용취약(NICE 839 이하)은 3,000만 원 제한. 그 외는 최대 7천만 원 한도.
                     2. 🥈 2순위 (메이저 보증 - 절대 고정!): **무조건 '신용보증기금(신보)' 또는 '기술보증기금(기보)'을 배정하세요.** - [1억 절대 룰 - 경고!]: 신보와 기보는 **무조건 최소 1억 원 이상으로 표기하세요!**
                        - [한도 산출]: 제조업은 매출 1/2, 그 외는 매출 1/6~1/10 수준에서 총 기대출({total_debt})을 차감.
@@ -685,10 +694,10 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 15mm; }}
-                            body {{ padding: 0 !important; font-size: 14px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.85; }} 
-                            h1 {{ margin: 0 0 20px 0 !important; font-size: 26px !important; }}
-                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 12px 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
+                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.9; }} 
+                            h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
+                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
                             table {{ font-size: 13px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
                             th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
                             br {{ display: block; content: ""; margin-top: 4px; }}
