@@ -252,7 +252,7 @@ if check_password():
                         template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                     )
                     
-                    # [핵심] 다운로드 HTML용 순수 CSS 막대그래프 생성 (PDF에서 100% 렌더링됨, 깨짐 방지)
+                    # 다운로드 HTML용 순수 CSS 막대그래프 생성 (PDF에서 100% 렌더링됨, 깨짐 방지)
                     max_val = max(monthly_vals) if max(monthly_vals) > 0 else 1
                     chart_html = f'''
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin:20px 0; page-break-inside: avoid;">
@@ -261,9 +261,7 @@ if check_password():
                             <tr>
                     '''
                     for val in monthly_vals:
-                        # 픽셀(px)로 고정하여 다운로드 시 절대 줄어들지 않도록 함 (최대 140px)
                         height_px = int((val / max_val) * 140) + 5
-                        # 숫자가 겹치지 않게 '만' 단위로 축약
                         val_str = format_kr_currency(val).replace('만원', '만')
                         chart_html += f'''
                                 <td style="vertical-align:bottom; padding:0 5px; border:none;">
@@ -401,7 +399,7 @@ if check_password():
                     </table>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">6. 매출 1년 전망</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 10px; margin-bottom:15px; text-align:center;">
+                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
                       <tr>
                         <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
                           <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">1단계 (도입)</div>
@@ -471,10 +469,11 @@ if check_password():
                 st.balloons()
                 
                 st.divider()
-                st.subheader("💾 리포트 저장 (카테고리별 분할 인쇄)")
+                st.subheader("💾 리포트 저장 (카테고리별 분할 및 차트 출력)")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
+                # 1번 기업분석리포트는 카테고리별 페이지 분할 유지
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -485,8 +484,6 @@ if check_password():
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
                         body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
                         h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
-                        h2.section-title {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 40px; font-size: 24px; font-weight: bold; page-break-before: always; }}
-                        h2.section-title:first-of-type {{ page-break-before: avoid; margin-top: 20px; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
                         .print-btn:hover {{ background-color: #123C85; }}
                         
@@ -496,19 +493,18 @@ if check_password():
                             body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; }} 
                             h1 {{ margin: 0 0 30px 0 !important; font-size: 28px !important; }}
                             
-                            h2.section-title {{ page-break-before: always; margin-top: 0 !important; }}
-                            h2.section-title:first-of-type {{ page-break-before: avoid; margin-top: 20px !important; }}
-                            
-                            h2 {{ font-size: 24px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 15px !important; margin-bottom: 20px !important; border-radius: 10px !important; page-break-inside: avoid; line-height: 1.6 !important; }}
-                            table {{ font-size: 14px !important; margin-bottom: 15px !important; width: 100% !important; table-layout: fixed !important; }}
-                            th, td {{ padding: 10px !important; word-wrap: break-word; }}
-                            br {{ display: block; content: ""; margin-top: 5px; }}
+                            h2.section-title {{ page-break-before: always !important; margin-top: 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            h2.section-title:first-of-type {{ page-break-before: avoid !important; margin-top: 20px !important; }}
+                            div {{ padding: 12px 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
+                            table {{ font-size: 13px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
+                            th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
+                            br {{ display: block; content: ""; margin-top: 4px; }}
+                            hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
                         }}
                     </style>
                 </head>
                 <body>
-                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기 (카테고리별 페이지 분할 적용)</button>
+                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기 (카테고리별 분할 & 그래프 포함)</button>
                     <h1>📋 AI 기업분석 결과보고서: {c_name}</h1>
                     <hr style="margin-bottom: 30px;">
                     {response_text.replace('[GRAPH_INSERT_POINT]', chart_html)}
@@ -521,7 +517,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 2. 정책자금 매칭 리포트]
+    # [모드 B: 2. 정책자금 매칭 리포트 - 1페이지 압축 & 전년도매출 룰]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -540,7 +536,7 @@ if check_password():
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
-                with st.status("🚀 잼(Jam)이 기관별 컷오프, 한도, 유동화자금 예외 룰을 철저히 심사 중입니다...", expanded=True) as status:
+                with st.status("🚀 잼(Jam)이 전년도 매출을 기준으로 깐깐한 심사를 진행 중입니다...", expanded=True) as status:
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
@@ -557,9 +553,6 @@ if check_password():
                     tax_status = d.get('in_tax_status', '무')
                     fin_status = d.get('in_fin_status', '무')
                     
-                    kibo_debt = safe_int(d.get('in_debt_kibo', 0))
-                    kodit_debt = safe_int(d.get('in_debt_kodit', 0))
-                    
                     total_debt_val = sum([
                         safe_int(d.get('in_debt_kosme', 0)),
                         safe_int(d.get('in_debt_semas', 0)),
@@ -572,6 +565,11 @@ if check_password():
                     ])
                     total_debt = format_kr_currency(total_debt_val)
                     
+                    # 전년도 매출 (2025년 기준)
+                    s_25_val = safe_int(d.get('in_sales_2025', 0))
+                    s_25 = format_kr_currency(s_25_val)
+                    
+                    # 금년 매출 (2026년 기준)
                     s_cur_val = safe_int(d.get('in_sales_current', 0))
                     s_cur = format_kr_currency(s_cur_val)
                     
@@ -597,7 +595,7 @@ if check_password():
                         except:
                             pass
                     
-                    # [핵심] Table 레이아웃으로 변경하여 세로형 깨짐 완벽 방어
+                    # [핵심] 프롬프트에 '전년도 매출'을 심사 기준으로 강제 명시
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 제공된 [출력 양식]의 HTML 태그만 사용하여 리포트를 출력하세요.
@@ -610,12 +608,15 @@ if check_password():
 
                     [절대 매칭 비법 DB - 기관별 한도 및 순위 룰 (가장 중요!)]
                     ※ 순위 슬롯을 절대 마음대로 바꾸거나 빼지 마세요!
+                    ※ 모든 매출 기준 판단(컷오프, 보증한도 계산 등)은 **전년도 매출액({s_25})**을 기준으로 심사하세요! (매우 중요)
+
                     1. 🥇 1순위 (직접대출): '중진공' 또는 '소진공' 중 택 1 하세요.
-                       - [소진공/중진공 중복 룰]: 비제조업은 연매출 50억 이상, 상시근로자 5인 이상이어야 신청 가능합니다. 비제조업인데 매출 50억 미만이면 무조건 소진공 추천.
+                       - [소진공/중진공 중복 룰]: 두 기관의 자금은 **중복 이용이 가능**하다는 점을 꿀팁에 반드시 언급하세요.
+                       - [중진공 컷오프 룰]: 비제조업은 전년도 매출({s_25_val}만원) 50억 이상, 상시근로자 5인 이상이어야 신청 가능합니다. 비제조업인데 전년도 매출 50억 미만이면 무조건 소진공을 추천하세요.
                        - [소진공 룰]: 신용취약(NICE 839 이하)은 3,000만 원 제한. 그 외는 최대 7천만 원 한도.
                     2. 🥈 2순위 (메이저 보증 - 절대 고정!): **무조건 '신용보증기금(신보)' 또는 '기술보증기금(기보)'을 배정하세요.** - [1억 절대 룰 - 경고!]: 신보와 기보는 **무조건 최소 1억 원 이상으로 표기하세요!**
-                       - [한도 산출]: 제조업은 매출 1/2, 그 외는 매출 1/6~1/10 수준에서 총 기대출({total_debt})을 차감.
-                       - [매출 4억 룰]: 매출액 4억 이상이면 신보 강력 추천.
+                       - [한도 산출]: 제조업은 전년도 매출의 1/2, 그 외는 전년도 매출의 1/6~1/10 수준에서 총 기대출({total_debt})을 차감하여 계산합니다.
+                       - [매출 4억 룰]: 전년도 매출액 4억 이상이면 신보 강력 추천.
                        - [기보 예외 룰]: 벤처/특허 보유시 기보 강력 추천. 중복 불가.
                     3. 🥉 3순위 (지역재단 - 절대 고정!): **무조건 '지역신용보증재단'을 배정하세요.** (신보/기보 먼저, 지역신보 나중 순서의 중요성 강조).
                     4. 🏅 4순위 (유동화/기타): 법인기업({biz_type})의 한도가 찼을 때 P-CBO 추천. 조건 미달시 타 기관 배치.
@@ -625,20 +626,21 @@ if check_password():
                     - 기업명: {c_name} / 사업자유형: {biz_type} / 업종: {c_ind} / 업력: 약 {biz_years}년
                     - 세금체납: {tax_status} / 금융연체: {fin_status} / NICE 점수: {nice_score}점
                     - 기술/벤처 인증: {cert_status} / 아이템: {item}
-                    - 금년 매출: {s_cur} / 총 기대출 합계: {total_debt} / 희망자금: {fund_req}
+                    - 전년도 매출: {s_25} / 금년 예상 매출: {s_cur}
+                    - 총 기대출 합계: {total_debt} / 희망자금: {fund_req}
 
                     [출력 양식 - HTML 태그 및 양식 100% 동일하게 유지. 마크다운 절대 쓰지 말것]
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
+                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
                       <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>업종:</b> {c_ind} ({biz_type}) &nbsp;|&nbsp; <b>업력:</b> 약 {biz_years}년 <br>
                       <b>NICE 점수:</b> {nice_score}점 &nbsp;|&nbsp; <b>기술/벤처 인증:</b> {cert_status} <br>
-                      <b>금년매출:</b> {s_cur} &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.15em;">필요자금: {fund_req}</b>
+                      <b>전년도매출:</b> <span style="color:#1565c0; font-weight:bold;">{s_25}</span> &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.15em;">필요자금: {fund_req}</b>
                     </div>
                     <div style="margin-bottom:20px;">
                       (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 스펙 평가. 2~3줄 요약, 문장마다 마침표 뒤 줄바꿈 &lt;br&gt;)
                     </div>
 
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. 우선순위 추천 정책자금 (1~2순위)</h2>
+                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. 우선순위 추천 정책자금 (1~2순위)</h2>
                     <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px;">
                       <tr>
                         <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top;">
@@ -654,7 +656,7 @@ if check_password():
                       </tr>
                     </table>
 
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 후순위 추천 (플랜 B - 3~4순위)</h2>
+                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 후순위 추천 (플랜 B - 3~4순위)</h2>
                     <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px;">
                       <tr>
                         <td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top;">
@@ -670,7 +672,7 @@ if check_password():
                       </tr>
                     </table>
 
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 심사 전 필수 체크리스트 및 보완 가이드</h2>
+                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 심사 전 필수 체크리스트 및 보완 가이드</h2>
                     <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:15px;">
                       <b style="font-size:1.1em; color:#c62828;">🚨 AI 컨설턴트 보완 조언:</b><br><br>
                       &bull; (보완 전략 1 2~3줄 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
@@ -686,11 +688,12 @@ if check_password():
                 
                 # --- [다운로드 버튼 기능] ---
                 st.divider()
-                st.subheader("💾 매칭 리포트 저장 (화면 폰트 100% 보존 1페이지 출력)")
+                st.subheader("💾 매칭 리포트 저장 (화면 폰트 100% 보존 1페이지 꽉 찬 출력)")
                 
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
+                # [핵심] 2번 리포트는 page-break-before 를 삭제하고 zoom과 margin을 조절해 1장 안에 다 우겨넣음!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -699,37 +702,35 @@ if check_password():
                     <title>{c_name} 정책자금 매칭 리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
-                        h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
-                        h2.section-title {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 40px; font-size: 26px; font-weight: bold; page-break-before: always; }}
-                        h2.section-title:first-of-type {{ page-break-before: avoid; margin-top: 20px; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 30px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
+                        h1 {{ color: #111; text-align: center; margin-bottom: 30px; font-size: 32px; font-weight: bold; }}
+                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 30px; font-size: 24px; font-weight: bold; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
                         .print-btn:hover {{ background-color: #123C85; }}
                         
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.85; }} 
+                            body {{ padding: 0 !important; font-size: 13px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.85; }} 
                             h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
-                            h2.section-title {{ page-break-before: always !important; margin-top: 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            h2.section-title:first-of-type {{ page-break-before: avoid !important; margin-top: 20px !important; }}
+                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
                             div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
-                            table {{ font-size: 13px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
-                            th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
-                            br {{ display: block; content: ""; margin-top: 4px; }}
-                            hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
+                            table {{ font-size: 12.5px !important; margin-bottom: 8px !important; width: 100% !important; table-layout: fixed !important; }}
+                            th, td {{ padding: 8px !important; word-wrap: break-word; vertical-align: top; }}
+                            br {{ display: block; content: ""; margin-top: 3px; }}
+                            hr {{ margin-bottom: 10px !important; margin-top: 5px !important; }}
                         }}
                     </style>
                 </head>
                 <body>
-                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
+                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기 (1페이지 압축)</button>
                     <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
                     <hr style="margin-bottom: 15px;">
                     {response.text}
                 </body>
                 </html>
                 """
-                st.download_button(label="📥 매칭 리포트 다운로드", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
+                st.download_button(label="📥 매칭 리포트 다운로드 (1페이지 압축 PDF)", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
