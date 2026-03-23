@@ -518,7 +518,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 2. 정책자금 매칭 리포트 - 1페이지 압축 & 전년도매출 룰]
+    # [모드 B: 2. 정책자금 매칭 리포트]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -566,11 +566,9 @@ if check_password():
                     ])
                     total_debt = format_kr_currency(total_debt_val)
                     
-                    # 전년도 매출 (2025년 기준)
                     s_25_val = safe_int(d.get('in_sales_2025', 0))
                     s_25 = format_kr_currency(s_25_val)
                     
-                    # 금년 매출 (2026년 기준)
                     s_cur_val = safe_int(d.get('in_sales_current', 0))
                     s_cur = format_kr_currency(s_cur_val)
                     
@@ -586,7 +584,6 @@ if check_password():
                     has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
                     cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                     
-                    # 업력 계산 로직
                     start_date_str = d.get('in_start_date', '').strip()
                     biz_years = 0
                     if start_date_str:
@@ -596,7 +593,6 @@ if check_password():
                         except:
                             pass
                     
-                    # [핵심] 프롬프트에 '전년도 매출'을 심사 기준으로 강제 명시
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 제공된 [출력 양식]의 HTML 태그만 사용하여 리포트를 출력하세요.
@@ -608,8 +604,7 @@ if check_password():
                     4. 내용 분량 (A4 1장 절대 사수): A4 1장에 완벽하게 들어갈 수 있도록 각 세부 항목은 **2~3줄 이내로 팩트만 압축해서** 작성하세요.
 
                     [절대 매칭 비법 DB - 기관별 한도 및 순위 룰 (가장 중요!)]
-                    ※ 순위 슬롯을 절대 마음대로 바꾸거나 빼지 마세요!
-                    ※ 모든 매출 기준 판단(컷오프, 보증한도 계산 등)은 **전년도 매출액({s_25})**을 기준으로 심사하세요! (매우 중요)
+                    ※ 모든 매출 기준 판단(컷오프, 보증한도 계산 등)은 **전년도 매출액({s_25})**을 기준으로 심사하세요!
 
                     1. 🥇 1순위 (직접대출): '중진공' 또는 '소진공' 중 택 1 하세요.
                        - [소진공/중진공 중복 룰]: 두 기관의 자금은 **중복 이용이 가능**하다는 점을 꿀팁에 반드시 언급하세요.
@@ -694,7 +689,6 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # 2번 리포트는 page-break-before 를 삭제하고 zoom과 margin을 조절해 1장 안에 다 우겨넣음!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -735,9 +729,9 @@ if check_password():
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
-                
+
     # ---------------------------------------------------------
-    # [모드 C: 신규 3. 사업계획서 생성 (PSST 기반)]
+    # [모드 C: 신규 3. 사업계획서 생성 (Gems 맞춤형 프롬프트 생성기)]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "PLAN":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -745,158 +739,162 @@ if check_password():
                 st.session_state[k] = v
             st.session_state["view_mode"] = "INPUT"
             st.rerun()
-        
+            
         d = st.session_state["permanent_data"]
         c_name = d.get('in_company_name', '미입력').strip()
+        rep_name = d.get('in_rep_name', '미입력')
+        biz_type = d.get('in_biz_type', '미입력')
+        c_ind = d.get('in_industry', '미입력')
+        address = d.get('in_biz_addr', '미입력')
+        career = d.get('in_career', '미입력')
         
-        st.title("📝 정부지원사업(PSST) 표준 사업계획서 생성")
-        st.subheader(f"📌 작성 대상 기업: {c_name}")
+        s_25 = format_kr_currency(d.get('in_sales_2025', 0))
+        s_cur = format_kr_currency(d.get('in_sales_current', 0))
         
-        if not st.session_state["api_key"]:
-            st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
-        else:
+        total_debt_val = sum([
+            safe_int(d.get('in_debt_kosme', 0)), safe_int(d.get('in_debt_semas', 0)),
+            safe_int(d.get('in_debt_koreg', 0)), safe_int(d.get('in_debt_kodit', 0)),
+            safe_int(d.get('in_debt_kibo', 0)), safe_int(d.get('in_debt_etc', 0)),
+            safe_int(d.get('in_debt_credit', 0)), safe_int(d.get('in_debt_coll', 0))
+        ])
+        total_debt = format_kr_currency(total_debt_val)
+        
+        nice_score = d.get('in_nice_score', 0)
+        tax_status = d.get('in_tax_status', '무')
+        fin_status = d.get('in_fin_status', '무')
+        
+        item = d.get('in_item_desc', '미입력')
+        market = d.get('in_market_status', '미입력')
+        diff = d.get('in_diff_point', '미입력')
+        
+        has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
+        cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
+        
+        req_fund = format_kr_currency(d.get('in_req_amount', 0))
+        fund_type = d.get('in_fund_type', '운전자금')
+        fund_purpose = d.get('in_fund_purpose', '미입력')
+        
+        biz_years = 0
+        start_date_str = d.get('in_start_date', '').strip()
+        if start_date_str:
             try:
-                with st.status("🚀 잼(Jam)이 대한민국 표준 PSST(Problem-Solution-Scale up-Team) 기반의 사업계획서를 초안을 작성 중입니다...", expanded=True) as status:
-                    try:
-                        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                    except Exception as e:
-                        raise Exception(f"API 키 권한 오류입니다. (상세: {e})")
+                biz_start_year = int(start_date_str[:4])
+                biz_years = max(0, 2026 - biz_start_year)
+            except:
+                pass
 
-                    if 'models/gemini-1.5-flash' in available_models: target_model = 'gemini-1.5-flash'
-                    elif 'models/gemini-1.5-pro' in available_models: target_model = 'gemini-1.5-pro'
-                    elif 'models/gemini-pro' in available_models: target_model = 'gemini-pro'
-                    elif len(available_models) > 0: target_model = available_models[0].replace('models/', '')
-                    else: raise Exception("사용 가능한 생성형 모델이 없습니다.")
+        # 공통 데이터 요약본 생성
+        data_summary = f"""
+[기업 및 대표자 기본정보]
+- 기업명: {c_name} / 대표자: {rep_name} / 사업자유형: {biz_type}
+- 업종: {c_ind} / 업력: 약 {biz_years}년
+- 사업장 주소: {address}
+- 대표자 주요 경력: {career}
 
-                    model = genai.GenerativeModel(target_model)
-                    
-                    rep_name = d.get('in_rep_name', '미입력')
-                    c_ind = d.get('in_industry', '미입력')
-                    item = d.get('in_item_desc', '미입력')
-                    market = d.get('in_market_status', '미입력')
-                    diff = d.get('in_diff_point', '미입력')
-                    fund_type = d.get('in_fund_type', '운전자금')
-                    fund_purpose = d.get('in_fund_purpose', '미입력')
-                    career = d.get('in_career', '미입력')
-                    req_fund = format_kr_currency(d.get('in_req_amount', 0))
-                    
-                    # PSST 기반 사업계획서 프롬프트
-                    prompt = f"""
-                    당신은 20년 경력의 대한민국 정부지원사업 및 정책자금 심사위원이자 경영컨설턴트입니다. 
-                    아래 [입력 데이터]를 바탕으로, 심사위원을 설득할 수 있는 **PSST(Problem-Solution-Scale up-Team) 프레임워크 기반의 1페이지 사업계획서 초안**을 작성하세요.
+[재무 및 신용 상태]
+- 전년도 매출: {s_25} / 금년 예상 매출: {s_cur}
+- 총 기대출 합계: {total_debt}
+- NICE 점수: {nice_score}점 / 세금체납: {tax_status} / 금융연체: {fin_status}
 
-                    [작성 규칙]
-                    1. 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 HTML 태그만 사용해야 합니다.
-                    2. 어투: 신뢰감을 주는 명사형(음/슴체)으로 마무리하세요. ('~을 목표로 함', '~방안을 구축함' 등)
-                    3. 내용 분량: 외부 데이터와 시장 트렌드를 가상의 논리적 근거로 추가하여 각 항목의 내용을 4~5문장으로 상세하고 전문적으로 꽉 채우세요.
+[비즈니스 모델 및 시장 현황]
+- 핵심 아이템: {item}
+- 시장 현황: {market}
+- 차별화 포인트: {diff}
+- 기술/벤처 인증현황: {cert_status}
 
-                    [입력 데이터]
-                    - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
-                    - 비즈니스 아이템: {item}
-                    - 시장 현황: {market}
-                    - 차별화 포인트: {diff}
-                    - 대표자 경력: {career}
-                    - 신청자금 및 용도: {req_fund} ({fund_type} / {fund_purpose})
+[자금 신청 요건]
+- 신청 자금액: {req_fund} ({fund_type})
+- 자금 사용 용도: {fund_purpose}
+"""
 
-                    [출력 양식 - HTML 태그 100% 유지]
-                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. Problem (문제 인식)</h2>
-                    <table style="width:100%; border-collapse: collapse; margin-bottom:15px;">
-                      <tr>
-                        <td style="padding:15px; background-color:#ffebee; border-left:5px solid #d32f2f; border-radius:10px;">
-                          <b style="font-size:1.1em; color:#c62828;">📌 타겟 고객의 Pain Point 및 현 시장의 문제점</b><br><br>
-                          <div style="line-height:1.6;">&bull; (입력 데이터를 바탕으로 시장의 근본적인 문제점과 고객의 니즈를 외부지식을 동원해 4~5줄로 날카롭게 분석. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)</div>
-                        </td>
-                      </tr>
-                    </table>
+        # 각 기관별 프롬프트 세팅
+        prompt_kosme = f"""당신은 중소벤처기업진흥공단(중진공) 정책자금 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 중진공 제출용 '기업현황서 및 사업계획서' 초안을 작성해주세요.
 
-                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. Solution (실현 가능성)</h2>
-                    <table style="width:100%; border-collapse: collapse; margin-bottom:15px;">
-                      <tr>
-                        <td style="padding:15px; background-color:#e3f2fd; border-left:5px solid #1565c0; border-radius:10px;">
-                          <b style="font-size:1.1em; color:#1565c0;">💡 아이템의 핵심 기능 및 차별화된 해결책</b><br><br>
-                          <div style="line-height:1.6;">&bull; (자사 아이템이 위 문제를 어떻게 해결하는지, 타사 대비 압도적인 차별성을 4~5줄로 전문성 있게 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)</div>
-                        </td>
-                      </tr>
-                    </table>
+[작성 포커스]
+- 중진공의 핵심 평가 지표인 '고용 창출 능력', '기술성', '미래 성장성', '수출 기여도'를 강력하게 어필할 것.
+- 자금 사용 용도({fund_purpose})가 기업 성장에 왜 필수적인지 구체적으로 논증할 것.
 
-                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. Scale-up (성장 전략)</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
-                      <tr>
-                        <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden;">
-                          <div style="background-color:#e8f5e9; padding:15px; font-weight:bold; font-size:1.1em; border-bottom:1px solid #e0e0e0; color:#2e7d32;">🎯 수익 창출 및 마케팅 전략</div>
-                          <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (시장 진입 전략, 타겟 고객 마케팅 방안, 수익 모델을 4~5줄로 구체적으로 작성)</div>
-                        </td>
-                        <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden;">
-                          <div style="background-color:#fff3e0; padding:15px; font-weight:bold; font-size:1.1em; border-bottom:1px solid #e0e0e0; color:#ef6c00;">💰 자금 소요 및 조달 계획</div>
-                          <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (신청자금 {req_fund}을 활용한 구체적인 {fund_purpose} 실행 계획 및 향후 자금 스케일업 전략 4~5줄 작성)</div>
-                        </td>
-                      </tr>
-                    </table>
+{data_summary}
+"""
 
-                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. Team (팀 및 대표자 역량)</h2>
-                    <table style="width:100%; border-collapse: collapse; margin-bottom:15px;">
-                      <tr>
-                        <td style="padding:15px; background-color:#f3e5f5; border-left:5px solid #6a1b9a; border-radius:10px;">
-                          <b style="font-size:1.1em; color:#6a1b9a;">👑 대표자 전문성 및 사업 추진 의지</b><br><br>
-                          <div style="line-height:1.6;">&bull; (대표자 경력 {career}를 바탕으로 해당 사업을 성공시킬 수밖에 없는 당위성과 기대효과를 4~5줄로 강력하게 어필. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)</div>
-                        </td>
-                      </tr>
-                    </table>
-                    """
-                    
-                    response = model.generate_content(prompt)
-                    status.update(label="✅ PSST 사업계획서 초안 생성 완료!", state="complete")
-                
-                st.markdown(response.text, unsafe_allow_html=True)
-                st.balloons()
-                
-                # --- [다운로드 버튼 기능] ---
-                st.divider()
-                st.subheader("💾 사업계획서 저장 (A4 1페이지 꽉 찬 출력)")
-                
-                safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
-                if not safe_file_name: safe_file_name = "업체"
-                
-                html_export = f"""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>{c_name} 핵심 사업계획서(PSST)</title>
-                    <style>
-                        * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 30px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
-                        h1 {{ color: #111; text-align: center; margin-bottom: 30px; font-size: 32px; font-weight: bold; }}
-                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 30px; font-size: 24px; font-weight: bold; }}
-                        .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
-                        .print-btn:hover {{ background-color: #123C85; }}
-                        
-                        @media print {{ 
-                            .print-btn {{ display: none; }} 
-                            @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; font-size: 13.5px !important; color: black !important; max-width: 100% !important; line-height: 1.5 !important; zoom: 0.85; }} 
-                            h1 {{ margin: 0 0 15px 0 !important; font-size: 24px !important; }}
-                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.5 !important; }}
-                            table {{ font-size: 13.5px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
-                            th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
-                            br {{ display: block; content: ""; margin-top: 4px; }}
-                            hr {{ margin-bottom: 10px !important; margin-top: 5px !important; }}
-                        }}
-                    </style>
-                </head>
-                <body>
-                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
-                    <h1>📝 핵심 사업계획서 (PSST 기반): {c_name}</h1>
-                    <hr style="margin-bottom: 15px;">
-                    {response.text}
-                </body>
-                </html>
-                """
-                st.download_button(label="📥 사업계획서 다운로드", data=html_export, file_name=f"{safe_file_name}_사업계획서.html", mime="text/html", type="primary")
+        prompt_semas = f"""당신은 소상공인시장진흥공단(소진공) 정책자금 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 소진공 제출용 '사업계획서(융자신청서)' 초안을 작성해주세요.
 
-            except Exception as e:
-                st.error(f"❌ 생성 중 오류 발생: {str(e)}")
+[작성 포커스]
+- 소진공의 핵심 평가 지표인 '사업의 생존 가능성(자생력)', '상권 분석', '안정적인 수익 창출 및 상환 능력'을 강조할 것.
+- 아이템({item})이 지역 상권 또는 타겟 고객에게 어떻게 어필되는지 직관적이고 명확하게 설명할 것.
+
+{data_summary}
+"""
+
+        prompt_kodit = f"""당신은 신용보증기금(신보) 및 지역신용보증재단 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 보증기관 제출용 '기업현황서 및 사업계획서' 초안을 작성해주세요.
+
+[작성 포커스]
+- 보증기관의 핵심 평가 지표인 '매출 성장세', '재무 안정성', '명확한 상환 계획', '시장성'을 강력하게 어필할 것.
+- 현재 기대출({total_debt})이 있더라도, 이번 보증 자금({req_fund})을 통해 어떻게 추가 매출을 견인할 수 있는지 논리적으로 작성할 것.
+
+{data_summary}
+"""
+
+        prompt_kibo = f"""당신은 기술보증기금(기보) 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 기보 제출용 '기술사업계획서' 초안을 작성해주세요.
+
+[작성 포커스]
+- 기보의 핵심 평가 지표인 '기술의 혁신성(특허/인증)', 'R&D 역량', '기술의 사업화 가능성'을 최우선으로 강조할 것.
+- 기업의 아이템({item})과 차별화 포인트({diff})를 기술적 관점에서 심도 있게 풀어낼 것.
+
+{data_summary}
+"""
+
+        prompt_ir = f"""당신은 벤처캐피탈(VC) 심사역이자 전문 IR 컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 투자자나 외부 기관에 제안하기 위한 'PSST(Problem-Solution-Scale up-Team) 기반 표준 사업계획서' 초안을 작성해주세요.
+
+[작성 포커스]
+- Problem: 시장의 문제점과 고객의 Pain Point를 날카롭게 지적.
+- Solution: 우리 아이템({item})의 압도적인 해결책과 경쟁우위({diff}) 제시.
+- Scale-up: 명확한 수익 모델과 마케팅 전략, 자금({req_fund}) 활용을 통한 J커브 성장 계획.
+- Team: 대표자({rep_name})와 팀의 독보적인 역량({career}) 강조.
+
+{data_summary}
+"""
+
+        st.title("📝 기관별 맞춤형 사업계획서 프롬프트 팩")
+        st.markdown("""
+        **Gems 연동 가이드:** 아래 5개 기관 중 원하는 탭을 선택하여 프롬프트를 **복사**한 뒤, 
+        우측의 **[🚀 Gemini Gems 새창 열기]** 버튼을 클릭하여 Gems 채팅창에 붙여넣기만 하시면 완벽한 서류가 작성됩니다!
+        """)
+        
+        st.link_button("🚀 Gemini Gems 새창 열기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        tabs = st.tabs(["1. 중진공", "2. 소진공", "3. 신보/재단", "4. 기술보증기금", "5. 제안용(IR/PSST)"])
+
+        with tabs[0]:
+            st.subheader("🏢 중소벤처기업진흥공단 (중진공) 제출용")
+            st.info("💡 **포커스:** 고용창출, 기술성, 수출기여도, 사업구체성 강조")
+            st.code(prompt_kosme, language="markdown")
+
+        with tabs[1]:
+            st.subheader("🏪 소상공인시장진흥공단 (소진공) 제출용")
+            st.info("💡 **포커스:** 사업 생존 가능성(자생력), 지역 상권 분석, 안정적 상환 능력 강조")
+            st.code(prompt_semas, language="markdown")
+
+        with tabs[2]:
+            st.subheader("🏦 신용보증기금 / 지역신용보증재단 제출용")
+            st.info("💡 **포커스:** 매출 성장세, 재무 안정성, 확고한 상환 계획, 시장성 강조")
+            st.code(prompt_kodit, language="markdown")
+
+        with tabs[3]:
+            st.subheader("🔬 기술보증기금 (기보) 제출용")
+            st.info("💡 **포커스:** 기술 혁신성(특허/인증), R&D 역량, 기술의 사업화(BM) 가능성 강조")
+            st.code(prompt_kibo, language="markdown")
+
+        with tabs[4]:
+            st.subheader("📈 제안용 (IR / PSST 표준) 제출용")
+            st.info("💡 **포커스:** 타겟 시장의 Problem, 혁신적인 Solution, J커브 Scale-up, 압도적인 Team 역량 강조")
+            st.code(prompt_ir, language="markdown")
 
     # --- [입력 화면 (대시보드)] ---
     else:
@@ -913,7 +911,7 @@ if check_password():
                 st.session_state["view_mode"] = "MATCHING"
                 st.rerun()
         with col_t3: 
-            if st.button("📝 3. 사업계획서 생성", use_container_width=True, type="primary"):
+            if st.button("📝 3. 사업계획서 생성 (Gems 연결)", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "PLAN"
                 st.rerun()
