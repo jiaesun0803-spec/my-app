@@ -518,7 +518,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 2. 정책자금 매칭 리포트]
+    # [모드 B: 2. 정책자금 매칭 리포트 - 1페이지 압축 & 전년도매출 룰]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -604,7 +604,7 @@ if check_password():
                     4. 내용 분량 (A4 1장 절대 사수): A4 1장에 완벽하게 들어갈 수 있도록 각 세부 항목은 **2~3줄 이내로 팩트만 압축해서** 작성하세요.
 
                     [절대 매칭 비법 DB - 기관별 한도 및 순위 룰 (가장 중요!)]
-                    ※ 모든 매출 기준 판단(컷오프, 보증한도 계산 등)은 **전년도 매출액({s_25})**을 기준으로 심사하세요!
+                    ※ 모든 매출 기준 판단(컷오프, 보증한도 계산 등)은 **전년도 매출액({s_25})**을 기준으로 심사하세요! 
 
                     1. 🥇 1순위 (직접대출): '중진공' 또는 '소진공' 중 택 1 하세요.
                        - [소진공/중진공 중복 룰]: 두 기관의 자금은 **중복 이용이 가능**하다는 점을 꿀팁에 반드시 언급하세요.
@@ -911,17 +911,18 @@ if check_password():
         st.markdown("<br>", unsafe_allow_html=True)
 
         # [핵심] 기관별 탭 생성 & 탭 내부에 2분할 버튼+프롬프트 배치
+        # 📌 나중에 https://gemini.google.com/app/여기에_실제_Gems_주소 를 넣으시면 됩니다!
         tabs = st.tabs(["1. 중진공", "2. 소진공", "3. 신보/재단", "4. 기술보증기금", "5. 제안용(IR/PSST)"])
 
         with tabs[0]:
             st.subheader("🏢 중소벤처기업진흥공단 (중진공)")
             col1, col2 = st.columns(2)
             with col1:
-                st.link_button("🚀 중진공 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.link_button("🚀 중진공 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/app", use_container_width=True)
                 st.info("💡 **포커스:** 고용창출, 기술성, 미래성장성 중심")
                 st.code(prompt_kosme_plan, language="markdown")
             with col2:
-                st.link_button("📝 중진공 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.link_button("📝 중진공 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/app", use_container_width=True)
                 st.info("💡 **포커스:** 자금소요 내역, 상환계획, 재무현황 중심")
                 st.code(prompt_kosme_loan, language="markdown")
 
@@ -929,11 +930,11 @@ if check_password():
             st.subheader("🏪 소상공인시장진흥공단 (소진공)")
             col1, col2 = st.columns(2)
             with col1:
-                st.link_button("🚀 소진공 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.link_button("🚀 소진공 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/app", use_container_width=True)
                 st.info("💡 **포커스:** 사업 생존 가능성(자생력), 지역 상권 분석 중심")
                 st.code(prompt_semas_plan, language="markdown")
             with col2:
-                st.link_button("📝 소진공 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.link_button("📝 소진공 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/app", use_container_width=True)
                 st.info("💡 **포커스:** 안정적 매출 및 대출 상환 능력 중심")
                 st.code(prompt_semas_loan, language="markdown")
 
@@ -941,11 +942,11 @@ if check_password():
             st.subheader("🏦 신용보증기금 / 지역신용보증재단")
             col1, col2 = st.columns(2)
             with col1:
-                st.link_button("🚀 신보/재단 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.link_button("🚀 신보/재단 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/app", use_container_width=True)
                 st.info("💡 **포커스:** 매출 성장세, 시장성, 대표자 경영 능력 중심")
                 st.code(prompt_kodit_plan, language="markdown")
             with col2:
-                st.link_button("📝 신보/재단 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.link_button("📝 신보/재단 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/app", use_container_width=True)
                 st.info("💡 **포커스:** 재무 안정성, 신용 상태, 확고한 상환 계획 중심")
                 st.code(prompt_kodit_loan, language="markdown")
 
@@ -953,11 +954,11 @@ if check_password():
             st.subheader("🔬 기술보증기금 (기보)")
             col1, col2 = st.columns(2)
             with col1:
-                st.link_button("🚀 기보 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.link_button("🚀 기보 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/app", use_container_width=True)
                 st.info("💡 **포커스:** 기술 혁신성(특허/인증), R&D 역량, BM 중심")
                 st.code(prompt_kibo_plan, language="markdown")
             with col2:
-                st.link_button("📝 기보 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.link_button("📝 기보 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/app", use_container_width=True)
                 st.info("💡 **포커스:** 기술 사업화 자금(시제품 등) 활용 및 재무 성과 중심")
                 st.code(prompt_kibo_loan, language="markdown")
 
@@ -965,11 +966,11 @@ if check_password():
             st.subheader("📈 제안용 (IR / PSST 표준)")
             col1, col2 = st.columns(2)
             with col1:
-                st.link_button("🚀 제안용 사업계획서(PSST) Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.link_button("🚀 제안용 사업계획서(PSST) Gems 바로가기 (클릭)", "https://gemini.google.com/app", use_container_width=True)
                 st.info("💡 **포커스:** 타겟 시장 Problem, 혁신적 Solution, J커브 Scale-up 중심")
                 st.code(prompt_ir_plan, language="markdown")
             with col2:
-                st.link_button("📝 투자제안 요약서(1-Pager) Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.link_button("📝 투자제안 요약서(1-Pager) Gems 바로가기 (클릭)", "https://gemini.google.com/app", use_container_width=True)
                 st.info("💡 **포커스:** 투자금 활용 계획 및 예상 Exit(목표 달성) 시나리오 중심")
                 st.code(prompt_ir_loan, language="markdown")
 
