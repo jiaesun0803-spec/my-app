@@ -51,7 +51,7 @@ def format_kr_currency(value):
     except:
         return str(value)
 
-# [수정] 사업자번호 및 법인등록번호 자동 포맷팅 함수 추가
+# 사업자번호 및 법인등록번호 자동 포맷팅 함수
 def format_biz_no(raw_no):
     no = str(raw_no).replace("-", "").strip()
     if len(no) == 10:
@@ -164,7 +164,7 @@ if check_password():
     if "permanent_data" not in st.session_state: st.session_state["permanent_data"] = {}
 
     # ---------------------------------------------------------
-    # [모드 A: 기존 1. 기업분석리포트 - 내용 알차게 & 그래프 유동성 & 페이지 분할]
+    # [모드 A: 기존 1. 기업분석리포트]
     # ---------------------------------------------------------
     if st.session_state["view_mode"] == "REPORT":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -183,7 +183,7 @@ if check_password():
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
-                with st.status("🚀 잼(Jam)이 외부 지식을 동원하여 심도 있는 분석 리포트를 생성 중입니다...", expanded=True) as status:
+                with st.status("🚀 잼(Jam)이 시각화 리포트를 생성 중입니다...", expanded=True) as status:
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
@@ -199,13 +199,11 @@ if check_password():
                     
                     c_ind = d.get('in_industry', '미입력')
                     rep_name = d.get('in_rep_name', '미입력')
-                    
-                    # [수정] 사업자 및 법인등록번호 포맷팅
                     biz_no = format_biz_no(d.get('in_raw_biz_no', '미입력'))
                     corp_no = format_corp_no(d.get('in_raw_corp_no', ''))
                     corp_text = f" (법인: {corp_no})" if corp_no else ""
-                    
                     address = d.get('in_biz_addr', '미입력')
+                    
                     add_biz_status = d.get('in_has_additional_biz', '무')
                     add_biz_addr = d.get('in_additional_biz_addr', '').strip()
                     if add_biz_status == '유' and add_biz_addr:
@@ -223,7 +221,6 @@ if check_password():
                     market = d.get('in_market_status', '미입력')
                     diff = d.get('in_diff_point', '미입력')
                     
-                    # [수정] 그래프 유동성 부여 (사인 파동을 활용한 리얼한 곡선)
                     val_cur = safe_int(d.get('in_sales_current', 0))
                     if val_cur <= 0: val_cur = 1000
                     start_val = val_cur / 12
@@ -233,7 +230,6 @@ if check_password():
                     for i in range(12):
                         progress = i / 11.0
                         linear_part = start_val + (end_val - start_val) * progress
-                        # 오르락내리락 하는 변동성(Fluctuation) 추가 (최대 증감폭의 15%)
                         wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
                         monthly_vals.append(int(linear_part + wave_part))
                         
@@ -252,15 +248,15 @@ if check_password():
                         template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                     )
 
-                    # [수정] 프롬프트 퀄리티 강화, 경쟁사 표 추가, 특허/인증 조언 추가, 카테고리 클래스(section-title) 할당
+                    # [핵심 수정] 4번, 6번, 7번 등 박스형 레이아웃에 table-layout:fixed 를 적용하여 세로로 깨짐 원천 차단!
                     prompt = f"""
                     당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                     아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
 
                     [작성 규칙 - 절대 엄수!!!]
-                    1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 <h2 class="section-title">, <b>, <div> 등의 HTML 태그만 사용해야 합니다.
+                    1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 <h2 class="section-title">, <b>, <div>, <table> 등의 HTML 태그만 사용해야 합니다.
                     2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
-                    3. 내용 풍성하게: 외부 지식(최신 시장 트렌드, 인증 절차, 정책 방향 등)을 총동원하여 각 항목을 4~5문장 이상으로 매우 상세하고 알차게 꽉 채워 작성하세요. 절대 내용이 빈약하면 안 됩니다.
+                    3. 내용 풍성하게: 외부 지식(최신 시장 트렌드, 인증 절차, 정책 방향 등)을 총동원하여 각 항목을 4~5문장 이상으로 매우 상세하게 채우세요. 단, 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
 
                     [기업 정보]
                     - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
@@ -287,27 +283,33 @@ if check_password():
                         <td colspan="3" style="padding:15px;">{address}</td>
                       </tr>
                     </table>
-                    <div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 4~5문장 이상 상세하고 깊이 있게 작성. 숫자는 기재하지 말 것. 마침표 뒤 줄바꿈 &lt;br&gt;)</div>
+                    <div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 4~5문장 이상 상세히 작성. 마침표 뒤 줄바꿈 &lt;br&gt;)</div>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. SWOT 분석</h2>
-                    <table style="width:100%; text-align:center; border-collapse: separate; border-spacing: 10px;">
+                    <table style="width:100%; table-layout:fixed; text-align:center; border-collapse: separate; border-spacing: 10px; margin-bottom:15px;">
                       <tr>
-                        <td style="background-color:#e3f2fd; padding:20px; border-radius:15px; width:50%;"><b>S (강점)</b><br><div style="text-align:left;">(3~4줄 이상의 상세 분석 내용)</div></td>
-                        <td style="background-color:#ffebee; padding:20px; border-radius:15px; width:50%;"><b>W (약점)</b><br><div style="text-align:left;">(3~4줄 이상의 상세 분석 내용)</div></td>
+                        <td style="background-color:#e3f2fd; padding:20px; border-radius:15px; vertical-align:top;"><b>S (강점)</b><br><div style="text-align:left; margin-top:10px;">(3~4줄 이상의 상세 분석)</div></td>
+                        <td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top;"><b>W (약점)</b><br><div style="text-align:left; margin-top:10px;">(3~4줄 이상의 상세 분석)</div></td>
                       </tr>
                       <tr>
-                        <td style="background-color:#e8f5e9; padding:20px; border-radius:15px;"><b>O (기회)</b><br><div style="text-align:left;">(3~4줄 이상의 상세 분석 내용)</div></td>
-                        <td style="background-color:#fff3e0; padding:20px; border-radius:15px;"><b>T (위협)</b><br><div style="text-align:left;">(3~4줄 이상의 상세 분석 내용)</div></td>
+                        <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; vertical-align:top;"><b>O (기회)</b><br><div style="text-align:left; margin-top:10px;">(3~4줄 이상의 상세 분석)</div></td>
+                        <td style="background-color:#fff3e0; padding:20px; border-radius:15px; vertical-align:top;"><b>T (위협)</b><br><div style="text-align:left; margin-top:10px;">(3~4줄 이상의 상세 분석)</div></td>
                       </tr>
                     </table>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 시장현황 및 경쟁력 비교</h2>
-                    <div style="display:flex; gap:15px; margin-bottom:15px;">
-                      <div style="flex:1; background-color:#f3e5f5; padding:20px; border-radius:15px;"><b>📊 시장 현황 분석</b><br><br>&bull; (해당 업종 시장 트렌드, 외부 데이터를 동원하여 4~5줄 상세 요약)</div>
-                    </div>
+                    <table style="width:100%; table-layout:fixed; border-collapse: collapse; border:none; margin-bottom:15px;">
+                      <tr>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="background-color:#f3e5f5; padding:20px; border-radius:15px; height:100%;">
+                            <b>📊 시장 현황 분석</b><br><br>&bull; (해당 업종 시장 트렌드를 동원하여 상세 요약)
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
                     <div style="margin-top:15px; padding:15px; background-color:#fff; border-radius:15px; border:1px solid #e0e0e0;">
                       <b>⚔️ 주요 경쟁사 비교 분석표</b><br>
-                      <table style="width:100%; border-collapse: collapse; text-align:center; font-size:0.95em; margin-top:10px;">
+                      <table style="width:100%; table-layout:fixed; border-collapse: collapse; text-align:center; font-size:0.95em; margin-top:10px;">
                         <tr style="background-color:#eceff1;">
                           <th style="padding:12px; border:1px solid #ccc;">비교 항목</th>
                           <th style="padding:12px; border:1px solid #ccc;">{c_name} (자사)</th>
@@ -330,20 +332,28 @@ if check_password():
                     </div>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 핵심경쟁력분석</h2>
-                    <div style="display:flex; gap:15px; margin-bottom:10px; text-align:center;">
-                      <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
-                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.1em;">포인트 1 (키워드)</div>
-                        <div style="padding:20px; font-size:0.95em; text-align:left;">&bull; (외부 지식 활용 3~4줄 구체적 분석)</div>
-                      </div>
-                      <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
-                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.1em;">포인트 2 (키워드)</div>
-                        <div style="padding:20px; font-size:0.95em; text-align:left;">&bull; (외부 지식 활용 3~4줄 구체적 분석)</div>
-                      </div>
-                      <div style="flex:1; border:1px solid #e0e0e0; border-radius:15px; overflow:hidden;">
-                        <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.1em;">포인트 3 (키워드)</div>
-                        <div style="padding:20px; font-size:0.95em; text-align:left;">&bull; (외부 지식 활용 3~4줄 구체적 분석)</div>
-                      </div>
-                    </div>
+                    <table style="width:100%; table-layout:fixed; border-collapse: collapse; border:none; margin-bottom:15px;">
+                      <tr>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="border:1px solid #e0e0e0; border-radius:15px; overflow:hidden; height:100%;">
+                            <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.1em; text-align:center;">포인트 1 (키워드)</div>
+                            <div style="padding:20px; font-size:0.95em; text-align:left;">&bull; (외부 지식 활용 구체적 분석)</div>
+                          </div>
+                        </td>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="border:1px solid #e0e0e0; border-radius:15px; overflow:hidden; height:100%;">
+                            <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.1em; text-align:center;">포인트 2 (키워드)</div>
+                            <div style="padding:20px; font-size:0.95em; text-align:left;">&bull; (외부 지식 활용 구체적 분석)</div>
+                          </div>
+                        </td>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="border:1px solid #e0e0e0; border-radius:15px; overflow:hidden; height:100%;">
+                            <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.1em; text-align:center;">포인트 3 (키워드)</div>
+                            <div style="padding:20px; font-size:0.95em; text-align:left;">&bull; (외부 지식 활용 구체적 분석)</div>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">5. 자금 사용계획 (총 신청자금: {req_fund})</h2>
                     <table style="width:100%; border-collapse: collapse; text-align:left;">
@@ -354,50 +364,77 @@ if check_password():
                      </tr>
                      <tr>
                        <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 1)</td>
-                       <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 2~3줄 구체적 기재)</td>
+                       <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 구체적 기재)</td>
                        <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
                      </tr>
                      <tr>
                        <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 2)</td>
-                       <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 2~3줄 구체적 기재)</td>
+                       <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 구체적 기재)</td>
                        <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
                      </tr>
                     </table>
 
                     <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">6. 매출 1년 전망</h2>
-                    <div style="display:flex; justify-content:space-between; align-items:stretch; text-align:center; flex-wrap:wrap; gap:10px;">
-                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.3em; font-weight:bold; color:#1565c0;">1단계 (도입)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(성장 전략 2~3줄)</div>
-                        <div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div>
-                      </div>
-                      <div style="font-size:2em; align-self:center;">➡️</div>
-                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.3em; font-weight:bold; color:#1565c0;">2단계 (성장)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(성장 전략 2~3줄)</div>
-                        <div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div>
-                      </div>
-                      <div style="font-size:2em; align-self:center;">➡️</div>
-                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.3em; font-weight:bold; color:#1565c0;">3단계 (확장)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(성장 전략 2~3줄)</div>
-                        <div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div>
-                      </div>
-                      <div style="font-size:2em; align-self:center;">➡️</div>
-                      <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; flex:1;">
-                        <div style="font-size:1.3em; font-weight:bold; color:#1565c0;">4단계 (안착)</div>
-                        <div style="margin:15px 0; font-size:0.95em; text-align:left;">(성장 전략 2~3줄)</div>
-                        <div style="color:#d32f2f; font-weight:bold;">최종목표: OOO만원</div>
-                      </div>
-                    </div>
+                    <table style="width:100%; table-layout:fixed; border-collapse: collapse; border:none; margin-bottom:15px; text-align:center;">
+                      <tr>
+                        <td style="padding:0 5px; border:none; vertical-align:top;">
+                          <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; height:100%;">
+                            <div style="font-size:1.3em; font-weight:bold; color:#1565c0;">1단계 (도입)</div>
+                            <div style="margin:15px 0; font-size:0.95em; text-align:left;">(성장 전략 요약)</div>
+                            <div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div>
+                          </div>
+                        </td>
+                        <td style="padding:0 5px; border:none; vertical-align:top;">
+                          <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; height:100%;">
+                            <div style="font-size:1.3em; font-weight:bold; color:#1565c0;">2단계 (성장)</div>
+                            <div style="margin:15px 0; font-size:0.95em; text-align:left;">(성장 전략 요약)</div>
+                            <div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div>
+                          </div>
+                        </td>
+                        <td style="padding:0 5px; border:none; vertical-align:top;">
+                          <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; height:100%;">
+                            <div style="font-size:1.3em; font-weight:bold; color:#1565c0;">3단계 (확장)</div>
+                            <div style="margin:15px 0; font-size:0.95em; text-align:left;">(성장 전략 요약)</div>
+                            <div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div>
+                          </div>
+                        </td>
+                        <td style="padding:0 5px; border:none; vertical-align:top;">
+                          <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; height:100%;">
+                            <div style="font-size:1.3em; font-weight:bold; color:#1565c0;">4단계 (안착)</div>
+                            <div style="margin:15px 0; font-size:0.95em; text-align:left;">(성장 전략 요약)</div>
+                            <div style="color:#d32f2f; font-weight:bold;">최종목표: OOO만원</div>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
                     
                     [GRAPH_INSERT_POINT]
 
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">7. AI 컨설턴트 핵심 코멘트 (인증 및 특허 전략 중심)</h2>
+                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">7. 성장비전 및 AI 컨설턴트 코멘트</h2>
+                    <table style="width:100%; table-layout:fixed; border-collapse: collapse; border:none; margin-bottom:20px; text-align:center;">
+                      <tr>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="padding:20px; background-color:#e8f5e9; border-radius:15px; height:100%;">
+                            <b>🌱 단기 비전</b><br><br><div style="text-align:left;">&bull; (핵심 비전)</div>
+                          </div>
+                        </td>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="padding:20px; background-color:#fff3e0; border-radius:15px; height:100%;">
+                            <b>🚀 중기 비전</b><br><br><div style="text-align:left;">&bull; (핵심 비전)</div>
+                          </div>
+                        </td>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="padding:20px; background-color:#ffebee; border-radius:15px; height:100%;">
+                            <b>👑 장기 비전</b><br><br><div style="text-align:left;">&bull; (핵심 비전)</div>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                    
                     <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:25px; border-radius:15px; margin-top:15px; line-height:1.8;">
                       <b>💡 벤처/이노비즈, ISO 등 필수 인증 및 특허 확보 조언:</b><br><br>
-                      &bull; (기업 업종에 맞는 인증 제도 혜택 및 취득 방법 등 외부 지식을 동원하여 5~6줄 이상 매우 상세하고 전문적으로 조언. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                      &bull; (아이템 보호를 위한 지식재산권(특허, 실용신안 등) 전략을 5~6줄 이상 구체적으로 조언. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                      &bull; (기업 업종에 맞는 인증 제도 혜택 및 취득 방법 등 외부 지식을 동원하여 전문적으로 조언. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                      &bull; (아이템 보호를 위한 지식재산권 전략을 구체적으로 조언. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                     </div>
                     """
                     
@@ -426,7 +463,6 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [수정] h2.section-title 에 page-break-before 옵션 적용 (첫 번째 제외)
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -447,14 +483,14 @@ if check_password():
                             body {{ padding: 0 !important; font-size: 15px !important; color: black !important; max-width: 100% !important; }} 
                             h1 {{ margin: 0 0 30px 0 !important; font-size: 28px !important; }}
                             
-                            /* 카테고리별 페이지 나누기 핵심 마법! */
+                            /* 카테고리별 페이지 나누기 (첫 번째 항목 제외) */
                             h2.section-title {{ page-break-before: always; margin-top: 0 !important; }}
                             h2.section-title:first-of-type {{ page-break-before: avoid; margin-top: 20px !important; }}
                             
                             h2 {{ font-size: 24px !important; padding-bottom: 5px !important; border-bottom: 2px solid #174EA6 !important; }}
                             div {{ padding: 15px !important; margin-bottom: 20px !important; border-radius: 10px !important; page-break-inside: avoid; line-height: 1.6 !important; }}
-                            table {{ font-size: 14px !important; margin-bottom: 15px !important; }}
-                            th, td {{ padding: 10px !important; }}
+                            table {{ font-size: 14px !important; margin-bottom: 15px !important; table-layout: fixed !important; }}
+                            th, td {{ padding: 10px !important; word-wrap: break-word; }}
                             br {{ display: block; content: ""; margin-top: 5px; }}
                         }}
                     </style>
@@ -473,7 +509,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 신규 2. 정책자금 매칭 리포트]
+    # [모드 B: 신규 2. 정책자금 매칭 리포트 (가로형 고정 적용)]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -492,7 +528,7 @@ if check_password():
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
-                with st.status("🚀 잼(Jam)이 기관별 컷오프, 한도, 유동화자금(P-CBO) 예외 룰을 철저히 심사 중입니다...", expanded=True) as status:
+                with st.status("🚀 잼(Jam)이 기관별 컷오프, 한도, 유동화자금 예외 룰을 철저히 심사 중입니다...", expanded=True) as status:
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
@@ -549,33 +585,29 @@ if check_password():
                         except:
                             pass
                     
+                    # [수정] flex 레이아웃을 table 레이아웃으로 변경하여 세로형 깨짐 방지
                     prompt = f"""
                     당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
                     아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 제공된 [출력 양식]의 HTML 태그만 사용하여 리포트를 출력하세요.
 
                     [작성 및 포맷팅 규칙 - 절대 엄수!!!]
-                    1. 마크다운 사용 금지: 제목 기호(##), 볼드체(**), 리스트(-) 등 **마크다운 기호를 절대 사용하지 마세요.** 출력 양식에 제공된 `<h2>`, `<b>`, `&bull;`, `<br>` 등의 순수 HTML 태그만 사용해야 합니다. 
+                    1. 마크다운 사용 금지: 제목 기호(##), 볼드체(**), 리스트(-) 등 **마크다운 기호를 절대 사용하지 마세요.** 출력 양식에 제공된 `<h2>`, `<b>`, `&bull;`, `<table>` 등의 순수 HTML 태그만 사용해야 합니다. 
                     2. 어투: 모든 문장은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 간결하게 작성하세요.
                     3. 줄바꿈: 문장이 마침표('.')로 끝날 때마다 무조건 HTML 태그 `<br>`을 삽입하여 시원하게 줄바꿈 하세요.
-                    4. 내용 분량 (A4 1장 절대 사수): A4 1장에 완벽하게 들어갈 수 있도록 각 세부 항목(추천사유, 합격꿀팁 등)은 무조건 외부지식을 동원하되 **2~3줄 이내로 팩트만 압축해서** 작성하세요. 절대 4줄 이상 길게 쓰지 마세요.
+                    4. 내용 분량 (A4 1장 절대 사수): A4 1장에 완벽하게 들어갈 수 있도록 각 세부 항목은 **2~3줄 이내로 팩트만 압축해서** 작성하세요.
 
                     [절대 매칭 비법 DB - 기관별 한도 및 순위 룰 (가장 중요!)]
-                    ※ 순위 슬롯을 절대 마음대로 바꾸거나 빼지 마세요! (1순위:직접대출, 2순위:신보/기보, 3순위:지역신보, 4순위:유동화/특화)
-                    1. 🥇 1순위 (직접대출): '중소벤처기업진흥공단(중진공)' 또는 '소상공인시장진흥공단(소진공)' 중 택 1 하세요.
-                       - [소진공/중진공 중복 룰]: 두 기관의 자금은 **중복 이용이 가능**하다는 점을 꿀팁에 반드시 언급하세요.
-                       - [중진공 컷오프 룰]: 비제조업(도소매업, 서비스업 등)은 연매출 50억 이상, 상시근로자 5인 이상이어야 신청 가능합니다. 비제조업인데 매출 50억 미만이면 무조건 소진공을 추천하세요.
-                       - [소진공 룰]: 소진공은 최대 한도 7천만 원을 원칙으로 하되, 신용취약(NICE 839 이하)은 3,000만 원으로 제한합니다. 절대 1억 5천 등의 가짜 한도를 적지 마세요.
-                    2. 🥈 2순위 (메이저 보증 - 절대 고정!): **2순위 자리는 무슨 일이 있어도 무조건 '신용보증기금(신보)' 또는 '기술보증기금(기보)'을 배정하세요.** - [1억 절대 룰 - 경고!]: 신보와 기보는 **무조건 1억 원 이상부터** 진행 가능합니다. 예상 한도 칸에 5천만원 등 1억 미만의 금액은 절대 적지 마세요. 무조건 최소 1억 원 이상으로 표기하세요!
-                       - [한도 산출]: 제조업은 매출 1/2, 그 외는 매출 1/6~1/10 수준에서 총 기대출({total_debt})을 차감합니다. 만약 산출 금액이 적더라도, 리포트에는 신보/기보의 특징을 살려 **"최소 1억 원 (또는 한도 1억 이상 타겟팅)"**이라고 적고 2순위 자리를 무조건 사수하세요!
-                       - [매출 4억 룰]: 매출액 4억(40,000만 원) 이상이면 신용보증기금(신보)을 강력하게 추천하세요.
-                       - [기보 예외 룰]: 도소매/서비스업이라도 '벤처/이노비즈'나 '특허' 보유시 신보 대신 기보를 강력 추천하세요.
-                       - [중복 금지]: 신보와 기보는 중복 불가.
-                    3. 🥉 3순위 (지역재단 - 절대 고정!): **3순위 자리는 무조건 '지역신용보증재단'을 배정하세요.**
-                       - [보증기관 순서 룰 - 핵심!!!]: 보증기관은 **반드시 '신보/기보(2순위) 먼저 ➡️ 지역신보(3순위) 나중' 순서로 진행**해야만 두 기관을 중복 이용할 수 있습니다. (지역신보를 먼저 쓰면 신보/기보 한도가 막혀버림). 꿀팁에 이 순서의 중요성을 강력하게 강조하세요. 한도는 최대 2억입니다.
-                    4. 🏅 4순위 (유동화/기타): 
-                       - 법인기업({biz_type})이고 성장성이 뚜렷하나 일반보증이 꽉 찼다면 P-CBO 추천 (신보 P-CBO: 업력 4년 이상 / 중진공 스케일업: 업력 5년+매출 20억 이상).
-                       - 조건 미달시 다른 특화자금을 추천하세요.
-                    5. 🚫 연체 컷오프: 세금체납({tax_status}), 금융연체({fin_status}) '유'인 경우 1~4순위 전부 비우고 연체 해소 조언만 작성.
+                    ※ 순위 슬롯을 절대 마음대로 바꾸거나 빼지 마세요!
+                    1. 🥇 1순위 (직접대출): '중진공' 또는 '소진공' 중 택 1 하세요.
+                       - [중진공 컷오프 룰]: 비제조업은 연매출 50억 이상, 상시근로자 5인 이상이어야 신청 가능합니다. 비제조업인데 매출 50억 미만이면 무조건 소진공 추천.
+                       - [소진공 룰]: 신용취약(NICE 839 이하)은 3,000만 원 제한. 그 외는 최대 7천만 원 한도.
+                    2. 🥈 2순위 (메이저 보증 - 절대 고정!): **무조건 '신용보증기금(신보)' 또는 '기술보증기금(기보)'을 배정하세요.** - [1억 절대 룰 - 경고!]: 신보와 기보는 **무조건 최소 1억 원 이상으로 표기하세요!**
+                       - [한도 산출]: 제조업은 매출 1/2, 그 외는 매출 1/6~1/10 수준에서 총 기대출({total_debt})을 차감.
+                       - [매출 4억 룰]: 매출액 4억 이상이면 신보 강력 추천.
+                       - [기보 예외 룰]: 벤처/특허 보유시 기보 강력 추천. 중복 불가.
+                    3. 🥉 3순위 (지역재단 - 절대 고정!): **무조건 '지역신용보증재단'을 배정하세요.** (신보/기보 먼저, 지역신보 나중 순서의 중요성 강조).
+                    4. 🏅 4순위 (유동화/기타): 법인기업({biz_type})의 한도가 찼을 때 P-CBO 추천. 조건 미달시 타 기관 배치.
+                    5. 🚫 연체 컷오프: 세금/금융연체 '유'인 경우 1~4순위 비우고 연체 해소 조언만 작성.
 
                     [입력 데이터]
                     - 기업명: {c_name} / 사업자유형: {biz_type} / 업종: {c_ind} / 업력: 약 {biz_years}년
@@ -583,7 +615,7 @@ if check_password():
                     - 기술/벤처 인증: {cert_status} / 아이템: {item}
                     - 금년 매출: {s_cur} / 총 기대출 합계: {total_debt} / 희망자금: {fund_req}
 
-                    [출력 양식 - HTML 태그 및 양식 100% 동일하게 유지. 마크다운(##, **) 절대 쓰지 말것]
+                    [출력 양식 - HTML 태그 및 양식 100% 동일하게 유지. 마크다운 절대 쓰지 말것]
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
                       <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>업종:</b> {c_ind} ({biz_type}) &nbsp;|&nbsp; <b>업력:</b> 약 {biz_years}년 <br>
@@ -595,32 +627,44 @@ if check_password():
                     </div>
 
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. 우선순위 추천 정책자금 (1~2순위)</h2>
-                    <div style="display:flex; gap:15px; margin-bottom:15px; align-items:stretch;">
-                      <div style="flex:1; background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32;">
-                        <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
-                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (합격 꿀팁 및 전략 2~3줄 상세 작성. 소진공/중진공 중복가능 언급. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                      </div>
-                      <div style="flex:1; background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32;">
-                        <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [신용보증기금 또는 기술보증기금] / [보증 상품명] / 예상 한도 (최소 1억 원 이상)</b><br><br>
-                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (합격 꿀팁 및 심사절차 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                      </div>
-                    </div>
+                    <table style="width:100%; table-layout:fixed; border-collapse: collapse; border:none; margin-bottom:15px;">
+                      <tr>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; height:100%;">
+                            <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
+                            &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                            &bull; (합격 꿀팁 및 전략 2~3줄 상세 작성. 소진공/중진공 중복가능 언급. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                          </div>
+                        </td>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; height:100%;">
+                            <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [신용보증기금 또는 기술보증기금] / [보증 상품명] / 예상 한도 (최소 1억 원 이상)</b><br><br>
+                            &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                            &bull; (합격 꿀팁 및 심사절차 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
 
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 후순위 추천 (플랜 B - 3~4순위)</h2>
-                    <div style="display:flex; gap:15px; margin-bottom:15px; align-items:stretch;">
-                      <div style="flex:1; background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00;">
-                        <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신용보증재단] / [세부 자금명] / 예상 한도 (최대 2억 원)</b><br><br>
-                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (기금 우선, 재단 나중 순서의 중요성 등 전략 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                      </div>
-                      <div style="flex:1; background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00;">
-                        <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [추천 기관명] / [세부 자금명(또는 P-CBO)] / 예상 한도</b><br><br>
-                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (접근 전략 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                      </div>
-                    </div>
+                    <table style="width:100%; table-layout:fixed; border-collapse: collapse; border:none; margin-bottom:15px;">
+                      <tr>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; height:100%;">
+                            <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신용보증재단] / [세부 자금명] / 예상 한도 (최대 2억 원)</b><br><br>
+                            &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                            &bull; (기금 우선, 재단 나중 순서의 중요성 등 전략 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                          </div>
+                        </td>
+                        <td style="padding:0 7px; border:none; vertical-align:top;">
+                          <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; height:100%;">
+                            <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [추천 기관명] / [세부 자금명(또는 P-CBO)] / 예상 한도</b><br><br>
+                            &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                            &bull; (접근 전략 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
 
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 심사 전 필수 체크리스트 및 보완 가이드</h2>
                     <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:15px;">
@@ -663,8 +707,10 @@ if check_password():
                             body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.5 !important; zoom: 0.82; }} 
                             h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
                             h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
-                            br {{ display: block; content: ""; margin-top: 2px; }}
+                            div {{ padding: 15px 20px !important; margin-bottom: 12px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.5 !important; }}
+                            table {{ font-size: 13.5px !important; margin-bottom: 12px !important; table-layout: fixed !important; }}
+                            th, td {{ padding: 6px !important; word-wrap: break-word; }}
+                            br {{ display: block; content: ""; margin-top: 3px; }}
                             hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
                         }}
                     </style>
@@ -672,7 +718,7 @@ if check_password():
                 <body>
                     <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
-                    <hr style="margin-bottom: 15px;">
+                    <hr style="margin-bottom: 30px;">
                     {response.text}
                 </body>
                 </html>
