@@ -98,7 +98,9 @@ if check_password():
         st.session_state["api_key"] = st.secrets.get("GEMINI_API_KEY", "")
         
     api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
-    if st.sidebar.button("💾 임시 적용 (클라우드 설정 권장)"):
+    
+    # [수정] 사이드바 버튼 명칭 변경
+    if st.sidebar.button("💾 API KEY 저장"):
         st.session_state["api_key"] = api_key_input
         st.sidebar.success("✅ 이번 접속 동안 API 키가 유지됩니다.")
         time.sleep(1)
@@ -190,6 +192,12 @@ if check_password():
                     corp_no = d.get('in_raw_corp_no', '')
                     corp_text = f" ({corp_no})" if corp_no else ""
                     address = d.get('in_biz_addr', '미입력')
+                    
+                    # [수정] 추가사업장이 있을 경우 주소에 포함되도록 센스있게 세팅!
+                    add_biz_status = d.get('in_has_additional_biz', '무')
+                    add_biz_addr = d.get('in_additional_biz_addr', '').strip()
+                    if add_biz_status == '유' and add_biz_addr:
+                        address += f" <br>(추가사업장: {add_biz_addr})"
                     
                     lease_status = d.get('in_lease_status', '자가')
                     lease_text = "[임대]" if lease_status == '임대' else "[자가]"
@@ -377,7 +385,7 @@ if check_password():
                 st.balloons()
                 
                 st.divider()
-                st.subheader("💾 리포트 저장 (화면 폰트 100% 보존 출력)")
+                st.subheader("💾 리포트 저장 (화면 폰트 100% 보존 1페이지 출력)")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
@@ -398,7 +406,7 @@ if check_password():
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; margin: 0 !important; max-width: 100% !important; font-size: 13.5px !important; line-height: 1.4 !important; zoom: 0.82; }}
+                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; line-height: 1.5 !important; zoom: 0.82; }} 
                             h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
                             h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
                             div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
@@ -539,234 +547,4 @@ if check_password():
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
                       <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>업종:</b> {c_ind} ({biz_type}) &nbsp;|&nbsp; <b>업력:</b> 약 {biz_years}년 <br>
                       <b>NICE 점수:</b> {nice_score}점 &nbsp;|&nbsp; <b>기술/벤처 인증:</b> {cert_status} <br>
-                      <b>금년매출:</b> {s_cur} &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.15em;">필요자금: {fund_req}</b>
-                    </div>
-                    <div style="margin-bottom:20px;">
-                      (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 스펙 평가. 2~3줄 요약, 문장마다 마침표 뒤 줄바꿈 &lt;br&gt;)
-                    </div>
-
-                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. 우선순위 추천 정책자금 (1~2순위)</h2>
-                    <div style="display:flex; gap:15px; margin-bottom:15px; align-items:stretch;">
-                      <div style="flex:1; background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32;">
-                        <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
-                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (합격 꿀팁 및 전략 2~3줄 상세 작성. 소진공/중진공 중복가능 언급. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                      </div>
-                      <div style="flex:1; background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32;">
-                        <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [신용보증기금 또는 기술보증기금] / [보증 상품명] / 예상 한도 (최소 1억 원 이상)</b><br><br>
-                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (합격 꿀팁 및 심사절차 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                      </div>
-                    </div>
-
-                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 후순위 추천 (플랜 B - 3~4순위)</h2>
-                    <div style="display:flex; gap:15px; margin-bottom:15px; align-items:stretch;">
-                      <div style="flex:1; background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00;">
-                        <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신용보증재단] / [세부 자금명] / 예상 한도 (최대 2억 원)</b><br><br>
-                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (기금 우선, 재단 나중 순서의 중요성 등 전략 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                      </div>
-                      <div style="flex:1; background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00;">
-                        <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [추천 기관명] / [세부 자금명(또는 P-CBO)] / 예상 한도</b><br><br>
-                        &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                        &bull; (접근 전략 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                      </div>
-                    </div>
-
-                    <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 심사 전 필수 체크리스트 및 보완 가이드</h2>
-                    <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:15px;">
-                      <b style="font-size:1.1em; color:#c62828;">🚨 AI 컨설턴트 보완 조언:</b><br><br>
-                      &bull; (보완 전략 1 2~3줄 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                      &bull; (보완 전략 2 2~3줄 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
-                    </div>
-                    """
-                    
-                    response = model.generate_content(prompt)
-                    status.update(label="✅ 잼(Jam)의 최적화 매칭 리포트 생성 완료!", state="complete")
-                
-                st.markdown(response.text, unsafe_allow_html=True)
-                st.balloons()
-                
-                # --- [다운로드 버튼 기능] ---
-                st.divider()
-                st.subheader("💾 매칭 리포트 저장 (화면 폰트 100% 보존 1페이지 출력)")
-                
-                safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
-                if not safe_file_name: safe_file_name = "업체"
-                
-                # [완벽 수정] CSS 강제 폰트 축소 전면 제거. 웹 화면의 거대한 카테고리 제목(h2)과 본문이 PDF에 완벽하게 일치하게 인쇄됨.
-                # flexbox와 약간의 여백 깎기를 통해 무조건 A4 1장에 들어오도록 조정!
-                html_export = f"""
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>{c_name} 정책자금 매칭 리포트</title>
-                    <style>
-                        * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.8; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
-                        h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
-                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 40px; font-size: 26px; font-weight: bold; }}
-                        .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
-                        .print-btn:hover {{ background-color: #123C85; }}
-                        
-                        @media print {{ 
-                            .print-btn {{ display: none; }} 
-                            @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; font-size: 13.5px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.82; }} 
-                            h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
-                            h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
-                            div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
-                            br {{ display: block; content: ""; margin-top: 2px; }}
-                            hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
-                        }}
-                    </style>
-                </head>
-                <body>
-                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
-                    <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
-                    <hr style="margin-bottom: 15px;">
-                    {response.text}
-                </body>
-                </html>
-                """
-                st.download_button(label="📥 매칭 리포트 다운로드", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
-
-            except Exception as e:
-                st.error(f"❌ 분석 중 오류 발생: {str(e)}")
-
-    # --- [입력 화면 (대시보드)] ---
-    else:
-        st.title("📊 AI 컨설팅 대시보드")
-        col_t1, col_t2, col_t3 = st.columns(3)
-        with col_t1:
-            if st.button("📊 1. 기업분석리포트 생성", use_container_width=True, type="primary"):
-                st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-                st.session_state["view_mode"] = "REPORT"
-                st.rerun()
-        with col_t2: 
-            if st.button("💡 2. 정책자금 매칭 리포트", use_container_width=True, type="primary"):
-                st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-                st.session_state["view_mode"] = "MATCHING"
-                st.rerun()
-        with col_t3: st.button("📝 3. 사업계획서 생성", use_container_width=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # 1. 기업현황
-        st.header("1. 기업현황")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.text_input("기업명", key="in_company_name")
-            st.text_input("사업자번호", key="in_raw_biz_no")
-            biz_type = st.radio("사업자유형", ["개인", "법인"], horizontal=True, key="in_biz_type")
-            if biz_type == "법인": st.text_input("법인등록번호", key="in_raw_corp_no")
-        with c2:
-            st.text_input("사업개시일", placeholder="2020.01.01", key="in_start_date")
-            st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
-            
-            lease_status = st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
-            if lease_status == "임대":
-                lc1, lc2 = st.columns(2)
-                with lc1: st.number_input("보증금(만원)", value=0, step=1, key="in_lease_deposit")
-                with lc2: st.number_input("월임대료(만원)", value=0, step=1, key="in_lease_rent")
-                
-        with c3:
-            st.text_input("전화번호", key="in_biz_tel")
-            st.text_input("팩스번호", key="in_biz_fax")
-            st.text_input("사업장 주소", key="in_biz_addr")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # 2. 대표자 정보
-        st.header("2. 대표자 정보")
-        r1, r2, r3 = st.columns(3)
-        with r1:
-            rc1, rc2 = st.columns(2)
-            with rc1: st.text_input("대표자명", key="in_rep_name")
-            with rc2: st.text_input("생년월일", key="in_rep_dob")
-            st.text_input("연락처", key="in_rep_phone")
-            st.selectbox("통신사", ["SKT", "KT", "LG U+", "알뜰폰"], key="in_rep_telecom")
-            st.text_input("이메일 주소", key="in_rep_email")
-        with r2:
-            st.text_input("거주지 주소", key="in_home_addr")
-            st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status")
-            st.text_input("부동산 현황", key="in_real_estate")
-        with r3:
-            st.text_input("최종학교", key="in_edu_school")
-            st.text_input("학과", key="in_edu_major")
-            st.text_area("경력(최근기준)", key="in_career")
-
-        # 3. 신용 및 연체 정보
-        st.header("3. 신용 및 연체 정보")
-        cr1, cr2 = st.columns(2)
-        with cr1:
-            cc1, cc2 = st.columns(2)
-            with cc1: st.radio("세금체납", ["무", "유"], horizontal=True, key="in_tax_status")
-            with cc2: st.radio("금융연체", ["무", "유"], horizontal=True, key="in_fin_status")
-            sc1, sc2 = st.columns(2)
-            with sc1: kcb = st.number_input("KCB 점수", value=0, step=1, key="in_kcb_score")
-            with sc2: nice = st.number_input("NICE 점수", value=0, step=1, key="in_nice_score")
-        with cr2:
-            st.info(f"#### 🏆 등급 판정 결과\n\n* **KCB (올크레딧):** {get_credit_grade(kcb, 'KCB')}등급\n* **NICE (나이스):** {get_credit_grade(nice, 'NICE')}등급")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # 4. 재무 현황
-        st.header("4. 재무현황")
-        m1, m2, m3, m4 = st.columns(4)
-        with m1: st.number_input("금년 매출(만원)", value=0, step=1, key="in_sales_current")
-        with m2: st.number_input("25년도 매출합계(만원)", value=0, step=1, key="in_sales_2025")
-        with m3: st.number_input("24년도 매출합계(만원)", value=0, step=1, key="in_sales_2024")
-        with m4: st.number_input("23년도 매출합계(만원)", value=0, step=1, key="in_sales_2023")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # 5. 기대출현황
-        st.header("5. 기대출현황")
-        d1, d2, d3, d4 = st.columns(4)
-        with d1: st.number_input("중진공(만원)", value=0, step=1, key="in_debt_kosme")
-        with d2: st.number_input("소진공(만원)", value=0, step=1, key="in_debt_semas")
-        with d3: st.number_input("신용보증재단(만원)", value=0, step=1, key="in_debt_koreg")
-        with d4: st.number_input("신용보증기금(만원)", value=0, step=1, key="in_debt_kodit")
-        d5, d6, d7, d8 = st.columns(4)
-        with d5: st.number_input("기술보증기금(만원)", value=0, step=1, key="in_debt_kibo")
-        with d6: st.number_input("기타(만원)", value=0, step=1, key="in_debt_etc")
-        with d7: st.number_input("신용대출(만원)", value=0, step=1, key="in_debt_credit")
-        with d8: st.number_input("담보대출(만원)", value=0, step=1, key="in_debt_coll")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # 6. 필요자금
-        st.header("6. 필요자금")
-        p1, p2, p3 = st.columns([1, 1, 2])
-        with p1: st.selectbox("자금구분", ["운전자금", "시설자금"], key="in_fund_type")
-        with p2: st.number_input("필요자금액(만원)", value=0, step=1, key="in_req_amount")
-        with p3: st.text_input("자금사용용도", key="in_fund_purpose")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # 7. 인증현황
-        st.header("7. 인증현황")
-        ac1, ac2, ac3, ac4 = st.columns(4)
-        with ac1: st.checkbox("소상공인확인서", key="in_chk_1"); st.checkbox("창업확인서", key="in_chk_2")
-        with ac2: st.checkbox("여성기업확인서", key="in_chk_3"); st.checkbox("이노비즈", key="in_chk_4")
-        with ac3: st.checkbox("벤처인증", key="in_chk_6"); st.checkbox("뿌리기업확인서", key="in_chk_7")
-        with ac4: st.checkbox("ISO인증", key="in_chk_10")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # 8. 비즈니스 정보
-        st.header("8. 비즈니스 정보")
-        st.text_area("[아이템]", key="in_item_desc")
-        st.markdown("**[주거래처 정보]**")
-        cli1, cli2, cli3 = st.columns(3)
-        with cli1: st.text_input("거래처 1", key="in_client_1")
-        with cli2: st.text_input("거래처 2", key="in_client_2")
-        with cli3: st.text_input("거래처 3", key="in_client_3")
-        st.text_area("[판매루트]", key="in_sales_route")
-        st.text_area("[시장현황]", key="in_market_status")
-        st.text_area("[차별화]", key="in_diff_point")
-        st.text_area("[앞으로의 계획]", key="in_future_plan")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.success("✅ 세팅 완료! 좌측에 API 키 저장하시고 상단의 [1/2 리포트 생성] 버튼을 클릭해 주십시오.")
+                      <b>금년매출:</b> {s_cur} &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.1
