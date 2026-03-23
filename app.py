@@ -783,9 +783,8 @@ if check_password():
             except:
                 pass
 
-        # 공통 데이터 요약본 생성
-        data_summary = f"""
-[기업 및 대표자 기본정보]
+        # 공통 데이터 요약본
+        data_summary = f"""[기업 및 대표자 기본정보]
 - 기업명: {c_name} / 대표자: {rep_name} / 사업자유형: {biz_type}
 - 업종: {c_ind} / 업력: 약 {biz_years}년
 - 사업장 주소: {address}
@@ -807,94 +806,172 @@ if check_password():
 - 자금 사용 용도: {fund_purpose}
 """
 
-        # 각 기관별 프롬프트 세팅
-        prompt_kosme = f"""당신은 중소벤처기업진흥공단(중진공) 정책자금 심사역 출신의 전문 경영컨설턴트입니다. 
-아래 [기업 데이터]를 바탕으로 중진공 제출용 '기업현황서 및 사업계획서' 초안을 작성해주세요.
+        # [핵심] 기관별 + 서류별(사업계획서 vs 융자신청서) 프롬프트 세분화
+        # 1. 중진공
+        prompt_kosme_plan = f"""당신은 중소벤처기업진흥공단(중진공) 정책자금 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 중진공 제출용 **'사업계획서'** 초안을 작성해주세요.
 
 [작성 포커스]
 - 중진공의 핵심 평가 지표인 '고용 창출 능력', '기술성', '미래 성장성', '수출 기여도'를 강력하게 어필할 것.
-- 자금 사용 용도({fund_purpose})가 기업 성장에 왜 필수적인지 구체적으로 논증할 것.
+- 아이템({item})의 혁신성과 시장 내 경쟁우위를 중심으로 서술할 것.
 
-{data_summary}
-"""
+{data_summary}"""
 
-        prompt_semas = f"""당신은 소상공인시장진흥공단(소진공) 정책자금 심사역 출신의 전문 경영컨설턴트입니다. 
-아래 [기업 데이터]를 바탕으로 소진공 제출용 '사업계획서(융자신청서)' 초안을 작성해주세요.
-
-[작성 포커스]
-- 소진공의 핵심 평가 지표인 '사업의 생존 가능성(자생력)', '상권 분석', '안정적인 수익 창출 및 상환 능력'을 강조할 것.
-- 아이템({item})이 지역 상권 또는 타겟 고객에게 어떻게 어필되는지 직관적이고 명확하게 설명할 것.
-
-{data_summary}
-"""
-
-        prompt_kodit = f"""당신은 신용보증기금(신보) 및 지역신용보증재단 심사역 출신의 전문 경영컨설턴트입니다. 
-아래 [기업 데이터]를 바탕으로 보증기관 제출용 '기업현황서 및 사업계획서' 초안을 작성해주세요.
+        prompt_kosme_loan = f"""당신은 중소벤처기업진흥공단(중진공) 정책자금 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 중진공 제출용 **'융자신청서 및 기업현황서'** 초안을 작성해주세요.
 
 [작성 포커스]
-- 보증기관의 핵심 평가 지표인 '매출 성장세', '재무 안정성', '명확한 상환 계획', '시장성'을 강력하게 어필할 것.
-- 현재 기대출({total_debt})이 있더라도, 이번 보증 자금({req_fund})을 통해 어떻게 추가 매출을 견인할 수 있는지 논리적으로 작성할 것.
+- 현재 재무 상태와 기대출({total_debt}) 현황을 객관적으로 분석할 것.
+- 신청 자금({req_fund})의 명확한 사용 용도({fund_purpose})와 구체적인 자금 조달 및 상환 계획을 논리적으로 작성할 것.
 
-{data_summary}
-"""
+{data_summary}"""
 
-        prompt_kibo = f"""당신은 기술보증기금(기보) 심사역 출신의 전문 경영컨설턴트입니다. 
-아래 [기업 데이터]를 바탕으로 기보 제출용 '기술사업계획서' 초안을 작성해주세요.
-
-[작성 포커스]
-- 기보의 핵심 평가 지표인 '기술의 혁신성(특허/인증)', 'R&D 역량', '기술의 사업화 가능성'을 최우선으로 강조할 것.
-- 기업의 아이템({item})과 차별화 포인트({diff})를 기술적 관점에서 심도 있게 풀어낼 것.
-
-{data_summary}
-"""
-
-        prompt_ir = f"""당신은 벤처캐피탈(VC) 심사역이자 전문 IR 컨설턴트입니다. 
-아래 [기업 데이터]를 바탕으로 투자자나 외부 기관에 제안하기 위한 'PSST(Problem-Solution-Scale up-Team) 기반 표준 사업계획서' 초안을 작성해주세요.
+        # 2. 소진공
+        prompt_semas_plan = f"""당신은 소상공인시장진흥공단(소진공) 정책자금 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 소진공 제출용 **'사업계획서'** 초안을 작성해주세요.
 
 [작성 포커스]
-- Problem: 시장의 문제점과 고객의 Pain Point를 날카롭게 지적.
-- Solution: 우리 아이템({item})의 압도적인 해결책과 경쟁우위({diff}) 제시.
-- Scale-up: 명확한 수익 모델과 마케팅 전략, 자금({req_fund}) 활용을 통한 J커브 성장 계획.
-- Team: 대표자({rep_name})와 팀의 독보적인 역량({career}) 강조.
+- 소진공 핵심 평가 지표인 '사업의 생존 가능성(자생력)', '지역 상권 분석', '현실적인 마케팅/영업 계획'을 강조할 것.
+- 아이템({item})이 타겟 고객에게 어떻게 어필되는지 직관적으로 설명할 것.
 
-{data_summary}
-"""
+{data_summary}"""
 
-        st.title("📝 기관별 맞춤형 사업계획서 프롬프트 팩")
+        prompt_semas_loan = f"""당신은 소상공인시장진흥공단(소진공) 정책자금 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 소진공 제출용 **'융자신청서(기업현황서)'** 초안을 작성해주세요.
+
+[작성 포커스]
+- 현재 매장/사무실 현황 및 매출({s_cur}) 대비 고정비 지출 등 운영 현황을 요약할 것.
+- 운전자금 또는 시설자금({fund_type})의 구체적 활용 방안과 월별 대출 상환 계획을 구체화할 것.
+
+{data_summary}"""
+
+        # 3. 신용보증기금/재단
+        prompt_kodit_plan = f"""당신은 신용보증기금(신보) 및 지역신용보증재단 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 보증기관 제출용 **'사업계획서'** 초안을 작성해주세요.
+
+[작성 포커스]
+- 보증기관의 핵심 평가 지표인 '매출 성장세', '시장성', '대표자의 경영 능력({career})'을 강력하게 어필할 것.
+- 아이템({item})의 차별성({diff})이 어떻게 직접적인 매출 확대로 이어지는지 증명할 것.
+
+{data_summary}"""
+
+        prompt_kodit_loan = f"""당신은 신용보증기금(신보) 및 지역신용보증재단 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 보증기관 제출용 **'보증(융자)신청서 및 기업현황서'** 초안을 작성해주세요.
+
+[작성 포커스]
+- 현재 신용 상태(NICE {nice_score}점)와 기대출({total_debt}) 현황을 투명하게 기재할 것.
+- 이번 보증 자금({req_fund})을 통해 기업의 유동성 문제가 어떻게 해결되고, 상환 능력을 확보할 수 있는지 논리적으로 작성할 것.
+
+{data_summary}"""
+
+        # 4. 기술보증기금
+        prompt_kibo_plan = f"""당신은 기술보증기금(기보) 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 기보 제출용 **'기술사업계획서'** 초안을 작성해주세요.
+
+[작성 포커스]
+- 기보의 핵심 평가 지표인 '기술의 혁신성', 'R&D 역량', '무형자산(특허/인증) 보유({cert_status}) 현황'을 최우선으로 강조할 것.
+- 개발 중이거나 보유 중인 아이템({item})의 기술적 차별성을 심도 있게 풀어낼 것.
+
+{data_summary}"""
+
+        prompt_kibo_loan = f"""당신은 기술보증기금(기보) 심사역 출신의 전문 경영컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 기보 제출용 **'기술평가 보증신청서'** 초안을 작성해주세요.
+
+[작성 포커스]
+- 신청 자금({req_fund})이 기술 개발(R&D) 자금, 시제품 제작, 사업화 자금 중 어디에 쓰이는지({fund_purpose}) 명확히 할 것.
+- 기술 상용화 이후의 재무적 성과 예측 및 융자 상환 계획을 작성할 것.
+
+{data_summary}"""
+
+        # 5. 제안용 (IR)
+        prompt_ir_plan = f"""당신은 벤처캐피탈(VC) 심사역이자 전문 IR 컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 외부 기관 제출용 **'PSST 기반 표준 사업계획서(Pitch Deck script)'** 초안을 작성해주세요.
+
+[작성 포커스]
+- Problem: 타겟 시장과 고객의 Pain Point를 날카롭게 지적.
+- Solution: 우리 아이템({item})의 압도적인 해결책과 경쟁우위({diff}).
+- Scale-up: 수익 모델과 마케팅 전략, J커브 성장 계획.
+- Team: 대표자({rep_name})와 팀의 독보적인 역량({career}).
+
+{data_summary}"""
+
+        prompt_ir_loan = f"""당신은 벤처캐피탈(VC) 심사역이자 전문 IR 컨설턴트입니다. 
+아래 [기업 데이터]를 바탕으로 투자자나 외부 기관에 요약 제출하기 위한 **'투자/제안 요약서(One-Pager)'** 초안을 작성해주세요.
+
+[작성 포커스]
+- 한 장의 문서(1-Pager)에 기업의 핵심 가치, 시장 규모, 자금 조달 필요성({req_fund}), 예상 Exit 시나리오(또는 성과 목표)가 직관적으로 보이도록 핵심만 요약할 것.
+
+{data_summary}"""
+
+        st.title("📝 기관/서류별 맞춤형 사업계획서 프롬프트 팩")
         st.markdown("""
-        **Gems 연동 가이드:** 아래 5개 기관 중 원하는 탭을 선택하여 프롬프트를 **복사**한 뒤, 
-        우측의 **[🚀 Gemini Gems 새창 열기]** 버튼을 클릭하여 Gems 채팅창에 붙여넣기만 하시면 완벽한 서류가 작성됩니다!
+        **Gems 연동 가이드:** 아래 5개 기관 중 원하는 탭을 선택하세요. 
+        **사업계획서**와 **융자신청서** 중 필요한 프롬프트를 복사한 뒤, 해당 구역의 **[🚀 Gems 새창 열기]** 버튼을 클릭하여 붙여넣기 하시면 완벽한 맞춤형 서류가 10초 만에 작성됩니다!
         """)
-        
-        st.link_button("🚀 Gemini Gems 새창 열기 (클릭)", "https://gemini.google.com/", use_container_width=True)
         st.markdown("<br>", unsafe_allow_html=True)
 
+        # [핵심] 기관별 탭 생성 & 탭 내부에 2분할 버튼+프롬프트 배치
         tabs = st.tabs(["1. 중진공", "2. 소진공", "3. 신보/재단", "4. 기술보증기금", "5. 제안용(IR/PSST)"])
 
         with tabs[0]:
-            st.subheader("🏢 중소벤처기업진흥공단 (중진공) 제출용")
-            st.info("💡 **포커스:** 고용창출, 기술성, 수출기여도, 사업구체성 강조")
-            st.code(prompt_kosme, language="markdown")
+            st.subheader("🏢 중소벤처기업진흥공단 (중진공)")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.link_button("🚀 중진공 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.info("💡 **포커스:** 고용창출, 기술성, 미래성장성 중심")
+                st.code(prompt_kosme_plan, language="markdown")
+            with col2:
+                st.link_button("📝 중진공 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.info("💡 **포커스:** 자금소요 내역, 상환계획, 재무현황 중심")
+                st.code(prompt_kosme_loan, language="markdown")
 
         with tabs[1]:
-            st.subheader("🏪 소상공인시장진흥공단 (소진공) 제출용")
-            st.info("💡 **포커스:** 사업 생존 가능성(자생력), 지역 상권 분석, 안정적 상환 능력 강조")
-            st.code(prompt_semas, language="markdown")
+            st.subheader("🏪 소상공인시장진흥공단 (소진공)")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.link_button("🚀 소진공 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.info("💡 **포커스:** 사업 생존 가능성(자생력), 지역 상권 분석 중심")
+                st.code(prompt_semas_plan, language="markdown")
+            with col2:
+                st.link_button("📝 소진공 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.info("💡 **포커스:** 안정적 매출 및 대출 상환 능력 중심")
+                st.code(prompt_semas_loan, language="markdown")
 
         with tabs[2]:
-            st.subheader("🏦 신용보증기금 / 지역신용보증재단 제출용")
-            st.info("💡 **포커스:** 매출 성장세, 재무 안정성, 확고한 상환 계획, 시장성 강조")
-            st.code(prompt_kodit, language="markdown")
+            st.subheader("🏦 신용보증기금 / 지역신용보증재단")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.link_button("🚀 신보/재단 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.info("💡 **포커스:** 매출 성장세, 시장성, 대표자 경영 능력 중심")
+                st.code(prompt_kodit_plan, language="markdown")
+            with col2:
+                st.link_button("📝 신보/재단 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.info("💡 **포커스:** 재무 안정성, 신용 상태, 확고한 상환 계획 중심")
+                st.code(prompt_kodit_loan, language="markdown")
 
         with tabs[3]:
-            st.subheader("🔬 기술보증기금 (기보) 제출용")
-            st.info("💡 **포커스:** 기술 혁신성(특허/인증), R&D 역량, 기술의 사업화(BM) 가능성 강조")
-            st.code(prompt_kibo, language="markdown")
+            st.subheader("🔬 기술보증기금 (기보)")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.link_button("🚀 기보 사업계획서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.info("💡 **포커스:** 기술 혁신성(특허/인증), R&D 역량, BM 중심")
+                st.code(prompt_kibo_plan, language="markdown")
+            with col2:
+                st.link_button("📝 기보 융자신청서 Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.info("💡 **포커스:** 기술 사업화 자금(시제품 등) 활용 및 재무 성과 중심")
+                st.code(prompt_kibo_loan, language="markdown")
 
         with tabs[4]:
-            st.subheader("📈 제안용 (IR / PSST 표준) 제출용")
-            st.info("💡 **포커스:** 타겟 시장의 Problem, 혁신적인 Solution, J커브 Scale-up, 압도적인 Team 역량 강조")
-            st.code(prompt_ir, language="markdown")
+            st.subheader("📈 제안용 (IR / PSST 표준)")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.link_button("🚀 제안용 사업계획서(PSST) Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.info("💡 **포커스:** 타겟 시장 Problem, 혁신적 Solution, J커브 Scale-up 중심")
+                st.code(prompt_ir_plan, language="markdown")
+            with col2:
+                st.link_button("📝 투자제안 요약서(1-Pager) Gems 바로가기 (클릭)", "https://gemini.google.com/", use_container_width=True)
+                st.info("💡 **포커스:** 투자금 활용 계획 및 예상 Exit(목표 달성) 시나리오 중심")
+                st.code(prompt_ir_loan, language="markdown")
 
     # --- [입력 화면 (대시보드)] ---
     else:
