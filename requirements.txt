@@ -3,4 +3,4 @@ google-generativeai
 plotly
 numpy
 pandas
-python-pptx
+supabase
