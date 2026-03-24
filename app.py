@@ -62,6 +62,20 @@ def format_corp_no(raw_no):
     if len(no) == 13: return f"{no[:6]}-{no[6:]}"
     return raw_no
 
+# [핵심 수정] 404 에러 방지를 위한 '스마트 모델 탐지기' 함수
+def get_best_model_name():
+    try:
+        available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        if 'models/gemini-1.5-flash' in available: return 'gemini-1.5-flash'
+        if 'models/gemini-1.5-pro' in available: return 'gemini-1.5-pro'
+        if 'models/gemini-1.0-pro' in available: return 'gemini-1.0-pro'
+        if 'models/gemini-pro' in available: return 'gemini-pro'
+        if available: return available[0].replace('models/', '')
+    except:
+        pass
+    # 모든 탐지 실패 시 가장 기본적인 구형 모델로 폴백
+    return 'gemini-pro'
+
 if check_password():
     # --- 파일 관리 (업체 DB) ---
     DB_FILE = "company_db.json"
@@ -178,7 +192,7 @@ if check_password():
         d = st.session_state["permanent_data"]
         c_name = d.get('in_company_name', '미입력').strip()
         
-        # [타이틀 변경 완료]
+        # 타이틀 요청사항 반영
         st.title("📋 AI기업분석리포트")
         st.subheader(f"📌 분석 대상 기업: {c_name}")
         
@@ -270,8 +284,9 @@ if check_password():
                 if "generated_report" not in st.session_state:
                     with st.status("🚀 잼(Jam)이 가로형 레이아웃으로 완벽한 리포트를 생성 중입니다...", expanded=True) as status:
                         try:
-                            # [핵심] API 버전 충돌 방지: 구형 모델 탐지 로직 삭제하고, 최신 모델로 하드코딩 직행
-                            model = genai.GenerativeModel('gemini-1.5-flash')
+                            # 스마트 모델 탐지기를 통해 404 에러 방지!
+                            model_name = get_best_model_name()
+                            model = genai.GenerativeModel(model_name)
                             
                             prompt = f"""
                             당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
@@ -440,7 +455,7 @@ if check_password():
                             status.update(label="✅ AI기업분석리포트 생성 완료!", state="complete")
                             st.balloons()
                         except Exception as e:
-                            status.update(label=f"❌ 오류: {str(e)}", state="error")
+                            status.update(label=f"❌ 오류가 발생했습니다. API 키 권한을 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
 
                 response_text = st.session_state.get("generated_report", "")
@@ -465,7 +480,7 @@ if check_password():
                 <html>
                 <head>
                     <meta charset="utf-8">
-                    <title>{c_name} 기업분석리포트</title>
+                    <title>{c_name} AI기업분석리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
                         body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
@@ -497,7 +512,7 @@ if check_password():
                 st.download_button(label="📥 기업분석리포트 다운로드", data=html_export, file_name=f"{safe_file_name}_기업분석리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
-                st.error(f"❌ 분석 중 오류 발생: {str(e)}")
+                st.error(f"❌ 시스템 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
     # [모드 B: 2. 정책자금 매칭 리포트]
@@ -522,8 +537,9 @@ if check_password():
                 if "generated_matching" not in st.session_state:
                     with st.status("🚀 잼(Jam)이 전년도 매출 기준으로 심사를 진행 중입니다...", expanded=True) as status:
                         try:
-                            # [핵심] 1.5-flash 하드코딩
-                            model = genai.GenerativeModel('gemini-1.5-flash')
+                            # [핵심] API 404 에러 방지 스마트 탐지 적용
+                            model_name = get_best_model_name()
+                            model = genai.GenerativeModel(model_name)
                             
                             tax_status, fin_status = d.get('in_tax_status', '무'), d.get('in_fin_status', '무')
                             total_debt_val = sum([safe_int(d.get(k, 0)) for k in ['in_debt_kosme', 'in_debt_semas', 'in_debt_koreg', 'in_debt_kodit', 'in_debt_kibo', 'in_debt_etc', 'in_debt_credit', 'in_debt_coll']])
@@ -535,12 +551,16 @@ if check_password():
                             
                             c_ind, biz_type, item = d.get('in_industry', '미입력'), d.get('in_biz_type', '개인'), d.get('in_item_desc', '미입력')
                             nice_score = safe_int(d.get('in_nice_score', 0))
-                            req_fund = format_kr_currency(safe_int(d.get('in_req_amount', 0)))
-                            cert_status = "보유" if d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False) else "미보유"
+                            fund_type = d.get('in_fund_type', '운전자금')
+                            fund_req = format_kr_currency(safe_int(d.get('in_req_amount', 0)))
+                            
+                            has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
+                            cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                             
                             biz_years = 0
-                            if d.get('in_start_date', '').strip():
-                                try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
+                            start_date_str = d.get('in_start_date', '').strip()
+                            if start_date_str:
+                                try: biz_years = max(0, 2026 - int(start_date_str[:4]))
                                 except: pass
                             
                             prompt = f"""
@@ -596,7 +616,7 @@ if check_password():
                             status.update(label="✅ 매칭 리포트 생성 완료!", state="complete")
                             st.balloons()
                         except Exception as e:
-                            status.update(label=f"❌ 오류: {str(e)}", state="error")
+                            status.update(label=f"❌ 오류가 발생했습니다. (상세: {str(e)})", state="error")
                             st.stop()
                 
                 response_text = st.session_state.get("generated_matching", "")
@@ -639,7 +659,7 @@ if check_password():
                 st.download_button(label="📥 매칭 리포트 다운로드", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
-                st.error(f"❌ 분석 중 오류 발생: {str(e)}")
+                st.error(f"❌ 시스템 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
     # [모드 C: 신규 3. 사업계획서 생성 (Gems 맞춤형 프롬프트 생성기)]
@@ -737,50 +757,50 @@ if check_password():
             st.subheader("🏢 중소벤처기업진흥공단")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_중진공_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kosme_plan, language="markdown")
             with c2:
-                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_중진공_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kosme_loan, language="markdown")
 
         with tabs[1]:
             st.subheader("🏪 소상공인시장진흥공단")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_소진공_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_semas_plan, language="markdown")
             with c2:
-                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_소진공_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_semas_loan, language="markdown")
 
         with tabs[2]:
             st.subheader("🏦 신용보증기금 / 지역신보")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_신보_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kodit_plan, language="markdown")
             with c2:
-                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_신보_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kodit_loan, language="markdown")
 
         with tabs[3]:
             st.subheader("🔬 기술보증기금")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_기보_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kibo_plan, language="markdown")
             with c2:
-                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_기보_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kibo_loan, language="markdown")
 
         with tabs[4]:
             st.subheader("📈 제안용 (IR / PSST)")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_IR_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_ir_plan, language="markdown")
             with c2:
-                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app/여기에_IR_요약서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_ir_loan, language="markdown")
 
     # --- [입력 화면 (대시보드)] ---
