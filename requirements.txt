@@ -4,4 +4,3 @@ plotly
 numpy
 pandas
 python-pptx
-weasyprint
