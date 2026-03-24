@@ -3,5 +3,5 @@ google-generativeai
 plotly
 numpy
 pandas
-reportlab
 python-pptx
+weasyprint
