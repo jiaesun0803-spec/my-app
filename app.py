@@ -300,7 +300,7 @@ if check_password():
                             [작성 규칙 - 절대 엄수!!!]
                             1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 HTML 태그만 사용해야 합니다.
                             2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
-                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. (단, 마지막 7번의 '핵심 인증 및 특허 확보 조언'은 무조건 1~2줄로 간결하게 요약하세요.) 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
+                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 단, 마지막 7번의 '조언' 부분만 1~2줄로 짧게 쓰세요. 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
 
                             [기업 정보]
                             - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 사업자유형: {biz_type}
@@ -456,7 +456,6 @@ if check_password():
                             </div>
                             """
                             
-                            # [핵심] 429 한도 초과 방어 (자동 재시도 로직)
                             max_retries = 3
                             for attempt in range(max_retries):
                                 try:
@@ -467,12 +466,12 @@ if check_password():
                                     break
                                 except Exception as e:
                                     if "429" in str(e) and attempt < max_retries - 1:
-                                        status.update(label=f"⏳ 구글 서버 응답 지연 (할당량 초과). 5초 후 자동 재시도합니다... ({attempt+1}/{max_retries})", state="running")
+                                        status.update(label=f"⏳ 구글 서버 지연 (할당량 초과). 5초 후 재시도합니다... ({attempt+1}/{max_retries})", state="running")
                                         time.sleep(5)
                                     else:
                                         raise e
                         except Exception as e:
-                            status.update(label=f"❌ 오류가 발생했습니다. API 키 권한을 확인해주세요. (상세: {str(e)})", state="error")
+                            status.update(label=f"❌ 오류 발생. API 키(새 계정)를 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
 
                 response_text = st.session_state.get("generated_report", "")
@@ -572,7 +571,6 @@ if check_password():
                             c_ind, biz_type, item = d.get('in_industry', '미입력'), d.get('in_biz_type', '개인'), d.get('in_item_desc', '미입력')
                             nice_score = safe_int(d.get('in_nice_score', 0))
                             fund_type = d.get('in_fund_type', '운전자금')
-                            
                             req_fund = format_kr_currency(safe_int(d.get('in_req_amount', 0)))
                             
                             has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
@@ -635,7 +633,6 @@ if check_password():
                             </div>
                             """
                             
-                            # [핵심] 429 한도 초과 방어 (자동 재시도 로직)
                             max_retries = 3
                             for attempt in range(max_retries):
                                 try:
@@ -646,12 +643,12 @@ if check_password():
                                     break
                                 except Exception as e:
                                     if "429" in str(e) and attempt < max_retries - 1:
-                                        status.update(label=f"⏳ 구글 서버 응답 지연 (할당량 초과). 5초 후 자동 재시도합니다... ({attempt+1}/{max_retries})", state="running")
+                                        status.update(label=f"⏳ 구글 서버 지연 (할당량 초과). 5초 후 재시도합니다... ({attempt+1}/{max_retries})", state="running")
                                         time.sleep(5)
                                     else:
                                         raise e
                         except Exception as e:
-                            status.update(label=f"❌ 오류가 발생했습니다. (상세: {str(e)})", state="error")
+                            status.update(label=f"❌ 오류 발생. API 키(새 계정)를 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
                 
                 response_text = st.session_state.get("generated_matching", "")
@@ -792,50 +789,50 @@ if check_password():
             st.subheader("🏢 중소벤처기업진흥공단")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_중진공_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kosme_plan, language="markdown")
             with c2:
-                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_중진공_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kosme_loan, language="markdown")
 
         with tabs[1]:
             st.subheader("🏪 소상공인시장진흥공단")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_소진공_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_semas_plan, language="markdown")
             with c2:
-                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_소진공_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_semas_loan, language="markdown")
 
         with tabs[2]:
             st.subheader("🏦 신용보증기금 / 지역신보")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_신보_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kodit_plan, language="markdown")
             with c2:
-                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_신보_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kodit_loan, language="markdown")
 
         with tabs[3]:
             st.subheader("🔬 기술보증기금")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_기보_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kibo_plan, language="markdown")
             with c2:
-                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_기보_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kibo_loan, language="markdown")
 
         with tabs[4]:
             st.subheader("📈 제안용 (IR / PSST)")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_IR_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_ir_plan, language="markdown")
             with c2:
-                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app/여기에_IR_요약서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_ir_loan, language="markdown")
 
     # --- [입력 화면 (대시보드)] ---
