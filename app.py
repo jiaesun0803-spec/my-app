@@ -159,7 +159,6 @@ if check_password():
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
     
-    # [핵심 버그 수정 1] 입력 화면(INPUT)에 있을 때만 permanent_data를 업데이트하여 사이드바 데이터 증발 방지!
     if st.sidebar.button("📊 1. 기업분석리포트 생성", use_container_width=True):
         if st.session_state.get("view_mode", "INPUT") == "INPUT":
             st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
@@ -206,6 +205,8 @@ if check_password():
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
+                # 데이터 세팅
+                biz_type = d.get('in_biz_type', '개인')
                 c_ind = d.get('in_industry', '미입력')
                 rep_name = d.get('in_rep_name', '미입력')
                 biz_no = format_biz_no(d.get('in_raw_biz_no', '미입력'))
@@ -217,9 +218,6 @@ if check_password():
                 add_biz_addr = d.get('in_additional_biz_addr', '').strip()
                 if add_biz_status == '유' and add_biz_addr:
                     address += f" <br>(추가사업장: {add_biz_addr})"
-                
-                lease_status = d.get('in_lease_status', '자가')
-                lease_text = "[임대]" if lease_status == '임대' else "[자가]"
                 
                 s_cur = format_kr_currency(d.get('in_sales_current', 0))
                 fund_type = d.get('in_fund_type', '운전자금')
@@ -255,7 +253,6 @@ if check_password():
                     template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                 )
                 
-                # HTML용 순수 CSS 막대그래프 생성
                 max_val = max(monthly_vals) if max(monthly_vals) > 0 else 1
                 chart_html = f'''
                 <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin:20px 0; page-break-inside: avoid;">
@@ -294,7 +291,7 @@ if check_password():
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
                             
-                            # [핵심 버그 수정 2] 6번 항목 전체를 하나의 div로 묶어 페이지가 분리되지 않고 표와 그래프가 한 장에 나오게 설정
+                            # [핵심 수정 1 & 2 적용] 기업현황 3단 배열 및 자금사용계획 3줄 세분화 프롬프트
                             prompt = f"""
                             당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                             아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
@@ -305,28 +302,22 @@ if check_password():
                             3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 단, 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
 
                             [기업 정보]
-                            - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
+                            - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 사업자유형: {biz_type}
                             - 아이템: {item} / 시장현황: {market} / 차별화: {diff}
                             - 신청자금: {req_fund} ({fund_type})
 
                             [출력 양식]
                             <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업현황분석</h2>
-                            <table style="width:100%; border-collapse: collapse; font-size: 1.1em; background-color:#f8f9fa; border-radius:15px; overflow:hidden; margin-bottom:15px;">
-                              <tr>
-                                <td style="padding:15px; border-bottom:1px solid #e0e0e0; width:15%;"><b>기업명</b></td>
-                                <td style="padding:15px; border-bottom:1px solid #e0e0e0; width:35%;">{c_name}</td>
-                                <td style="padding:15px; border-bottom:1px solid #e0e0e0; width:15%;"><b>대표자명</b></td>
-                                <td style="padding:15px; border-bottom:1px solid #e0e0e0; width:35%;">{rep_name}</td>
+                            <table style="width:100%; border-collapse: collapse; font-size: 1.05em; background-color:#f8f9fa; border-radius:15px; overflow:hidden; margin-bottom:15px; text-align:center;">
+                              <tr style="border-bottom:1px solid #e0e0e0;">
+                                <td style="padding:15px; width:15%; background-color:#eceff1;"><b>기업명</b></td><td style="padding:15px; width:18%;">{c_name}</td>
+                                <td style="padding:15px; width:15%; background-color:#eceff1;"><b>사업자유형</b></td><td style="padding:15px; width:18%;">{biz_type}</td>
+                                <td style="padding:15px; width:15%; background-color:#eceff1;"><b>업종</b></td><td style="padding:15px; width:19%;">{c_ind}</td>
                               </tr>
                               <tr>
-                                <td style="padding:15px; border-bottom:1px solid #e0e0e0;"><b>업종</b></td>
-                                <td style="padding:15px; border-bottom:1px solid #e0e0e0;">{c_ind}</td>
-                                <td style="padding:15px; border-bottom:1px solid #e0e0e0;"><b>사업/법인번호</b></td>
-                                <td style="padding:15px; border-bottom:1px solid #e0e0e0;">{biz_no}{corp_text}</td>
-                              </tr>
-                              <tr>
-                                <td style="padding:15px;"><b>사업장 주소</b></td>
-                                <td colspan="3" style="padding:15px;">{address}</td>
+                                <td style="padding:15px; background-color:#eceff1;"><b>대표자명</b></td><td style="padding:15px;">{rep_name}</td>
+                                <td style="padding:15px; background-color:#eceff1;"><b>사업자번호</b></td><td style="padding:15px;">{biz_no}{corp_text}</td>
+                                <td style="padding:15px; background-color:#eceff1;"><b>사업장주소</b></td><td style="padding:15px;">{address}</td>
                               </tr>
                             </table>
                             <div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 3~4문장 이상 상세히 작성. 마침표 뒤 줄바꿈 &lt;br&gt;)</div>
@@ -393,17 +384,22 @@ if check_password():
                             <table style="width:100%; border-collapse: collapse; text-align:left; margin-bottom:15px;">
                              <tr style="background-color:#eceff1;">
                                <th style="padding:15px; border:1px solid #ccc; border-radius:10px 0 0 0; width:20%;">구분 ({fund_type})</th>
-                               <th style="padding:15px; border:1px solid #ccc; width:60%;">상세 사용계획</th>
+                               <th style="padding:15px; border:1px solid #ccc; width:60%;">상세 사용계획 (외부 데이터 기반 구체적 산출)</th>
                                <th style="padding:15px; border:1px solid #ccc; border-radius:0 10px 0 0; width:20%;">사용예정금액</th>
                              </tr>
                              <tr>
-                               <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 1)</td>
-                               <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 구체적 기재 2~3줄)</td>
+                               <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(항목 1 - 예: R&D/인건비)</td>
+                               <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 및 산출 근거를 3~4줄로 구체적으로 기재)</td>
                                <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
                              </tr>
                              <tr>
-                               <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 2)</td>
-                               <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 구체적 기재 2~3줄)</td>
+                               <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(항목 2 - 예: 마케팅/운영비)</td>
+                               <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 및 산출 근거를 3~4줄로 구체적으로 기재)</td>
+                               <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
+                             </tr>
+                             <tr>
+                               <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(항목 3 - 예: 시설/원부자재)</td>
+                               <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 및 산출 근거를 3~4줄로 구체적으로 기재)</td>
                                <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
                              </tr>
                             </table>
@@ -463,7 +459,7 @@ if check_password():
                             status.update(label="✅ AI기업분석리포트 생성 완료!", state="complete")
                             st.balloons()
                         except Exception as e:
-                            status.update(label=f"❌ 오류가 발생했습니다. API 키를 확인해주세요. (상세: {str(e)})", state="error")
+                            status.update(label=f"❌ 오류가 발생했습니다. API 키 권한을 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
 
                 response_text = st.session_state.get("generated_report", "")
@@ -483,13 +479,12 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [핵심 버그 수정 3] 차트 깨짐을 방지하기 위해 CSS에서 div padding 룰을 완전히 삭제함!
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <meta charset="utf-8">
-                    <title>{c_name} 기업분석리포트</title>
+                    <title>{c_name} AI기업분석리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
                         body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
@@ -510,7 +505,7 @@ if check_password():
                     </style>
                 </head>
                 <body>
-                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기 (카테고리별 분할 & 그래프 포함)</button>
+                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
                     <h1>📋 AI기업분석리포트: {c_name}</h1>
                     <hr style="margin-bottom: 30px;">
                     {response_text.replace('[GRAPH_INSERT_POINT]', chart_html)}
@@ -545,7 +540,6 @@ if check_password():
                 if "generated_matching" not in st.session_state:
                     with st.status("🚀 잼(Jam)이 전년도 매출 기준으로 심사를 진행 중입니다...", expanded=True) as status:
                         try:
-                            # 스마트 모델 탐지
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
                             
@@ -576,13 +570,16 @@ if check_password():
                                 try: biz_years = max(0, 2026 - int(start_date_str[:4]))
                                 except: pass
                             
+                            # [핵심 수정 3] 어투(명사형) 강력 통제 및 4순위 시중은행 추천 명시!
                             prompt = f"""
-                            당신은 전문 경영컨설턴트입니다. 마크다운 절대 금지. 
+                            당신은 전문 경영컨설턴트입니다. 마크다운 기호 절대 금지. 
+                            ※ 모든 문장은 반드시 '~음', '~함', '~임', '~기대됨' 등의 명사형으로 끝내야 합니다. '~습니다', '~합니다', '~해요' 등의 서술어는 절대 사용 금지!!!
                             ※ 모든 매출 기준은 **전년도 매출액({s_25})** 기준입니다.
+
                             - 1순위: 중진공(비제조 전년매출 50억 이상) or 소진공. (중복가능 언급)
                             - 2순위: 신보 or 기보 (무조건 1억 이상 기재). 전년매출 4억 이상 신보 우대. 중복불가.
                             - 3순위: 지역신보 (신보/기보 먼저 진행 강조).
-                            - 4순위: 법인은 P-CBO 등 추천.
+                            - 4순위: 법인은 P-CBO나 제1금융권 '은행' 연계 간접대출/보증 추천 (한국거래소, 예탁결제원 등 진입장벽이 높은 기관은 절대 배제). 개인은 은행 대리대출.
 
                             [입력] 기업명:{c_name} / 업종:{c_ind} / 전년매출:{s_25} / 총기대출:{total_debt} / 필요자금:{req_fund}
 
@@ -614,7 +611,7 @@ if check_password():
                                   <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신보] / [자금명] / 예상 한도</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (기금 우선진행 전략 강조 &lt;br&gt;)
                                 </td>
                                 <td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top;">
-                                  <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [기관명] / [자금명] / 예상 한도</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (전략 2~3줄 &lt;br&gt;)
+                                  <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [추천 기관명(예: 시중은행 연계자금)] / [자금명] / 예상 한도</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (전략 2~3줄 &lt;br&gt;)
                                 </td>
                               </tr>
                             </table>
@@ -656,6 +653,7 @@ if check_password():
                             body {{ padding: 0 !important; font-size: 13px !important; color: black !important; max-width: 100% !important; zoom: 0.85; }} 
                             h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
                             h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
                             table {{ font-size: 12.5px !important; margin-bottom: 8px !important; width: 100% !important; table-layout: fixed !important; }}
                             th, td {{ padding: 8px !important; word-wrap: break-word; vertical-align: top; }}
                         }}
@@ -671,7 +669,7 @@ if check_password():
                 st.download_button(label="📥 매칭 리포트 다운로드", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
-                st.error(f"❌ 시스템 오류 발생: {str(e)}")
+                st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
     # [모드 C: 신규 3. 사업계획서 생성 (Gems 맞춤형 프롬프트 생성기)]
@@ -769,50 +767,50 @@ if check_password():
             st.subheader("🏢 중소벤처기업진흥공단")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_중진공_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kosme_plan, language="markdown")
             with c2:
-                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_중진공_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kosme_loan, language="markdown")
 
         with tabs[1]:
             st.subheader("🏪 소상공인시장진흥공단")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_소진공_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_semas_plan, language="markdown")
             with c2:
-                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_소진공_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_semas_loan, language="markdown")
 
         with tabs[2]:
             st.subheader("🏦 신용보증기금 / 지역신보")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_신보_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kodit_plan, language="markdown")
             with c2:
-                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_신보_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kodit_loan, language="markdown")
 
         with tabs[3]:
             st.subheader("🔬 기술보증기금")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_기보_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kibo_plan, language="markdown")
             with c2:
-                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_기보_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kibo_loan, language="markdown")
 
         with tabs[4]:
             st.subheader("📈 제안용 (IR / PSST)")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_IR_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_ir_plan, language="markdown")
             with c2:
-                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app/여기에_IR_요약서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_ir_loan, language="markdown")
 
     # --- [입력 화면 (대시보드)] ---
