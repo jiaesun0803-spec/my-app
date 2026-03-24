@@ -1,28 +1,14 @@
 import streamlit as st
 import time
-import hashlib
 import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
 from datetime import datetime
-from supabase import create_client, Client
 
 # ==========================================
 # 0. 기본 설정
 # ==========================================
 st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
-
-# ==========================================
-# Supabase 설정
-# ==========================================
-SUPABASE_URL = "https://fqnmourvjomfkslgkaox.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxbm1vdXJ2am9tZmtzbGdrYW94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyOTYyODQsImV4cCI6MjA4OTg3MjI4NH0.O1XGNkcvPj7_FTyPAdfX3vzkC-mjYXP1HjvS1fnRvc8"
-
-@st.cache_resource
-def get_supabase() -> Client:
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
-
-supabase = get_supabase()
 
 # ==========================================
 # 유틸리티 함수
@@ -86,252 +72,37 @@ def get_credit_grade(score, type="NICE"):
         else: return 10
 
 # ==========================================
-# Supabase DB 함수
+# 파일 기반 업체 DB (로그인 없을 때 임시)
 # ==========================================
-def db_get_user_by_email(email: str):
-    """이메일로 users 테이블에서 사용자 조회"""
-    try:
-        result = supabase.table("users").select("*").eq("email", email).eq("is_active", True).execute()
-        if result.data:
-            return result.data[0]
-        return None
-    except:
-        return None
+import json
+import os
 
-def db_create_user_if_not_exists(email: str, name: str):
-    """구글 로그인 후 users 테이블에 없으면 자동 생성 (비활성 상태로)"""
-    try:
-        existing = supabase.table("users").select("*").eq("email", email).execute()
-        if existing.data:
-            return existing.data[0]
-        # 신규 사용자는 is_active=False 로 생성 (대표님 승인 필요)
-        result = supabase.table("users").insert({
-            "email": email,
-            "password_hash": "",
-            "name": name if name else email.split("@")[0],
-            "is_active": False
-        }).execute()
-        return result.data[0] if result.data else None
-    except Exception as e:
-        st.error(f"사용자 등록 오류: {e}")
-        return None
+DB_FILE = "company_db.json"
 
-def db_get_all_users():
-    try:
-        result = supabase.table("users").select("id, email, name, is_active, created_at").execute()
-        return result.data
-    except:
-        return []
-
-def db_toggle_user(user_id: str, is_active: bool):
-    try:
-        supabase.table("users").update({"is_active": is_active}).eq("id", user_id).execute()
-        return True
-    except:
-        return False
-
-def db_save_company(user_id: str, company_name: str, data: dict):
-    try:
-        existing = supabase.table("company_db").select("id").eq("user_id", user_id).eq("company_name", company_name).execute()
-        if existing.data:
-            supabase.table("company_db").update({
-                "data": data,
-                "updated_at": datetime.now().isoformat()
-            }).eq("id", existing.data[0]["id"]).execute()
-        else:
-            supabase.table("company_db").insert({
-                "user_id": user_id,
-                "company_name": company_name,
-                "data": data
-            }).execute()
-        return True
-    except Exception as e:
-        st.error(f"저장 오류: {e}")
-        return False
-
-def db_load_companies(user_id: str):
-    try:
-        result = supabase.table("company_db").select("company_name, data").eq("user_id", user_id).execute()
-        return {row["company_name"]: row["data"] for row in result.data}
-    except:
-        return {}
-
-def db_delete_company(user_id: str, company_name: str):
-    try:
-        supabase.table("company_db").delete().eq("user_id", user_id).eq("company_name", company_name).execute()
-        return True
-    except:
-        return False
-
-# ==========================================
-# 1. 로그인 화면 (구글 로그인)
-# ==========================================
-def show_login():
-    # URL 파라미터에서 구글 로그인 결과 처리
-    params = st.query_params
-    
-    # 구글 로그인 후 리디렉션 처리
-    if "code" in params:
+def load_db():
+    if os.path.exists(DB_FILE):
         try:
-            with st.spinner("구글 로그인 처리 중..."):
-                # Supabase가 code를 session으로 교환
-                session = supabase.auth.exchange_code_for_session({"auth_code": params["code"]})
-                if session and session.user:
-                    google_user = session.user
-                    email = google_user.email
-                    name = google_user.user_metadata.get("full_name", email.split("@")[0])
-                    
-                    # users 테이블에서 승인 여부 확인
-                    db_user = db_get_user_by_email(email)
-                    
-                    if db_user and db_user["is_active"]:
-                        # 승인된 사용자 → 로그인 성공
-                        st.session_state["logged_in"] = True
-                        st.session_state["user"] = db_user
-                        admin_email = st.secrets.get("ADMIN_EMAIL", "")
-                        st.session_state["is_admin"] = (email == admin_email)
-                        st.query_params.clear()
-                        st.rerun()
-                    elif db_user and not db_user["is_active"]:
-                        # 등록은 됐지만 미승인
-                        st.query_params.clear()
-                        st.warning("⏳ 관리자 승인 대기 중입니다. 잠시 후 다시 시도해주세요.")
-                    else:
-                        # 처음 로그인 → users 테이블에 비활성으로 등록
-                        db_create_user_if_not_exists(email, name)
-                        st.query_params.clear()
-                        st.info(f"✅ '{name}'님 계정이 등록되었습니다.\n\n관리자 승인 후 이용 가능합니다.")
-        except Exception as e:
-            st.query_params.clear()
-            st.error(f"로그인 처리 중 오류가 발생했습니다: {e}")
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
 
-    # 로그인 UI
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.title("🤖 AI 컨설팅 시스템")
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # 구글 로그인 버튼
-        try:
-            current_url = st.secrets.get("APP_URL", "http://localhost:8501")
-            redirect_url = f"{current_url}"
-            
-            auth_response = supabase.auth.sign_in_with_oauth({
-                "provider": "google",
-                "options": {
-                    "redirect_to": redirect_url,
-                    "query_params": {"access_type": "offline", "prompt": "consent"}
-                }
-            })
-            
-            google_login_url = auth_response.url
-            
-            st.markdown(f"""
-            <div style="text-align:center; margin: 20px 0;">
-                <a href="{google_login_url}" target="_self" style="
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 12px;
-                    background-color: white;
-                    color: #333;
-                    border: 2px solid #ddd;
-                    border-radius: 12px;
-                    padding: 14px 32px;
-                    font-size: 18px;
-                    font-weight: bold;
-                    text-decoration: none;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                    cursor: pointer;
-                    width: 100%;
-                    justify-content: center;
-                ">
-                    <img src="https://www.google.com/favicon.ico" width="24" height="24">
-                    Google 계정으로 로그인
-                </a>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        except Exception as e:
-            st.error(f"로그인 버튼 오류: {e}")
-
-        st.markdown("<br>")
-        st.caption("※ 최초 로그인 시 관리자 승인 후 이용 가능합니다.")
-        st.caption("※ 계정 문의: 관리자에게 연락해주세요.")
+def save_db(db_data):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(db_data, f, ensure_ascii=False, indent=4)
 
 # ==========================================
-# 2. 관리자 페이지 (대표님 전용)
-# ==========================================
-def show_admin():
-    st.header("👑 관리자 페이지")
-    st.caption("이 페이지는 관리자만 볼 수 있습니다.")
-
-    tab1, tab2 = st.tabs(["👤 사용자 승인/관리", "📊 현황"])
-
-    with tab1:
-        st.subheader("전체 사용자 목록")
-        st.caption("구글 로그인한 사용자 목록입니다. 초기 비용 수령 후 '활성화' 버튼을 눌러주세요.")
-        users = db_get_all_users()
-        if users:
-            for u in users:
-                col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
-                with col1:
-                    st.write(f"**{u['name']}** ({u['email']})")
-                with col2:
-                    st.caption(f"가입일: {u['created_at'][:10]}")
-                with col3:
-                    status = "✅ 활성" if u['is_active'] else "⏳ 대기"
-                    st.write(status)
-                with col4:
-                    if u['is_active']:
-                        if st.button("비활성화", key=f"deact_{u['id']}"):
-                            db_toggle_user(u['id'], False)
-                            st.rerun()
-                    else:
-                        if st.button("✅ 승인", key=f"act_{u['id']}"):
-                            db_toggle_user(u['id'], True)
-                            st.rerun()
-                st.divider()
-        else:
-            st.info("아직 로그인한 사용자가 없습니다.")
-
-    with tab2:
-        users = db_get_all_users()
-        total = len(users)
-        active = len([u for u in users if u['is_active']])
-        pending = total - active
-        c1, c2, c3 = st.columns(3)
-        with c1: st.metric("전체 사용자", f"{total}명")
-        with c2: st.metric("활성 사용자", f"{active}명")
-        with c3: st.metric("승인 대기", f"{pending}명")
-
-# ==========================================
-# 3. 메인 앱 (로그인 후)
+# 메인 앱
 # ==========================================
 def show_main_app():
-    user = st.session_state["user"]
-    user_id = user["id"]
-    is_admin = st.session_state.get("is_admin", False)
 
     # --- 사이드바 ---
     with st.sidebar:
-        st.markdown(f"👤 **{user['name']}** 님")
-        if st.button("🚪 로그아웃", use_container_width=True):
-            try:
-                supabase.auth.sign_out()
-            except:
-                pass
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
-
-        if is_admin:
-            st.markdown("---")
-            if st.button("👑 관리자 페이지", use_container_width=True):
-                st.session_state["view_mode"] = "ADMIN"
-                st.rerun()
-
+        st.markdown("### 🤖 AI 컨설팅 시스템")
         st.markdown("---")
+
+        # API 설정
         st.header("⚙️ AI 엔진 설정")
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.secrets.get("GEMINI_API_KEY", "")
@@ -343,30 +114,32 @@ def show_main_app():
             time.sleep(0.5)
             st.rerun()
 
-        if st.session_state["api_key"]:
+        if st.session_state.get("api_key", ""):
             genai.configure(api_key=st.session_state["api_key"])
 
         st.markdown("---")
+
+        # 업체 관리
         st.header("📂 업체 관리")
-        company_db = db_load_companies(user_id)
+        db = load_db()
 
         if st.button("💾 현재 정보 저장", use_container_width=True):
             c_name = st.session_state.get("in_company_name", "").strip()
             if c_name:
                 current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-                if db_save_company(user_id, c_name, current_data):
-                    st.success(f"✅ '{c_name}' 저장 완료!")
-                    company_db = db_load_companies(user_id)
+                db[c_name] = current_data
+                save_db(db)
+                st.success(f"✅ '{c_name}' 저장 완료!")
             else:
                 st.warning("기업명을 먼저 입력해주세요.")
 
-        selected_company = st.selectbox("저장된 업체 목록", ["선택 안 함"] + list(company_db.keys()))
+        selected_company = st.selectbox("저장된 업체 목록", ["선택 안 함"] + list(db.keys()))
 
         col_s1, col_s2 = st.columns(2)
         with col_s1:
             if st.button("📂 불러오기", use_container_width=True):
                 if selected_company != "선택 안 함":
-                    for k, v in company_db[selected_company].items():
+                    for k, v in db[selected_company].items():
                         st.session_state[k] = v
                     st.rerun()
         with col_s2:
@@ -396,17 +169,10 @@ def show_main_app():
     if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
     if "permanent_data" not in st.session_state: st.session_state["permanent_data"] = {}
 
-    # --- 관리자 페이지 ---
-    if st.session_state["view_mode"] == "ADMIN":
-        if st.button("⬅️ 대시보드로 돌아가기"):
-            st.session_state["view_mode"] = "INPUT"
-            st.rerun()
-        show_admin()
-
     # ---------------------------------------------------------
     # [모드 A: 기업분석리포트]
     # ---------------------------------------------------------
-    elif st.session_state["view_mode"] == "REPORT":
+    if st.session_state["view_mode"] == "REPORT":
         if st.button("⬅️ 대시보드로 돌아가기"):
             for k, v in st.session_state["permanent_data"].items():
                 st.session_state[k] = v
@@ -627,6 +393,7 @@ h1 {{color:#111; text-align:center; margin-bottom:40px; font-size:32px; font-wei
                     if 'models/gemini-1.5-flash' in available_models: target_model = 'gemini-1.5-flash'
                     else: target_model = 'gemini-pro'
                     model = genai.GenerativeModel(target_model)
+
                     total_debt_val = sum([safe_int(d.get(k, 0)) for k in ['in_debt_kosme','in_debt_semas','in_debt_koreg','in_debt_kodit','in_debt_kibo','in_debt_etc','in_debt_credit','in_debt_coll']])
                     total_debt = format_kr_currency(total_debt_val)
                     s_25 = format_kr_currency(safe_int(d.get('in_sales_2025', 0)))
@@ -639,9 +406,17 @@ h1 {{color:#111; text-align:center; margin-bottom:40px; font-size:32px; font-wei
                     if d.get('in_start_date', '').strip():
                         try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
                         except: pass
+
                     prompt = f"""당신은 전문 경영컨설턴트입니다. 마크다운 사용 절대 금지.
 ※ 모든 매출 기준은 전년도 매출액({s_25}) 기준입니다.
+- 1순위: 중진공(비제조 전년매출 50억 이상) or 소진공.
+- 2순위: 신보 or 기보 (무조건 1억 이상 기재).
+- 3순위: 지역신용보증재단.
+- 4순위: 법인은 P-CBO 등 추천.
+- 연체 '유'면 모두 비우고 연체 해소 조언.
+
 [입력] 기업명:{c_name} / 업종:{c_ind} / 전년도매출:{s_25} / 총기대출:{total_debt} / 필요자금:{req_fund}
+
 [출력 양식]
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
 <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
@@ -720,20 +495,20 @@ body {{font-family:'Malgun Gothic',sans-serif; padding:30px; line-height:1.6; co
             try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
             except: pass
 
-        data_summary = f"""[기업 기본정보] 기업명:{c_name} / 대표자:{rep_name} / 업종:{c_ind} / 업력:약{biz_years}년 / 경력:{career}
-[재무] 전년매출:{s_25} / 총기대출:{total_debt} / NICE:{nice_score}점
-[비즈니스] 아이템:{item} / 시장:{market} / 차별화:{diff} / 인증:{cert_status}
-[신청자금] {req_fund} ({fund_type} / {fund_purpose})"""
+        data_summary = f"""[기업] {c_name} / {rep_name} / {c_ind} / 업력{biz_years}년 / {career}
+[재무] 전년매출:{s_25} / 기대출:{total_debt} / NICE:{nice_score}점
+[비즈니스] {item} / {market} / {diff} / 인증:{cert_status}
+[자금] {req_fund} ({fund_type} / {fund_purpose})"""
 
         prompts = {
-            "kosme_plan": f"중진공 전문 심사역. '사업계획서' 초안. 포커스: 고용창출, 기술성, 미래성장성.\n{data_summary}",
-            "kosme_loan": f"중진공 전문 심사역. '융자신청서' 초안. 포커스: 재무분석, 자금조달 및 상환계획.\n{data_summary}",
-            "semas_plan": f"소진공 전문 심사역. '사업계획서' 초안. 포커스: 사업생존가능성, 지역상권 영업전략.\n{data_summary}",
-            "semas_loan": f"소진공 전문 심사역. '융자신청서' 초안. 포커스: 매출대비 고정비 및 상환능력 증빙.\n{data_summary}",
-            "kodit_plan": f"신보 전문 심사역. '사업계획서' 초안. 포커스: 매출 J커브 성장세, 차별성→매출확대 논리.\n{data_summary}",
-            "kodit_loan": f"신보 전문 심사역. '보증신청서' 초안. 포커스: 기대출 대비 유동성 해결 및 상환능력.\n{data_summary}",
-            "kibo_plan":  f"기보 전문 심사역. '기술사업계획서' 초안. 포커스: 기술혁신성, 특허현황, R&D역량.\n{data_summary}",
-            "kibo_loan":  f"기보 전문 심사역. '기술평가 보증신청서' 초안. 포커스: 기술개발자금 사용처, 상용화 후 재무성과.\n{data_summary}",
+            "kosme_plan": f"중진공 심사역. '사업계획서' 초안. 포커스: 고용창출, 기술성, 미래성장성.\n{data_summary}",
+            "kosme_loan": f"중진공 심사역. '융자신청서' 초안. 포커스: 재무분석, 자금조달 및 상환계획.\n{data_summary}",
+            "semas_plan": f"소진공 심사역. '사업계획서' 초안. 포커스: 사업생존가능성, 지역상권 영업전략.\n{data_summary}",
+            "semas_loan": f"소진공 심사역. '융자신청서' 초안. 포커스: 매출대비 고정비 및 상환능력 증빙.\n{data_summary}",
+            "kodit_plan": f"신보 심사역. '사업계획서' 초안. 포커스: 매출 J커브 성장세, 차별성→매출확대 논리.\n{data_summary}",
+            "kodit_loan": f"신보 심사역. '보증신청서' 초안. 포커스: 기대출 대비 유동성 해결 및 상환능력.\n{data_summary}",
+            "kibo_plan":  f"기보 심사역. '기술사업계획서' 초안. 포커스: 기술혁신성, 특허현황, R&D역량.\n{data_summary}",
+            "kibo_loan":  f"기보 심사역. '기술평가 보증신청서' 초안. 포커스: 기술개발자금 사용처, 상용화 후 재무성과.\n{data_summary}",
             "ir_plan":    f"VC 심사역. 'PSST 사업계획서' 초안. 포커스: Problem, Solution, Scale-up, Team.\n{data_summary}",
             "ir_loan":    f"VC 심사역. '투자제안 1-Pager' 초안. 포커스: 핵심가치, 자금필요성, Exit시나리오.\n{data_summary}",
         }
@@ -893,12 +668,6 @@ body {{font-family:'Malgun Gothic',sans-serif; padding:30px; line-height:1.6; co
         st.success("✅ 세팅 완료! 좌측에 API 키 저장하시고 상단 버튼을 클릭해 주십시오.")
 
 # ==========================================
-# 메인 실행
+# 메인 실행 (로그인 없이 바로 시작)
 # ==========================================
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-
-if not st.session_state["logged_in"]:
-    show_login()
-else:
-    show_main_app()
+show_main_app()
