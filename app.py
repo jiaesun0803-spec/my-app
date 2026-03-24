@@ -91,141 +91,119 @@ def save_db(db_data):
         json.dump(db_data, f, ensure_ascii=False, indent=4)
 
 # ==========================================
-# HTML → 텍스트 파싱 (PDF/PPT용)
+# HTML → PDF (WeasyPrint)
 # ==========================================
-def html_to_plain(html_text):
-    """HTML 태그 제거, br→줄바꿈, 특수문자 처리"""
-    text = html_text
-    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
-    text = re.sub(r'&lt;br&gt;', '\n', text)
-    text = re.sub(r'&bull;', '•', text)
-    text = re.sub(r'&amp;', '&', text)
-    text = re.sub(r'&lt;', '<', text)
-    text = re.sub(r'&gt;', '>', text)
-    text = re.sub(r'<[^>]+>', '', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    text = re.sub(r'[ \t]+', ' ', text)
-    return text.strip()
-
-def extract_sections(html_text):
-    """HTML에서 섹션별로 내용 추출"""
-    sections = {}
-    # h2 태그 기준으로 섹션 분리
-    pattern = r'<h2[^>]*>(.*?)</h2>(.*?)(?=<h2|$)'
-    matches = re.findall(pattern, html_text, re.DOTALL)
-    for title, content in matches:
-        title_clean = re.sub(r'<[^>]+>', '', title).strip()
-        content_clean = html_to_plain(content).strip()
-        sections[title_clean] = content_clean
-    return sections
-
-# ==========================================
-# PDF 생성 (내용 반영)
-# ==========================================
-def generate_pdf(c_name, response_text, d):
+def generate_pdf_from_html(c_name, response_text, d):
+    """WeasyPrint로 HTML → 진짜 PDF 변환 (한글 완벽 지원)"""
     try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.units import mm
-        from reportlab.lib import colors
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, KeepTogether
-        from reportlab.pdfbase import pdfmetrics
+        from weasyprint import HTML, CSS
 
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(
-            buffer, pagesize=A4,
-            rightMargin=20*mm, leftMargin=20*mm,
-            topMargin=20*mm, bottomMargin=20*mm
-        )
+        # 차트 대신 텍스트 안내로 대체 (WeasyPrint는 plotly 차트 렌더링 불가)
+        clean_response = response_text.replace('[GRAPH_INSERT_POINT]',
+            '<div style="background:#e8eaf6; padding:20px; border-radius:10px; text-align:center; color:#3949AB; font-weight:bold; margin:20px 0;">📈 매출 상승 곡선 차트 (앱 화면에서 확인)</div>')
 
-        BLUE = colors.HexColor('#174EA6')
-        LIGHT_BLUE = colors.HexColor('#E8F0FE')
-        DARK = colors.HexColor('#333333')
-        TEAL = colors.HexColor('#00838F')
+        # 마침표 기준 줄바꿈 + 앞에 '-' 추가 처리
+        def format_text_content(text):
+            sentences = re.split(r'(?<=\.)\s+', text)
+            formatted = []
+            for s in sentences:
+                s = s.strip()
+                if s and not s.startswith('-'):
+                    formatted.append(f"- {s}")
+                elif s:
+                    formatted.append(s)
+            return '<br>'.join(formatted)
 
-        styles = getSampleStyleSheet()
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
 
-        style_title = ParagraphStyle('mytitle',
-            fontSize=20, fontName='Helvetica-Bold',
-            textColor=BLUE, spaceAfter=6, alignment=1)
+  * {{ box-sizing: border-box; }}
+  body {{
+    font-family: 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    font-size: 11pt;
+    line-height: 1.9;
+    color: #333;
+    margin: 0;
+    padding: 30px 40px;
+    background: white;
+  }}
+  h1 {{
+    color: #174EA6;
+    font-size: 20pt;
+    text-align: center;
+    border-bottom: 3px solid #174EA6;
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+  }}
+  h2.section-title, h2 {{
+    color: #174EA6;
+    font-size: 14pt;
+    border-bottom: 2px solid #174EA6;
+    padding-bottom: 6px;
+    margin-top: 28px;
+    margin-bottom: 12px;
+    page-break-after: avoid;
+  }}
+  .cover-info {{
+    text-align: center;
+    color: #555;
+    font-size: 12pt;
+    margin-bottom: 30px;
+  }}
+  table {{
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    font-size: 10pt;
+  }}
+  th, td {{
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    vertical-align: top;
+  }}
+  th {{
+    background-color: #eceff1;
+    font-weight: bold;
+  }}
+  div[style*="background-color"] {{
+    page-break-inside: avoid;
+  }}
+  .page-break {{
+    page-break-before: always;
+  }}
+  @page {{
+    size: A4;
+    margin: 18mm 20mm;
+  }}
+</style>
+</head>
+<body>
+  <h1>📋 AI 기업분석 결과보고서</h1>
+  <div class="cover-info">
+    <strong>{c_name}</strong><br>
+    작성일: {datetime.now().strftime('%Y년 %m월 %d일')} &nbsp;|&nbsp;
+    담당: {d.get('in_rep_name','미입력')} &nbsp;|&nbsp;
+    업종: {d.get('in_industry','미입력')}
+  </div>
 
-        style_subtitle = ParagraphStyle('mysubtitle',
-            fontSize=13, fontName='Helvetica',
-            textColor=DARK, spaceAfter=12, alignment=1)
+  {clean_response}
 
-        style_h2 = ParagraphStyle('myh2',
-            fontSize=14, fontName='Helvetica-Bold',
-            textColor=BLUE, spaceBefore=16, spaceAfter=6)
+</body>
+</html>
+"""
+        pdf_buffer = io.BytesIO()
+        HTML(string=html_content).write_pdf(pdf_buffer)
+        pdf_buffer.seek(0)
+        return pdf_buffer.getvalue()
 
-        style_body = ParagraphStyle('mybody',
-            fontSize=10, fontName='Helvetica',
-            textColor=DARK, spaceAfter=4, leading=16)
-
-        style_bullet = ParagraphStyle('mybullet',
-            fontSize=10, fontName='Helvetica',
-            textColor=DARK, spaceAfter=3, leading=15,
-            leftIndent=12)
-
-        story = []
-
-        # 표지
-        story.append(Spacer(1, 20*mm))
-        story.append(Paragraph("AI 기업분석 결과보고서", style_title))
-        story.append(Paragraph(c_name, style_subtitle))
-        story.append(Spacer(1, 4*mm))
-        story.append(HRFlowable(width="100%", thickness=2, color=BLUE))
-        story.append(Spacer(1, 4*mm))
-        story.append(Paragraph(f"작성일: {datetime.now().strftime('%Y년 %m월 %d일')}", style_body))
-        story.append(Spacer(1, 10*mm))
-
-        # 기업 기본정보 요약
-        info_lines = [
-            f"기업명: {d.get('in_company_name','미입력')}  |  대표자: {d.get('in_rep_name','미입력')}",
-            f"업종: {d.get('in_industry','미입력')}  |  사업자번호: {format_biz_no(d.get('in_raw_biz_no','미입력'))}",
-            f"사업장 주소: {d.get('in_biz_addr','미입력')}",
-            f"필요자금: {format_kr_currency(d.get('in_req_amount',0))}  |  자금구분: {d.get('in_fund_type','운전자금')}",
-        ]
-        for line in info_lines:
-            story.append(Paragraph(line, style_body))
-        story.append(Spacer(1, 6*mm))
-        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#CCCCCC')))
-        story.append(Spacer(1, 6*mm))
-
-        # 섹션별 내용 파싱
-        sections = extract_sections(response_text)
-
-        for sec_title, sec_content in sections.items():
-            if not sec_content.strip():
-                continue
-
-            story.append(Paragraph(sec_title, style_h2))
-            story.append(HRFlowable(width="100%", thickness=1, color=BLUE))
-            story.append(Spacer(1, 3*mm))
-
-            # 내용을 줄 단위로 처리
-            lines = sec_content.split('\n')
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    story.append(Spacer(1, 2*mm))
-                    continue
-                # 줄바꿈 (마침표 기준)
-                sentences = re.split(r'(?<=\.)\s+', line)
-                for sent in sentences:
-                    sent = sent.strip()
-                    if not sent:
-                        continue
-                    if sent.startswith('•'):
-                        story.append(Paragraph(sent, style_bullet))
-                    else:
-                        story.append(Paragraph(sent, style_body))
-
-            story.append(Spacer(1, 4*mm))
-
-        doc.build(story)
-        buffer.seek(0)
-        return buffer.getvalue()
-
+    except ImportError:
+        st.error("WeasyPrint가 설치되지 않았습니다. requirements.txt에 weasyprint를 추가해주세요.")
+        return None
     except Exception as e:
         st.error(f"PDF 생성 오류: {e}")
         return None
@@ -233,6 +211,26 @@ def generate_pdf(c_name, response_text, d):
 # ==========================================
 # PPTX 생성 (내용 반영)
 # ==========================================
+def extract_sections(html_text):
+    sections = {}
+    pattern = r'<h2[^>]*>(.*?)</h2>(.*?)(?=<h2|$)'
+    matches = re.findall(pattern, html_text, re.DOTALL)
+    for title, content in matches:
+        title_clean = re.sub(r'<[^>]+>', '', title).strip()
+        content_clean = re.sub(r'<[^>]+>', ' ', content)
+        content_clean = re.sub(r'&bull;', '•', content_clean)
+        content_clean = re.sub(r'&amp;', '&', content_clean)
+        content_clean = re.sub(r'\s+', ' ', content_clean).strip()
+        # 마침표 기준 줄바꿈 + '-' 추가
+        sentences = re.split(r'(?<=\.)\s+', content_clean)
+        formatted = []
+        for s in sentences:
+            s = s.strip()
+            if s:
+                formatted.append(f"- {s}" if not s.startswith('-') else s)
+        sections[title_clean] = '\n'.join(formatted)
+    return sections
+
 def generate_pptx(c_name, response_text, d):
     try:
         from pptx import Presentation
@@ -248,107 +246,7 @@ def generate_pptx(c_name, response_text, d):
         WHITE = RGBColor(0xFF, 0xFF, 0xFF)
         DARK = RGBColor(0x33, 0x33, 0x33)
         LIGHT = RGBColor(0xF0, 0xF4, 0xFF)
-        TEAL = RGBColor(0x00, 0x83, 0x8F)
-        RED = RGBColor(0xD3, 0x2F, 0x2F)
 
-        def blank_slide():
-            return prs.slides.add_slide(prs.slide_layouts[6])
-
-        def set_bg(slide, r, g, b):
-            fill = slide.background.fill
-            fill.solid()
-            fill.fore_color.rgb = RGBColor(r, g, b)
-
-        def add_rect(slide, l, t, w, h, r, g, b, alpha=None):
-            from pptx.util import Emu
-            shape = slide.shapes.add_shape(
-                1, Inches(l), Inches(t), Inches(w), Inches(h))
-            shape.fill.solid()
-            shape.fill.fore_color.rgb = RGBColor(r, g, b)
-            shape.line.fill.background()
-            return shape
-
-        def add_text(slide, text, l, t, w, h, size=12, bold=False,
-                     color=None, align=PP_ALIGN.LEFT, wrap=True):
-            if color is None:
-                color = DARK
-            txBox = slide.shapes.add_textbox(
-                Inches(l), Inches(t), Inches(w), Inches(h))
-            tf = txBox.text_frame
-            tf.word_wrap = wrap
-
-            # 줄바꿈 처리: 마침표 뒤 줄바꿈
-            lines = text.split('\n')
-            first = True
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-                # 마침표 기준 분리
-                sentences = re.split(r'(?<=\.)\s+', line)
-                for sent in sentences:
-                    sent = sent.strip()
-                    if not sent:
-                        continue
-                    if first:
-                        p = tf.paragraphs[0]
-                        first = False
-                    else:
-                        p = tf.add_paragraph()
-                    p.alignment = align
-                    run = p.add_run()
-                    run.text = sent
-                    run.font.size = Pt(size)
-                    run.font.bold = bold
-                    run.font.color.rgb = color
-            return txBox
-
-        # 섹션 파싱
-        sections = extract_sections(response_text)
-        sec_list = list(sections.items())
-
-        # ===== 슬라이드 1: 표지 =====
-        s1 = blank_slide()
-        set_bg(s1, 0x17, 0x4E, 0xA6)
-        add_rect(s1, 0, 5.8, 13.33, 1.7, 0x0D, 0x3A, 0x7A)
-        add_text(s1, "AI 기업분석 결과보고서", 1, 1.5, 11.33, 1.2,
-                 size=36, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
-        add_text(s1, c_name, 1, 2.9, 11.33, 0.9,
-                 size=28, bold=True, color=RGBColor(0xAD,0xD8,0xFF), align=PP_ALIGN.CENTER)
-        add_text(s1, f"작성일: {datetime.now().strftime('%Y년 %m월 %d일')}",
-                 1, 3.9, 11.33, 0.5,
-                 size=14, color=RGBColor(0xCC,0xDD,0xFF), align=PP_ALIGN.CENTER)
-        add_text(s1, "본 보고서는 AI 컨설팅 시스템에 의해 자동 생성되었습니다.",
-                 1, 6.1, 11.33, 0.5,
-                 size=11, color=RGBColor(0xAA,0xBB,0xDD), align=PP_ALIGN.CENTER)
-
-        # ===== 슬라이드 2: 기업현황 =====
-        s2 = blank_slide()
-        set_bg(s2, 0xFF, 0xFF, 0xFF)
-        add_rect(s2, 0, 0, 13.33, 1.1, 0x17, 0x4E, 0xA6)
-        add_text(s2, "기업현황", 0.3, 0.15, 12, 0.8,
-                 size=22, bold=True, color=WHITE)
-
-        info_pairs = [
-            ("기업명", d.get('in_company_name','미입력')),
-            ("대표자명", d.get('in_rep_name','미입력')),
-            ("업종", d.get('in_industry','미입력')),
-            ("사업개시일", d.get('in_start_date','미입력')),
-            ("사업자번호", format_biz_no(d.get('in_raw_biz_no','미입력'))),
-            ("필요자금", format_kr_currency(d.get('in_req_amount',0))),
-        ]
-        for i, (label, val) in enumerate(info_pairs):
-            col = i % 2
-            row = i // 2
-            x = 0.3 + col * 6.55
-            y = 1.25 + row * 1.9
-            add_rect(s2, x, y, 6.3, 1.6, 0xF0, 0xF4, 0xFF)
-            add_text(s2, label, x+0.15, y+0.1, 2.5, 0.4,
-                     size=10, bold=True, color=BLUE)
-            add_text(s2, str(val), x+0.15, y+0.5, 5.9, 0.9,
-                     size=12, color=DARK)
-
-        # ===== 이후 슬라이드: 각 섹션 =====
         SECTION_COLORS = [
             (0xE3, 0xF2, 0xFD), (0xFF, 0xEB, 0xEE),
             (0xE8, 0xF5, 0xE9), (0xFF, 0xF3, 0xE0),
@@ -362,6 +260,93 @@ def generate_pptx(c_name, response_text, d):
             (0x39, 0x49, 0xAB),
         ]
 
+        def blank_slide():
+            return prs.slides.add_slide(prs.slide_layouts[6])
+
+        def set_bg(slide, r, g, b):
+            fill = slide.background.fill
+            fill.solid()
+            fill.fore_color.rgb = RGBColor(r, g, b)
+
+        def add_rect(slide, l, t, w, h, r, g, b):
+            shape = slide.shapes.add_shape(1, Inches(l), Inches(t), Inches(w), Inches(h))
+            shape.fill.solid()
+            shape.fill.fore_color.rgb = RGBColor(r, g, b)
+            shape.line.fill.background()
+            return shape
+
+        def add_text(slide, text, l, t, w, h, size=12, bold=False,
+                     color=None, align=PP_ALIGN.LEFT, wrap=True):
+            if color is None: color = DARK
+            txBox = slide.shapes.add_textbox(Inches(l), Inches(t), Inches(w), Inches(h))
+            tf = txBox.text_frame
+            tf.word_wrap = wrap
+            # 줄바꿈 처리
+            lines = [ln.strip() for ln in text.split('\n') if ln.strip()]
+            first = True
+            for line in lines:
+                if first:
+                    p = tf.paragraphs[0]
+                    first = False
+                else:
+                    p = tf.add_paragraph()
+                p.alignment = align
+                run = p.add_run()
+                # '-' 접두사 추가
+                if line and not line.startswith('-'):
+                    run.text = f"- {line}"
+                else:
+                    run.text = line
+                run.font.size = Pt(size)
+                run.font.bold = bold
+                run.font.color.rgb = color
+            return txBox
+
+        sections = extract_sections(response_text)
+        sec_list = list(sections.items())
+
+        # ===== 슬라이드 1: 표지 =====
+        s1 = blank_slide()
+        set_bg(s1, 0x17, 0x4E, 0xA6)
+        add_rect(s1, 0, 5.8, 13.33, 1.7, 0x0D, 0x3A, 0x7A)
+        add_text(s1, "AI 기업분석 결과보고서", 1, 1.5, 11.33, 1.2,
+                 size=36, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+        add_text(s1, c_name, 1, 2.9, 11.33, 0.9,
+                 size=28, bold=True, color=RGBColor(0xAD, 0xD8, 0xFF), align=PP_ALIGN.CENTER)
+        add_text(s1, f"작성일: {datetime.now().strftime('%Y년 %m월 %d일')}",
+                 1, 3.9, 11.33, 0.5,
+                 size=14, color=RGBColor(0xCC, 0xDD, 0xFF), align=PP_ALIGN.CENTER)
+        add_text(s1, "본 보고서는 AI 컨설팅 시스템에 의해 자동 생성되었습니다.",
+                 1, 6.1, 11.33, 0.5,
+                 size=11, color=RGBColor(0xAA, 0xBB, 0xDD), align=PP_ALIGN.CENTER)
+
+        # ===== 슬라이드 2: 기업현황 =====
+        s2 = blank_slide()
+        set_bg(s2, 0xFF, 0xFF, 0xFF)
+        add_rect(s2, 0, 0, 13.33, 1.1, 0x17, 0x4E, 0xA6)
+        add_text(s2, "기업현황", 0.3, 0.15, 12, 0.8,
+                 size=22, bold=True, color=WHITE)
+
+        info_pairs = [
+            ("기업명", d.get('in_company_name', '미입력')),
+            ("대표자명", d.get('in_rep_name', '미입력')),
+            ("업종", d.get('in_industry', '미입력')),
+            ("사업개시일", d.get('in_start_date', '미입력')),
+            ("사업자번호", format_biz_no(d.get('in_raw_biz_no', '미입력'))),
+            ("필요자금", format_kr_currency(d.get('in_req_amount', 0))),
+        ]
+        for i, (label, val) in enumerate(info_pairs):
+            col = i % 2
+            row = i // 2
+            x = 0.3 + col * 6.55
+            y = 1.25 + row * 1.9
+            add_rect(s2, x, y, 6.3, 1.6, 0xF0, 0xF4, 0xFF)
+            add_text(s2, label, x+0.15, y+0.1, 2.5, 0.4,
+                     size=10, bold=True, color=BLUE)
+            add_text(s2, str(val), x+0.15, y+0.55, 5.9, 0.85,
+                     size=12, color=DARK)
+
+        # ===== 섹션별 슬라이드 =====
         for idx, (sec_title, sec_content) in enumerate(sec_list):
             if not sec_content.strip():
                 continue
@@ -371,27 +356,20 @@ def generate_pptx(c_name, response_text, d):
 
             slide = blank_slide()
             set_bg(slide, 0xFF, 0xFF, 0xFF)
-
-            # 헤더
             add_rect(slide, 0, 0, 13.33, 1.1, 0x17, 0x4E, 0xA6)
             add_text(slide, sec_title, 0.3, 0.15, 12, 0.8,
                      size=20, bold=True, color=WHITE)
-
-            # 내용을 줄 단위로 분리
-            lines = [l.strip() for l in sec_content.split('\n') if l.strip()]
-
-            # 최대 표시 줄 수
-            max_lines = 20
-            display_lines = lines[:max_lines]
 
             # 내용 박스 배경
             add_rect(slide, 0.3, 1.2, 12.7, 6.0, bg_r, bg_g, bg_b)
             # 왼쪽 컬러 바
             add_rect(slide, 0.3, 1.2, 0.12, 6.0, lc_r, lc_g, lc_b)
 
-            # 텍스트 내용
-            content_text = '\n'.join(display_lines)
-            add_text(slide, content_text, 0.55, 1.35, 12.5, 5.7,
+            # 내용 (마침표 기준 줄바꿈, '-' 추가)
+            lines = [l.strip() for l in sec_content.split('\n') if l.strip()]
+            display_text = '\n'.join(lines[:18])  # 최대 18줄
+
+            add_text(slide, display_text, 0.55, 1.35, 12.5, 5.7,
                      size=11, color=DARK)
 
         pptx_buffer = io.BytesIO()
@@ -408,14 +386,11 @@ def generate_pptx(c_name, response_text, d):
 # ==========================================
 def show_main_app():
 
-    # ===== 사이드바 =====
     with st.sidebar:
         st.markdown("### 🤖 AI 컨설팅 시스템")
         st.markdown("---")
 
         st.header("⚙️ AI 엔진 설정")
-
-        # API KEY: 한 번 저장하면 재입력 불필요
         if "api_key" not in st.session_state:
             st.session_state["api_key"] = st.secrets.get("GEMINI_API_KEY", "")
 
@@ -438,8 +413,6 @@ def show_main_app():
                     st.warning("API 키를 입력해주세요.")
 
         st.markdown("---")
-
-        # 업체 관리
         st.header("📂 업체 관리")
         db = load_db()
 
@@ -504,11 +477,10 @@ def show_main_app():
         if not st.session_state.get("api_key", ""):
             st.error("⚠️ 좌측 사이드바에 API 키를 입력해주세요.")
         else:
-            # 이미 생성된 리포트가 있으면 재사용
+            # 이미 생성된 리포트 재사용
             if "report_response_text" in st.session_state and "report_fig" in st.session_state:
                 response_text = st.session_state["report_response_text"]
                 fig = st.session_state["report_fig"]
-                monthly_vals = st.session_state.get("report_monthly_vals", [])
 
                 if "[GRAPH_INSERT_POINT]" in response_text:
                     parts = response_text.partition("[GRAPH_INSERT_POINT]")
@@ -518,6 +490,7 @@ def show_main_app():
                 else:
                     st.markdown(response_text, unsafe_allow_html=True)
                     st.plotly_chart(fig, use_container_width=True)
+
             else:
                 try:
                     with st.status("🚀 AI가 리포트를 생성 중입니다...", expanded=True) as status:
@@ -577,12 +550,11 @@ def show_main_app():
                             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                         )
 
-                        # ★ 프롬프트: 문체 간결 + 마침표 줄바꿈 + br 없음 + 세로형 레이아웃
                         prompt = f"""
 당신은 20년 경력의 중소기업 경영컨설턴트입니다.
 아래 규칙을 반드시 지키세요:
 1. 문체: '~있음', '~예상됨', '~확인됨' 등 간결체 사용. '~습니다' 금지.
-2. 줄바꿈: 문장 끝 마침표(.) 이후 반드시 줄바꿈.
+2. 각 문장은 마침표(.)로 끝내고, 반드시 줄바꿈.
 3. <br> 태그 절대 사용 금지.
 4. 마크다운(##, **) 절대 금지.
 5. 각 항목 3~4문장 이상 상세하게 작성.
@@ -590,83 +562,82 @@ def show_main_app():
 [기업 정보]
 - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 아이템: {item} / 신청자금: {req_fund}
 
-[출력 양식 - 반드시 아래 HTML 구조 그대로 출력]
-
+[출력 양식]
 <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업현황분석</h2>
 <table style="width:100%; border-collapse:collapse; font-size:1.1em; background-color:#f8f9fa; border-radius:15px; overflow:hidden; margin-bottom:15px;">
   <tr><td style="padding:15px; border-bottom:1px solid #e0e0e0; width:15%;"><b>기업명</b></td><td style="padding:15px; border-bottom:1px solid #e0e0e0; width:35%;">{c_name}</td><td style="padding:15px; border-bottom:1px solid #e0e0e0; width:15%;"><b>대표자명</b></td><td style="padding:15px; border-bottom:1px solid #e0e0e0; width:35%;">{rep_name}</td></tr>
   <tr><td style="padding:15px; border-bottom:1px solid #e0e0e0;"><b>업종</b></td><td style="padding:15px; border-bottom:1px solid #e0e0e0;">{c_ind}</td><td style="padding:15px; border-bottom:1px solid #e0e0e0;"><b>사업/법인번호</b></td><td style="padding:15px; border-bottom:1px solid #e0e0e0;">{biz_no}{corp_text}</td></tr>
   <tr><td style="padding:15px;"><b>사업장 주소</b></td><td colspan="3" style="padding:15px;">{address}</td></tr>
 </table>
-<div style="background-color:#EEF2FF; padding:15px; border-radius:10px; margin-bottom:15px; line-height:2.0;">(기업 잠재력 3~4문장. 각 문장 끝에 줄바꿈.)</div>
+<div style="background-color:#EEF2FF; padding:15px; border-radius:10px; margin-bottom:15px; line-height:2.2;">(기업 잠재력 분석. 문장마다 마침표 후 줄바꿈.)</div>
 
 <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. SWOT 분석</h2>
 <table style="width:100%; table-layout:fixed; border-collapse:separate; border-spacing:15px; margin-bottom:15px;">
   <tr>
-    <td style="background-color:#e3f2fd; padding:20px; border-radius:15px; vertical-align:top;"><b style="color:#1565C0;">S (강점)</b><div style="margin-top:10px; line-height:2.0;">(강점 3~4문장. 각 문장 끝 줄바꿈.)</div></td>
-    <td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top;"><b style="color:#C62828;">W (약점)</b><div style="margin-top:10px; line-height:2.0;">(약점 3~4문장. 각 문장 끝 줄바꿈.)</div></td>
+    <td style="background-color:#e3f2fd; padding:20px; border-radius:15px; vertical-align:top; line-height:2.2;"><b style="color:#1565C0;">S (강점)</b><div style="margin-top:10px;">(강점 분석. 문장마다 줄바꿈.)</div></td>
+    <td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top; line-height:2.2;"><b style="color:#C62828;">W (약점)</b><div style="margin-top:10px;">(약점 분석. 문장마다 줄바꿈.)</div></td>
   </tr>
   <tr>
-    <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; vertical-align:top;"><b style="color:#2E7D32;">O (기회)</b><div style="margin-top:10px; line-height:2.0;">(기회 3~4문장. 각 문장 끝 줄바꿈.)</div></td>
-    <td style="background-color:#fff3e0; padding:20px; border-radius:15px; vertical-align:top;"><b style="color:#E65C00;">T (위협)</b><div style="margin-top:10px; line-height:2.0;">(위협 3~4문장. 각 문장 끝 줄바꿈.)</div></td>
+    <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; vertical-align:top; line-height:2.2;"><b style="color:#2E7D32;">O (기회)</b><div style="margin-top:10px;">(기회 분석. 문장마다 줄바꿈.)</div></td>
+    <td style="background-color:#fff3e0; padding:20px; border-radius:15px; vertical-align:top; line-height:2.2;"><b style="color:#E65C00;">T (위협)</b><div style="margin-top:10px;">(위협 분석. 문장마다 줄바꿈.)</div></td>
   </tr>
 </table>
 
 <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 시장현황 및 경쟁력 비교</h2>
-<div style="background-color:#f3e5f5; padding:20px; border-radius:15px; margin-bottom:15px; line-height:2.0;"><b>📊 시장 현황 분석</b><br>(시장 트렌드 3~4문장. 각 문장 끝 줄바꿈.)</div>
+<div style="background-color:#f3e5f5; padding:20px; border-radius:15px; margin-bottom:15px; line-height:2.2;"><b>📊 시장 현황 분석</b><div style="margin-top:10px;">(시장 트렌드 분석. 문장마다 줄바꿈.)</div></div>
 <div style="padding:15px; background-color:#fff; border-radius:15px; border:1px solid #e0e0e0;">
   <b>⚔️ 주요 경쟁사 비교 분석표</b>
   <table style="width:100%; border-collapse:collapse; text-align:center; font-size:0.95em; margin-top:10px;">
     <tr style="background-color:#eceff1;"><th style="padding:12px; border:1px solid #ccc;">비교 항목</th><th style="padding:12px; border:1px solid #ccc;">{c_name} (자사)</th><th style="padding:12px; border:1px solid #ccc;">경쟁사 A</th><th style="padding:12px; border:1px solid #ccc;">경쟁사 B</th></tr>
-    <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">핵심 타겟</td><td style="padding:12px; border:1px solid #ccc;">(자사 내용)</td><td style="padding:12px; border:1px solid #ccc;">(A 내용)</td><td style="padding:12px; border:1px solid #ccc;">(B 내용)</td></tr>
-    <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">차별화 요소</td><td style="padding:12px; border:1px solid #ccc;">(자사 내용)</td><td style="padding:12px; border:1px solid #ccc;">(A 내용)</td><td style="padding:12px; border:1px solid #ccc;">(B 내용)</td></tr>
-    <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">예상 점유율</td><td style="padding:12px; border:1px solid #ccc;">(자사 내용)</td><td style="padding:12px; border:1px solid #ccc;">(A 내용)</td><td style="padding:12px; border:1px solid #ccc;">(B 내용)</td></tr>
+    <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">핵심 타겟</td><td style="padding:12px; border:1px solid #ccc;">(자사)</td><td style="padding:12px; border:1px solid #ccc;">(A)</td><td style="padding:12px; border:1px solid #ccc;">(B)</td></tr>
+    <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">차별화 요소</td><td style="padding:12px; border:1px solid #ccc;">(자사)</td><td style="padding:12px; border:1px solid #ccc;">(A)</td><td style="padding:12px; border:1px solid #ccc;">(B)</td></tr>
+    <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">예상 점유율</td><td style="padding:12px; border:1px solid #ccc;">(자사)</td><td style="padding:12px; border:1px solid #ccc;">(A)</td><td style="padding:12px; border:1px solid #ccc;">(B)</td></tr>
   </table>
 </div>
 
 <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 핵심경쟁력분석</h2>
 <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:15px;">
-  <div style="border-left:5px solid #00ACC1; border-radius:10px; background-color:#E0F7FA; padding:20px;">
+  <div style="border-left:5px solid #00ACC1; border-radius:10px; background-color:#E0F7FA; padding:20px; line-height:2.2;">
     <div style="font-weight:bold; color:#00838F; margin-bottom:8px;">포인트 1: (핵심 키워드)</div>
-    <div style="line-height:2.0;">(분석 3~4문장. 각 문장 끝 줄바꿈.)</div>
+    <div>(분석 내용. 문장마다 줄바꿈.)</div>
   </div>
-  <div style="border-left:5px solid #00ACC1; border-radius:10px; background-color:#E0F7FA; padding:20px;">
+  <div style="border-left:5px solid #00ACC1; border-radius:10px; background-color:#E0F7FA; padding:20px; line-height:2.2;">
     <div style="font-weight:bold; color:#00838F; margin-bottom:8px;">포인트 2: (핵심 키워드)</div>
-    <div style="line-height:2.0;">(분석 3~4문장. 각 문장 끝 줄바꿈.)</div>
+    <div>(분석 내용. 문장마다 줄바꿈.)</div>
   </div>
-  <div style="border-left:5px solid #00ACC1; border-radius:10px; background-color:#E0F7FA; padding:20px;">
+  <div style="border-left:5px solid #00ACC1; border-radius:10px; background-color:#E0F7FA; padding:20px; line-height:2.2;">
     <div style="font-weight:bold; color:#00838F; margin-bottom:8px;">포인트 3: (핵심 키워드)</div>
-    <div style="line-height:2.0;">(분석 3~4문장. 각 문장 끝 줄바꿈.)</div>
+    <div>(분석 내용. 문장마다 줄바꿈.)</div>
   </div>
 </div>
 
 <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">5. 자금 사용계획 (총 신청자금: {req_fund})</h2>
 <table style="width:100%; border-collapse:collapse; text-align:left; margin-bottom:15px;">
   <tr style="background-color:#eceff1;"><th style="padding:15px; border:1px solid #ccc; width:20%;">구분 ({fund_type})</th><th style="padding:15px; border:1px solid #ccc; width:60%;">상세 사용계획</th><th style="padding:15px; border:1px solid #ccc; width:20%;">사용예정금액</th></tr>
-  <tr><td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 1)</td><td style="padding:15px; border:1px solid #ccc; line-height:2.0;">(사용처 2~3문장. 각 문장 끝 줄바꿈.)</td><td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td></tr>
-  <tr><td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 2)</td><td style="padding:15px; border:1px solid #ccc; line-height:2.0;">(사용처 2~3문장. 각 문장 끝 줄바꿈.)</td><td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td></tr>
+  <tr><td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 1)</td><td style="padding:15px; border:1px solid #ccc; line-height:2.2;">(사용처 분석. 문장마다 줄바꿈.)</td><td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td></tr>
+  <tr><td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 2)</td><td style="padding:15px; border:1px solid #ccc; line-height:2.2;">(사용처 분석. 문장마다 줄바꿈.)</td><td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td></tr>
 </table>
 
 <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">6. 매출 1년 전망</h2>
 <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:15px;">
-  <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; border-left:5px solid #3949AB;">
-    <div style="font-size:1.05em; font-weight:bold; color:#1565c0; margin-bottom:8px;">1단계 (도입)</div>
-    <div style="line-height:2.0;">(전략 3~4문장. 각 문장 끝 줄바꿈.)</div>
+  <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; border-left:5px solid #3949AB; line-height:2.2;">
+    <div style="font-weight:bold; color:#1565c0; margin-bottom:8px;">1단계 (도입)</div>
+    <div>(전략 분석. 문장마다 줄바꿈.)</div>
     <div style="color:#d32f2f; font-weight:bold; margin-top:8px;">목표: OOO만원</div>
   </div>
-  <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; border-left:5px solid #3949AB;">
-    <div style="font-size:1.05em; font-weight:bold; color:#1565c0; margin-bottom:8px;">2단계 (성장)</div>
-    <div style="line-height:2.0;">(전략 3~4문장. 각 문장 끝 줄바꿈.)</div>
+  <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; border-left:5px solid #3949AB; line-height:2.2;">
+    <div style="font-weight:bold; color:#1565c0; margin-bottom:8px;">2단계 (성장)</div>
+    <div>(전략 분석. 문장마다 줄바꿈.)</div>
     <div style="color:#d32f2f; font-weight:bold; margin-top:8px;">목표: OOO만원</div>
   </div>
-  <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; border-left:5px solid #3949AB;">
-    <div style="font-size:1.05em; font-weight:bold; color:#1565c0; margin-bottom:8px;">3단계 (확장)</div>
-    <div style="line-height:2.0;">(전략 3~4문장. 각 문장 끝 줄바꿈.)</div>
+  <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; border-left:5px solid #3949AB; line-height:2.2;">
+    <div style="font-weight:bold; color:#1565c0; margin-bottom:8px;">3단계 (확장)</div>
+    <div>(전략 분석. 문장마다 줄바꿈.)</div>
     <div style="color:#d32f2f; font-weight:bold; margin-top:8px;">목표: OOO만원</div>
   </div>
-  <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; border-left:5px solid #3949AB;">
-    <div style="font-size:1.05em; font-weight:bold; color:#1565c0; margin-bottom:8px;">4단계 (안착)</div>
-    <div style="line-height:2.0;">(전략 3~4문장. 각 문장 끝 줄바꿈.)</div>
+  <div style="background-color:#e8eaf6; padding:20px; border-radius:15px; border-left:5px solid #3949AB; line-height:2.2;">
+    <div style="font-weight:bold; color:#1565c0; margin-bottom:8px;">4단계 (안착)</div>
+    <div>(전략 분석. 문장마다 줄바꿈.)</div>
     <div style="color:#d32f2f; font-weight:bold; margin-top:8px;">최종목표: OOO만원</div>
   </div>
 </div>
@@ -675,23 +646,23 @@ def show_main_app():
 
 <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">7. 성장비전 및 AI 컨설턴트 코멘트</h2>
 <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
-  <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #388E3C;">
+  <div style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #388E3C; line-height:2.2;">
     <b>🌱 단기 비전</b>
-    <div style="margin-top:10px; line-height:2.0;">(핵심 비전 3~4문장. 각 문장 끝 줄바꿈.)</div>
+    <div style="margin-top:10px;">(단기 비전 분석. 문장마다 줄바꿈.)</div>
   </div>
-  <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #F57C00;">
+  <div style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #F57C00; line-height:2.2;">
     <b>🚀 중기 비전</b>
-    <div style="margin-top:10px; line-height:2.0;">(핵심 비전 3~4문장. 각 문장 끝 줄바꿈.)</div>
+    <div style="margin-top:10px;">(중기 비전 분석. 문장마다 줄바꿈.)</div>
   </div>
-  <div style="background-color:#ffebee; padding:20px; border-radius:15px; border-left:5px solid #C62828;">
+  <div style="background-color:#ffebee; padding:20px; border-radius:15px; border-left:5px solid #C62828; line-height:2.2;">
     <b>👑 장기 비전</b>
-    <div style="margin-top:10px; line-height:2.0;">(핵심 비전 3~4문장. 각 문장 끝 줄바꿈.)</div>
+    <div style="margin-top:10px;">(장기 비전 분석. 문장마다 줄바꿈.)</div>
   </div>
 </div>
-<div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:25px; border-radius:15px; line-height:2.0;">
+<div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:25px; border-radius:15px; line-height:2.2;">
   <b>💡 필수 인증 및 특허 확보 조언</b>
-  <div style="margin-top:10px;">(인증 조언 3~4문장. 각 문장 끝 줄바꿈.)</div>
-  <div style="margin-top:8px;">(지식재산권 전략 3~4문장. 각 문장 끝 줄바꿈.)</div>
+  <div style="margin-top:10px;">(인증 조언. 문장마다 줄바꿈.)</div>
+  <div style="margin-top:8px;">(지식재산권 전략. 문장마다 줄바꿈.)</div>
 </div>
 """
                         response = model.generate_content(prompt)
@@ -702,10 +673,8 @@ def show_main_app():
                     except:
                         response_text = ""
 
-                    # 리포트 내용 세션에 저장 (재사용)
                     st.session_state["report_response_text"] = response_text
                     st.session_state["report_fig"] = fig
-                    st.session_state["report_monthly_vals"] = monthly_vals
                     st.session_state["report_d"] = d
 
                     if "[GRAPH_INSERT_POINT]" in response_text:
@@ -734,9 +703,9 @@ def show_main_app():
             dl1, dl2 = st.columns(2)
             with dl1:
                 st.markdown("**📄 PDF 다운로드**")
-                if st.button("PDF 생성", use_container_width=True):
-                    with st.spinner("PDF 생성 중..."):
-                        pdf_data = generate_pdf(c_name, response_text, report_d)
+                if st.button("📄 PDF 생성하기", use_container_width=True):
+                    with st.spinner("PDF 생성 중... (한글 완벽 지원)"):
+                        pdf_data = generate_pdf_from_html(c_name, response_text, report_d)
                     if pdf_data:
                         st.download_button(
                             label="📥 PDF 다운로드",
@@ -748,7 +717,7 @@ def show_main_app():
                         )
             with dl2:
                 st.markdown("**📊 PPT 다운로드**")
-                if st.button("PPT 생성", use_container_width=True):
+                if st.button("📊 PPT 생성하기", use_container_width=True):
                     with st.spinner("PPT 생성 중..."):
                         pptx_data = generate_pptx(c_name, response_text, report_d)
                     if pptx_data:
@@ -811,28 +780,26 @@ def show_main_app():
   <b>NICE 점수:</b> {nice_score}점 | <b>인증:</b> {cert_status}
   <b>전년도매출:</b> <span style="color:#1565c0; font-weight:bold;">{s_25}</span> | <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> | <b>필요자금: {req_fund}</b>
 </div>
-<div style="background-color:#EEF2FF; padding:15px; border-radius:10px; margin-bottom:20px; line-height:2.0;">(2~3문장 진단 요약. 마침표 뒤 줄바꿈.)</div>
+<div style="background-color:#EEF2FF; padding:15px; border-radius:10px; margin-bottom:20px; line-height:2.2;">(2~3문장 진단 요약. 마침표 뒤 줄바꿈.)</div>
 
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. 우선순위 추천 정책자금</h2>
 <table style="width:100%; table-layout:fixed; border-collapse:separate; border-spacing:15px; margin-bottom:15px;">
   <tr>
-    <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top;"><b style="color:#2e7d32;">🥇 1순위: [기관명] / [자금명] / 예상한도</b><div style="margin-top:10px; line-height:2.0;">(사유 2~3문장. 마침표 뒤 줄바꿈.)</div></td>
-    <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top;"><b style="color:#2e7d32;">🥈 2순위: [기관명] / [자금명] / 예상한도</b><div style="margin-top:10px; line-height:2.0;">(사유 2~3문장. 마침표 뒤 줄바꿈.)</div></td>
+    <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top; line-height:2.2;"><b style="color:#2e7d32;">🥇 1순위: [기관명] / [자금명] / 예상한도</b><div style="margin-top:10px;">(사유. 문장마다 줄바꿈.)</div></td>
+    <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top; line-height:2.2;"><b style="color:#2e7d32;">🥈 2순위: [기관명] / [자금명] / 예상한도</b><div style="margin-top:10px;">(사유. 문장마다 줄바꿈.)</div></td>
   </tr>
 </table>
-
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 후순위 추천</h2>
 <table style="width:100%; table-layout:fixed; border-collapse:separate; border-spacing:15px; margin-bottom:15px;">
   <tr>
-    <td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top;"><b style="color:#ef6c00;">🥉 3순위: [기관명] / [자금명] / 예상한도</b><div style="margin-top:10px; line-height:2.0;">(사유 2~3문장. 마침표 뒤 줄바꿈.)</div></td>
-    <td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top;"><b style="color:#ef6c00;">🏅 4순위: [기관명] / [자금명] / 예상한도</b><div style="margin-top:10px; line-height:2.0;">(사유 2~3문장. 마침표 뒤 줄바꿈.)</div></td>
+    <td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top; line-height:2.2;"><b style="color:#ef6c00;">🥉 3순위: [기관명] / [자금명] / 예상한도</b><div style="margin-top:10px;">(사유. 문장마다 줄바꿈.)</div></td>
+    <td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top; line-height:2.2;"><b style="color:#ef6c00;">🏅 4순위: [기관명] / [자금명] / 예상한도</b><div style="margin-top:10px;">(사유. 문장마다 줄바꿈.)</div></td>
   </tr>
 </table>
-
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 보완 가이드</h2>
-<div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; line-height:2.0;">
+<div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; line-height:2.2;">
   <b style="color:#c62828;">🚨 보완 조언</b>
-  <div style="margin-top:10px;">(전략 2~3문장. 마침표 뒤 줄바꿈.)</div>
+  <div style="margin-top:10px;">(전략. 문장마다 줄바꿈.)</div>
 </div>"""
                     response = model.generate_content(prompt)
                     status.update(label="✅ 매칭 리포트 생성 완료!", state="complete")
@@ -844,15 +811,17 @@ def show_main_app():
                 if not safe_file_name: safe_file_name = "업체"
                 html_export = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>{c_name} 매칭리포트</title>
 <style>* {{box-sizing:border-box; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;}}
-body {{font-family:'Malgun Gothic',sans-serif; padding:30px; line-height:1.8; color:#333; max-width:1000px; margin:0 auto; background-color:#fff;}}
+body {{font-family:'Malgun Gothic',sans-serif; padding:30px; line-height:2.0; color:#333; max-width:1000px; margin:0 auto; background-color:#fff;}}
 .print-btn {{display:block; width:100%; padding:15px; background-color:#174EA6; color:white; font-size:18px; font-weight:bold; border:none; border-radius:10px; cursor:pointer; margin-bottom:30px; text-align:center;}}
 @media print {{.print-btn {{display:none;}} @page {{size:A4; margin:10mm;}} body {{padding:0 !important; font-size:13px !important;}}}}</style>
 </head><body>
 <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
 <h1>🎯 AI 정책자금 매칭 리포트: {c_name}</h1>
 {response.text}</body></html>"""
-                st.download_button(label="📥 매칭 리포트 다운로드 (HTML)", data=html_export,
-                                   file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
+                st.download_button(label="📥 매칭 리포트 다운로드 (HTML)",
+                                   data=html_export,
+                                   file_name=f"{safe_file_name}_매칭리포트.html",
+                                   mime="text/html", type="primary")
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
@@ -912,35 +881,34 @@ body {{font-family:'Malgun Gothic',sans-serif; padding:30px; line-height:1.8; co
         with tabs[0]:
             st.subheader("🏢 중소벤처기업진흥공단")
             c1, c2 = st.columns(2)
-            with c1: st.link_button("🚀 중진공 사업계획서 Gems", gem_url, use_container_width=True); st.code(prompts["kosme_plan"], language="markdown")
-            with c2: st.link_button("📝 중진공 융자신청서 Gems", gem_url, use_container_width=True); st.code(prompts["kosme_loan"], language="markdown")
+            with c1: st.link_button("🚀 중진공 사업계획서", gem_url, use_container_width=True); st.code(prompts["kosme_plan"], language="markdown")
+            with c2: st.link_button("📝 중진공 융자신청서", gem_url, use_container_width=True); st.code(prompts["kosme_loan"], language="markdown")
         with tabs[1]:
             st.subheader("🏪 소상공인시장진흥공단")
             c1, c2 = st.columns(2)
-            with c1: st.link_button("🚀 소진공 사업계획서 Gems", gem_url, use_container_width=True); st.code(prompts["semas_plan"], language="markdown")
-            with c2: st.link_button("📝 소진공 융자신청서 Gems", gem_url, use_container_width=True); st.code(prompts["semas_loan"], language="markdown")
+            with c1: st.link_button("🚀 소진공 사업계획서", gem_url, use_container_width=True); st.code(prompts["semas_plan"], language="markdown")
+            with c2: st.link_button("📝 소진공 융자신청서", gem_url, use_container_width=True); st.code(prompts["semas_loan"], language="markdown")
         with tabs[2]:
             st.subheader("🏦 신용보증기금 / 지역신보")
             c1, c2 = st.columns(2)
-            with c1: st.link_button("🚀 신보 사업계획서 Gems", gem_url, use_container_width=True); st.code(prompts["kodit_plan"], language="markdown")
-            with c2: st.link_button("📝 신보 보증신청서 Gems", gem_url, use_container_width=True); st.code(prompts["kodit_loan"], language="markdown")
+            with c1: st.link_button("🚀 신보 사업계획서", gem_url, use_container_width=True); st.code(prompts["kodit_plan"], language="markdown")
+            with c2: st.link_button("📝 신보 보증신청서", gem_url, use_container_width=True); st.code(prompts["kodit_loan"], language="markdown")
         with tabs[3]:
             st.subheader("🔬 기술보증기금")
             c1, c2 = st.columns(2)
-            with c1: st.link_button("🚀 기보 사업계획서 Gems", gem_url, use_container_width=True); st.code(prompts["kibo_plan"], language="markdown")
-            with c2: st.link_button("📝 기보 보증신청서 Gems", gem_url, use_container_width=True); st.code(prompts["kibo_loan"], language="markdown")
+            with c1: st.link_button("🚀 기보 사업계획서", gem_url, use_container_width=True); st.code(prompts["kibo_plan"], language="markdown")
+            with c2: st.link_button("📝 기보 보증신청서", gem_url, use_container_width=True); st.code(prompts["kibo_loan"], language="markdown")
         with tabs[4]:
             st.subheader("📈 제안용 (IR / PSST)")
             c1, c2 = st.columns(2)
-            with c1: st.link_button("🚀 PSST 사업계획서 Gems", gem_url, use_container_width=True); st.code(prompts["ir_plan"], language="markdown")
-            with c2: st.link_button("📝 1-Pager 요약서 Gems", gem_url, use_container_width=True); st.code(prompts["ir_loan"], language="markdown")
+            with c1: st.link_button("🚀 PSST 사업계획서", gem_url, use_container_width=True); st.code(prompts["ir_plan"], language="markdown")
+            with c2: st.link_button("📝 1-Pager 요약서", gem_url, use_container_width=True); st.code(prompts["ir_loan"], language="markdown")
 
     # ---------------------------------------------------------
     # [입력 화면 - 대시보드]
     # ---------------------------------------------------------
     else:
-        # 새 리포트 생성 시 이전 캐시 삭제
-        for key in ["report_response_text", "report_fig", "report_monthly_vals", "report_d"]:
+        for key in ["report_response_text", "report_fig", "report_d"]:
             if key in st.session_state:
                 del st.session_state[key]
 
