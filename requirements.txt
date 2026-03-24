@@ -3,4 +3,3 @@ google-generativeai
 plotly
 numpy
 pandas
-supabase
