@@ -1,5 +1,6 @@
 streamlit
 google-generativeai
-python-pptx
-pandas
 plotly
+numpy
+pandas
+supabase
