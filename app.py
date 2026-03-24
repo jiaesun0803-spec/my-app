@@ -144,13 +144,16 @@ if check_password():
 
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
+    # [핵심 수정] 새 리포트 생성 버튼을 누를 때마다 메모리(캐시)를 초기화하여 리셋 방지!
     if st.sidebar.button("📊 1. 기업분석리포트 생성", use_container_width=True):
         st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         st.session_state["view_mode"] = "REPORT"
+        st.session_state.pop("generated_report", None)
         st.rerun()
     if st.sidebar.button("💡 2. 정책자금 매칭 리포트", use_container_width=True):
         st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         st.session_state["view_mode"] = "MATCHING"
+        st.session_state.pop("generated_matching", None)
         st.rerun()
     if st.sidebar.button("📝 3. 사업계획서 생성", use_container_width=True):
         st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
@@ -183,7 +186,253 @@ if check_password():
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
-                with st.status("🚀 잼(Jam)이 가로형 레이아웃으로 완벽한 리포트를 생성 중입니다...", expanded=True) as status:
+                # 데이터 세팅 (매번 실행됨, 빠름)
+                c_ind = d.get('in_industry', '미입력')
+                rep_name = d.get('in_rep_name', '미입력')
+                biz_no = format_biz_no(d.get('in_raw_biz_no', '미입력'))
+                corp_no = format_corp_no(d.get('in_raw_corp_no', ''))
+                corp_text = f" (법인: {corp_no})" if corp_no else ""
+                address = d.get('in_biz_addr', '미입력')
+                
+                add_biz_status = d.get('in_has_additional_biz', '무')
+                add_biz_addr = d.get('in_additional_biz_addr', '').strip()
+                if add_biz_status == '유' and add_biz_addr:
+                    address += f" <br>(추가사업장: {add_biz_addr})"
+                
+                lease_status = d.get('in_lease_status', '자가')
+                lease_text = "[임대]" if lease_status == '임대' else "[자가]"
+                
+                s_cur = format_kr_currency(d.get('in_sales_current', 0))
+                fund_type = d.get('in_fund_type', '운전자금')
+                req_fund = format_kr_currency(d.get('in_req_amount', 0))
+                item = d.get('in_item_desc', '미입력')
+                market = d.get('in_market_status', '미입력')
+                diff = d.get('in_diff_point', '미입력')
+                
+                val_cur = safe_int(d.get('in_sales_current', 0))
+                if val_cur <= 0: val_cur = 1000
+                start_val = val_cur / 12
+                end_val = start_val * 1.5
+                
+                monthly_vals = []
+                for i in range(12):
+                    progress = i / 11.0
+                    linear_part = start_val + (end_val - start_val) * progress
+                    wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
+                    monthly_vals.append(int(linear_part + wave_part))
+                    
+                monthly_labels = [f"{i}월" for i in range(1, 13)]
+
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
+                    text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
+                    textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
+                    marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
+                ))
+                fig.update_layout(
+                    title="📈 향후 1년간 월별 예상 매출 상승 곡선", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                    xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
+                    template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+                )
+                
+                max_val = max(monthly_vals) if max(monthly_vals) > 0 else 1
+                chart_html = f'''
+                <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin:20px 0; page-break-inside: avoid;">
+                    <div style="text-align:center; font-weight:bold; color:#174EA6; margin-bottom:15px; font-size:18px;">📈 향후 1년간 월별 예상 매출 상승 곡선</div>
+                    <table style="width:100%; height:180px; border-bottom:2px solid #ccc; border-collapse:collapse; table-layout:fixed;">
+                        <tr>
+                '''
+                for val in monthly_vals:
+                    height_px = int((val / max_val) * 140) + 5
+                    val_str = format_kr_currency(val).replace('만원', '만')
+                    chart_html += f'''
+                            <td style="vertical-align:bottom; padding:0 5px; border:none;">
+                                <div style="font-size:11px; color:#555; margin-bottom:5px; text-align:center; white-space:nowrap; letter-spacing:-0.5px;">{val_str}</div>
+                                <div style="width:80%; height:{height_px}px; background-color:#1E88E5; border-radius:4px 4px 0 0; margin:0 auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></div>
+                            </td>
+                    '''
+                chart_html += '''
+                        </tr>
+                    </table>
+                    <table style="width:100%; border-collapse:collapse; table-layout:fixed; margin-top:5px;">
+                        <tr>
+                '''
+                for label in monthly_labels:
+                    chart_html += f'''
+                            <td style="text-align:center; font-size:13px; font-weight:bold; color:#333; padding:5px 0; border:none;">{label}</td>
+                    '''
+                chart_html += '''
+                        </tr>
+                    </table>
+                </div>
+                '''
+
+                prompt = f"""
+                당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
+                아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
+
+                [작성 규칙 - 절대 엄수!!!]
+                1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 <h2 class="section-title">, <b>, <div>, <table> 등의 HTML 태그만 사용해야 합니다.
+                2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
+                3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 단, 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
+
+                [기업 정보]
+                - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
+                - 아이템: {item} / 시장현황: {market} / 차별화: {diff}
+                - 신청자금: {req_fund} ({fund_type})
+
+                [출력 양식]
+                <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업현황분석</h2>
+                <table style="width:100%; border-collapse: collapse; font-size: 1.1em; background-color:#f8f9fa; border-radius:15px; overflow:hidden; margin-bottom:15px;">
+                  <tr>
+                    <td style="padding:15px; border-bottom:1px solid #e0e0e0; width:15%;"><b>기업명</b></td>
+                    <td style="padding:15px; border-bottom:1px solid #e0e0e0; width:35%;">{c_name}</td>
+                    <td style="padding:15px; border-bottom:1px solid #e0e0e0; width:15%;"><b>대표자명</b></td>
+                    <td style="padding:15px; border-bottom:1px solid #e0e0e0; width:35%;">{rep_name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:15px; border-bottom:1px solid #e0e0e0;"><b>업종</b></td>
+                    <td style="padding:15px; border-bottom:1px solid #e0e0e0;">{c_ind}</td>
+                    <td style="padding:15px; border-bottom:1px solid #e0e0e0;"><b>사업/법인번호</b></td>
+                    <td style="padding:15px; border-bottom:1px solid #e0e0e0;">{biz_no}{corp_text}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:15px;"><b>사업장 주소</b></td>
+                    <td colspan="3" style="padding:15px;">{address}</td>
+                  </tr>
+                </table>
+                <div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 3~4문장 이상 상세히 작성. 마침표 뒤 줄바꿈 &lt;br&gt;)</div>
+
+                <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. SWOT 분석</h2>
+                <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
+                  <tr>
+                    <td style="background-color:#e3f2fd; padding:20px; border-radius:15px; vertical-align:top;"><b>S (강점)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 이상의 상세 분석)</div></td>
+                    <td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top;"><b>W (약점)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 이상의 상세 분석)</div></td>
+                  </tr>
+                  <tr>
+                    <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; vertical-align:top;"><b>O (기회)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 이상의 상세 분석)</div></td>
+                    <td style="background-color:#fff3e0; padding:20px; border-radius:15px; vertical-align:top;"><b>T (위협)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 이상의 상세 분석)</div></td>
+                  </tr>
+                </table>
+
+                <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 시장현황 및 경쟁력 비교</h2>
+                <div style="background-color:#f3e5f5; padding:20px; border-radius:15px; margin-bottom:15px;">
+                  <b>📊 시장 현황 분석</b><br><br>&bull; (해당 업종 시장 트렌드를 동원하여 3~4줄 상세 요약)
+                </div>
+                <div style="margin-top:15px; padding:15px; background-color:#fff; border-radius:15px; border:1px solid #e0e0e0;">
+                  <b>⚔️ 주요 경쟁사 비교 분석표</b><br>
+                  <table style="width:100%; border-collapse: collapse; text-align:center; font-size:0.95em; margin-top:10px;">
+                    <tr style="background-color:#eceff1;">
+                      <th style="padding:12px; border:1px solid #ccc;">비교 항목</th>
+                      <th style="padding:12px; border:1px solid #ccc;">{c_name} (자사)</th>
+                      <th style="padding:12px; border:1px solid #ccc;">주요 경쟁사 A</th>
+                      <th style="padding:12px; border:1px solid #ccc;">주요 경쟁사 B</th>
+                    </tr>
+                    <tr>
+                      <td style="padding:12px; border:1px solid #ccc; font-weight:bold;">핵심 타겟/포지셔닝</td>
+                      <td style="padding:12px; border:1px solid #ccc;">(자사 강점 요약)</td>
+                      <td style="padding:12px; border:1px solid #ccc;">(경쟁사 A 특징)</td>
+                      <td style="padding:12px; border:1px solid #ccc;">(경쟁사 B 특징)</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:12px; border:1px solid #ccc; font-weight:bold;">차별화 요소(경쟁우위)</td>
+                      <td style="padding:12px; border:1px solid #ccc;">(자사만의 기술/서비스)</td>
+                      <td style="padding:12px; border:1px solid #ccc;">(경쟁사 A 비교점)</td>
+                      <td style="padding:12px; border:1px solid #ccc;">(경쟁사 B 비교점)</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 핵심경쟁력분석</h2>
+                <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
+                  <tr>
+                    <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden;">
+                      <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.1em; border-bottom:1px solid #e0e0e0;">포인트 1 (키워드)</div>
+                      <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (외부 지식 활용 구체적 분석 3~4줄)</div>
+                    </td>
+                    <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden;">
+                      <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.1em; border-bottom:1px solid #e0e0e0;">포인트 2 (키워드)</div>
+                      <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (외부 지식 활용 구체적 분석 3~4줄)</div>
+                    </td>
+                    <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden;">
+                      <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.1em; border-bottom:1px solid #e0e0e0;">포인트 3 (키워드)</div>
+                      <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (외부 지식 활용 구체적 분석 3~4줄)</div>
+                    </td>
+                  </tr>
+                </table>
+
+                <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">5. 자금 사용계획 (총 신청자금: {req_fund})</h2>
+                <table style="width:100%; border-collapse: collapse; text-align:left; margin-bottom:15px;">
+                 <tr style="background-color:#eceff1;">
+                   <th style="padding:15px; border:1px solid #ccc; border-radius:10px 0 0 0; width:20%;">구분 ({fund_type})</th>
+                   <th style="padding:15px; border:1px solid #ccc; width:60%;">상세 사용계획</th>
+                   <th style="padding:15px; border:1px solid #ccc; border-radius:0 10px 0 0; width:20%;">사용예정금액</th>
+                 </tr>
+                 <tr>
+                   <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 1)</td>
+                   <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 구체적 기재 2~3줄)</td>
+                   <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
+                 </tr>
+                 <tr>
+                   <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 2)</td>
+                   <td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 구체적 기재 2~3줄)</td>
+                   <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td>
+                 </tr>
+                </table>
+
+                <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">6. 매출 1년 전망</h2>
+                <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 10px; margin-bottom:15px; text-align:center;">
+                  <tr>
+                    <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
+                      <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">1단계 (도입)</div>
+                      <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
+                      <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
+                    </td>
+                    <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
+                      <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">2단계 (성장)</div>
+                      <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
+                      <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
+                    </td>
+                    <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
+                      <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">3단계 (확장)</div>
+                      <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
+                      <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">목표: OOO만원</div>
+                    </td>
+                    <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;">
+                      <div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">4단계 (안착)</div>
+                      <div style="font-size:0.95em; text-align:left; line-height:1.6; margin-bottom:15px;">&bull; (성장 전략 요약 3~4줄)</div>
+                      <div style="color:#d32f2f; font-weight:bold; font-size:1.1em;">최종목표: OOO만원</div>
+                    </td>
+                  </tr>
+                </table>
+                
+                [GRAPH_INSERT_POINT]
+
+                <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">7. 성장비전 및 AI 컨설턴트 코멘트</h2>
+                <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:20px; text-align:center;">
+                  <tr>
+                    <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; vertical-align:top;">
+                      <b style="font-size:1.1em;">🌱 단기 비전</b><br><br><div style="text-align:left; line-height:1.6;">&bull; (핵심 비전 3~4줄)</div>
+                    </td>
+                    <td style="background-color:#fff3e0; padding:20px; border-radius:15px; vertical-align:top;">
+                      <b style="font-size:1.1em;">🚀 중기 비전</b><br><br><div style="text-align:left; line-height:1.6;">&bull; (핵심 비전 3~4줄)</div>
+                    </td>
+                    <td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top;">
+                      <b style="font-size:1.1em;">👑 장기 비전</b><br><br><div style="text-align:left; line-height:1.6;">&bull; (핵심 비전 3~4줄)</div>
+                    </td>
+                  </tr>
+                </table>
+                
+                <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:25px; border-radius:15px; margin-top:15px; line-height:1.8;">
+                  <b>💡 벤처/이노비즈, ISO 등 필수 인증 및 특허 확보 조언:</b><br><br>
+                  &bull; (기업 업종에 맞는 인증 제도 혜택 및 취득 방법 등 외부 지식을 동원하여 전문적으로 조언. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                  &bull; (아이템 보호를 위한 지식재산권 전략을 구체적으로 조언. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                </div>
+                """
+                
+                # [핵심 수정] Session State를 이용한 리셋(새로고침) 방어!
+                if "generated_report" not in st.session_state:
                     try:
                         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     except Exception as e:
@@ -196,154 +445,14 @@ if check_password():
                     else: raise Exception("사용 가능한 생성형 모델이 없습니다.")
 
                     model = genai.GenerativeModel(target_model)
-                    
-                    c_ind = d.get('in_industry', '미입력')
-                    rep_name = d.get('in_rep_name', '미입력')
-                    biz_no = format_biz_no(d.get('in_raw_biz_no', '미입력'))
-                    corp_no = format_corp_no(d.get('in_raw_corp_no', ''))
-                    corp_text = f" (법인: {corp_no})" if corp_no else ""
-                    address = d.get('in_biz_addr', '미입력')
-                    
-                    add_biz_status = d.get('in_has_additional_biz', '무')
-                    add_biz_addr = d.get('in_additional_biz_addr', '').strip()
-                    if add_biz_status == '유' and add_biz_addr:
-                        address += f" <br>(추가사업장: {add_biz_addr})"
-                    
-                    s_cur = format_kr_currency(d.get('in_sales_current', 0))
-                    fund_type = d.get('in_fund_type', '운전자금')
-                    req_fund = format_kr_currency(d.get('in_req_amount', 0))
-                    item = d.get('in_item_desc', '미입력')
-                    market = d.get('in_market_status', '미입력')
-                    diff = d.get('in_diff_point', '미입력')
-                    
-                    val_cur = safe_int(d.get('in_sales_current', 0))
-                    if val_cur <= 0: val_cur = 1000
-                    start_val = val_cur / 12
-                    end_val = start_val * 1.5
-                    
-                    monthly_vals = []
-                    for i in range(12):
-                        progress = i / 11.0
-                        linear_part = start_val + (end_val - start_val) * progress
-                        wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
-                        monthly_vals.append(int(linear_part + wave_part))
-                        
-                    monthly_labels = [f"{i}월" for i in range(1, 13)]
-
-                    fig = go.Figure()
-                    fig.add_trace(go.Scatter(
-                        x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
-                        text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
-                        textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
-                        marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
-                    ))
-                    fig.update_layout(
-                        title="📈 향후 1년간 월별 예상 매출 상승 곡선", xaxis_title="진행 월", yaxis_title="예상 매출액",
-                        xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
-                        template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
-                    )
-                    
-                    # 다운로드용 고정 픽셀 차트
-                    max_val = max(monthly_vals) if max(monthly_vals) > 0 else 1
-                    chart_html = f'''
-                    <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin:20px 0; page-break-inside: avoid;">
-                        <div style="text-align:center; font-weight:bold; color:#174EA6; margin-bottom:15px; font-size:18px;">📈 향후 1년간 월별 예상 매출 상승 곡선</div>
-                        <table style="width:100%; height:180px; border-bottom:2px solid #ccc; border-collapse:collapse; table-layout:fixed;"><tr>
-                    '''
-                    for val in monthly_vals:
-                        height_px = int((val / max_val) * 140) + 5
-                        val_str = format_kr_currency(val).replace('만원', '만')
-                        chart_html += f'''<td style="vertical-align:bottom; padding:0 5px; border:none;">
-                            <div style="font-size:11px; color:#555; margin-bottom:5px; text-align:center; white-space:nowrap; letter-spacing:-0.5px;">{val_str}</div>
-                            <div style="width:80%; height:{height_px}px; background-color:#1E88E5; border-radius:4px 4px 0 0; margin:0 auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></div>
-                        </td>'''
-                    chart_html += '''</tr></table><table style="width:100%; border-collapse:collapse; table-layout:fixed; margin-top:5px;"><tr>'''
-                    for label in monthly_labels:
-                        chart_html += f'<td style="text-align:center; font-size:13px; font-weight:bold; color:#333; padding:5px 0; border:none;">{label}</td>'
-                    chart_html += '</tr></table></div>'
-
-                    prompt = f"""
-                    당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
-                    아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요. 마크다운(##, **) 절대 금지.
-                    외부 지식을 총동원하여 각 항목을 3~4문장 이상 상세하게 채우세요. 문장 끝마다 &lt;br&gt; 필수.
-
-                    [기업 정보]
-                    - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 아이템: {item} / 신청자금: {req_fund}
-
-                    [출력 양식]
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업현황분석</h2>
-                    <table style="width:100%; border-collapse: collapse; font-size: 1.1em; background-color:#f8f9fa; border-radius:15px; overflow:hidden; margin-bottom:15px;">
-                      <tr><td style="padding:15px; border-bottom:1px solid #e0e0e0; width:15%;"><b>기업명</b></td><td style="padding:15px; border-bottom:1px solid #e0e0e0; width:35%;">{c_name}</td><td style="padding:15px; border-bottom:1px solid #e0e0e0; width:15%;"><b>대표자명</b></td><td style="padding:15px; border-bottom:1px solid #e0e0e0; width:35%;">{rep_name}</td></tr>
-                      <tr><td style="padding:15px; border-bottom:1px solid #e0e0e0;"><b>업종</b></td><td style="padding:15px; border-bottom:1px solid #e0e0e0;">{c_ind}</td><td style="padding:15px; border-bottom:1px solid #e0e0e0;"><b>사업/법인번호</b></td><td style="padding:15px; border-bottom:1px solid #e0e0e0;">{biz_no}{corp_text}</td></tr>
-                      <tr><td style="padding:15px;"><b>사업장 주소</b></td><td colspan="3" style="padding:15px;">{address}</td></tr>
-                    </table>
-                    <div style="margin-bottom:15px;">(긍정적 잠재력 3~4줄. &lt;br&gt;)</div>
-
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. SWOT 분석</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
-                      <tr><td style="background-color:#e3f2fd; padding:20px; border-radius:15px; vertical-align:top;"><b>S (강점)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 분석 &lt;br&gt;)</div></td><td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top;"><b>W (약점)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 분석 &lt;br&gt;)</div></td></tr>
-                      <tr><td style="background-color:#e8f5e9; padding:20px; border-radius:15px; vertical-align:top;"><b>O (기회)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 분석 &lt;br&gt;)</div></td><td style="background-color:#fff3e0; padding:20px; border-radius:15px; vertical-align:top;"><b>T (위협)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(3~4줄 분석 &lt;br&gt;)</div></td></tr>
-                    </table>
-
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 시장현황 및 경쟁력 비교</h2>
-                    <div style="background-color:#f3e5f5; padding:20px; border-radius:15px; margin-bottom:15px;"><b>📊 시장 현황 분석</b><br><br>&bull; (시장 트렌드 3~4줄 요약 &lt;br&gt;)</div>
-                    <div style="margin-top:15px; padding:15px; background-color:#fff; border-radius:15px; border:1px solid #e0e0e0;"><b>⚔️ 주요 경쟁사 비교 분석표</b><br>
-                      <table style="width:100%; border-collapse: collapse; text-align:center; font-size:0.95em; margin-top:10px;">
-                        <tr style="background-color:#eceff1;"><th style="padding:12px; border:1px solid #ccc;">비교 항목</th><th style="padding:12px; border:1px solid #ccc;">{c_name} (자사)</th><th style="padding:12px; border:1px solid #ccc;">경쟁사 A</th><th style="padding:12px; border:1px solid #ccc;">경쟁사 B</th></tr>
-                        <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">핵심 타겟</td><td style="padding:12px; border:1px solid #ccc;">(자사)</td><td style="padding:12px; border:1px solid #ccc;">(A)</td><td style="padding:12px; border:1px solid #ccc;">(B)</td></tr>
-                        <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">차별화 요소</td><td style="padding:12px; border:1px solid #ccc;">(자사)</td><td style="padding:12px; border:1px solid #ccc;">(A)</td><td style="padding:12px; border:1px solid #ccc;">(B)</td></tr>
-                      </table>
-                    </div>
-
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 핵심경쟁력분석</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px; text-align:center;">
-                      <tr>
-                        <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden;"><div style="background-color:#e0f7fa; padding:15px; font-weight:bold; border-bottom:1px solid #e0e0e0;">포인트 1 (키워드)</div><div style="padding:20px; font-size:0.95em; text-align:left;">&bull; (3~4줄 분석 &lt;br&gt;)</div></td>
-                        <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden;"><div style="background-color:#e0f7fa; padding:15px; font-weight:bold; border-bottom:1px solid #e0e0e0;">포인트 2 (키워드)</div><div style="padding:20px; font-size:0.95em; text-align:left;">&bull; (3~4줄 분석 &lt;br&gt;)</div></td>
-                        <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden;"><div style="background-color:#e0f7fa; padding:15px; font-weight:bold; border-bottom:1px solid #e0e0e0;">포인트 3 (키워드)</div><div style="padding:20px; font-size:0.95em; text-align:left;">&bull; (3~4줄 분석 &lt;br&gt;)</div></td>
-                      </tr>
-                    </table>
-
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">5. 자금 사용계획 (총 신청자금: {req_fund})</h2>
-                    <table style="width:100%; border-collapse: collapse; text-align:left; margin-bottom:15px;">
-                     <tr style="background-color:#eceff1;"><th style="padding:15px; border:1px solid #ccc; width:20%;">구분 ({fund_type})</th><th style="padding:15px; border:1px solid #ccc; width:60%;">상세 사용계획</th><th style="padding:15px; border:1px solid #ccc; width:20%;">사용예정금액</th></tr>
-                     <tr><td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 1)</td><td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 2~3줄 &lt;br&gt;)</td><td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td></tr>
-                     <tr><td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(세부항목 2)</td><td style="padding:15px; border:1px solid #ccc;">&bull; (사용처 2~3줄 &lt;br&gt;)</td><td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#1565c0;">(금액)</td></tr>
-                    </table>
-
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">6. 매출 1년 전망</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 10px; margin-bottom:15px; text-align:center;">
-                      <tr>
-                        <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;"><div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">1단계 (도입)</div><div style="font-size:0.95em; text-align:left; margin-bottom:15px;">&bull; (전략 3~4줄 &lt;br&gt;)</div><div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div></td>
-                        <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;"><div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">2단계 (성장)</div><div style="font-size:0.95em; text-align:left; margin-bottom:15px;">&bull; (전략 3~4줄 &lt;br&gt;)</div><div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div></td>
-                        <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;"><div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">3단계 (확장)</div><div style="font-size:0.95em; text-align:left; margin-bottom:15px;">&bull; (전략 3~4줄 &lt;br&gt;)</div><div style="color:#d32f2f; font-weight:bold;">목표: OOO만원</div></td>
-                        <td style="background-color:#e8eaf6; padding:20px; border-radius:15px; vertical-align:top;"><div style="font-size:1.2em; font-weight:bold; color:#1565c0; margin-bottom:10px;">4단계 (안착)</div><div style="font-size:0.95em; text-align:left; margin-bottom:15px;">&bull; (전략 3~4줄 &lt;br&gt;)</div><div style="color:#d32f2f; font-weight:bold;">최종목표: OOO만원</div></td>
-                      </tr>
-                    </table>
-                    
-                    [GRAPH_INSERT_POINT]
-
-                    <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">7. 성장비전 및 AI 컨설턴트 코멘트</h2>
-                    <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:20px; text-align:center;">
-                      <tr>
-                        <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; vertical-align:top;"><b>🌱 단기 비전</b><br><br><div style="text-align:left;">&bull; (핵심 비전 3~4줄 &lt;br&gt;)</div></td>
-                        <td style="background-color:#fff3e0; padding:20px; border-radius:15px; vertical-align:top;"><b>🚀 중기 비전</b><br><br><div style="text-align:left;">&bull; (핵심 비전 3~4줄 &lt;br&gt;)</div></td>
-                        <td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top;"><b>👑 장기 비전</b><br><br><div style="text-align:left;">&bull; (핵심 비전 3~4줄 &lt;br&gt;)</div></td>
-                      </tr>
-                    </table>
-                    
-                    <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:25px; border-radius:15px; margin-top:15px; line-height:1.8;">
-                      <b>💡 필수 인증 및 특허 확보 조언:</b><br><br>
-                      &bull; (인증 조언 3~4줄 &lt;br&gt;)<br>
-                      &bull; (지식재산권 전략 3~4줄 &lt;br&gt;)
-                    </div>
-                    """
-                    
                     response = model.generate_content(prompt)
+                    st.session_state["generated_report"] = response.text
                     status.update(label="✅ 기업분석리포트 생성 완료!", state="complete")
+                    st.balloons()
+                else:
+                    status.update(label="✅ 캐시된 기업분석리포트 불러오기 완료!", state="complete")
                 
-                try: response_text = response.text
-                except: response_text = ""
+                response_text = st.session_state.get("generated_report", "")
 
                 if "[GRAPH_INSERT_POINT]" in response_text:
                     parts = response_text.partition("[GRAPH_INSERT_POINT]")
@@ -355,7 +464,6 @@ if check_password():
                     st.markdown(response_text, unsafe_allow_html=True)
                     st.plotly_chart(fig, use_container_width=True)
 
-                st.balloons()
                 st.divider()
                 st.subheader("💾 리포트 저장 (카테고리별 분할 인쇄)")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
@@ -372,28 +480,32 @@ if check_password():
                         body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
                         h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
+                        .print-btn:hover {{ background-color: #123C85; }}
+                        
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 15mm; }}
-                            body {{ padding: 0 !important; font-size: 14px !important; color: black !important; max-width: 100% !important; }} 
+                            body {{ padding: 0 !important; font-size: 14.5px !important; color: black !important; max-width: 100% !important; }} 
                             h1 {{ margin: 0 0 30px 0 !important; font-size: 28px !important; }}
                             h2.section-title {{ page-break-before: always !important; margin-top: 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
                             h2.section-title:first-of-type {{ page-break-before: avoid !important; margin-top: 20px !important; }}
                             div {{ padding: 12px 15px !important; margin-bottom: 10px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
                             table {{ font-size: 13px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
                             th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
+                            br {{ display: block; content: ""; margin-top: 4px; }}
+                            hr {{ margin-bottom: 15px !important; margin-top: 10px !important; }}
                         }}
                     </style>
                 </head>
                 <body>
-                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
+                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기 (카테고리별 분할 & 그래프 포함)</button>
                     <h1>📋 AI 기업분석 결과보고서: {c_name}</h1>
                     <hr style="margin-bottom: 30px;">
                     {response_text.replace('[GRAPH_INSERT_POINT]', chart_html)}
                 </body>
                 </html>
                 """
-                st.download_button(label="📥 기업분석리포트 다운로드", data=html_export, file_name=f"{safe_file_name}_기업분석.html", mime="text/html", type="primary")
+                st.download_button(label="📥 기업분석리포트 다운로드 (페이지 분할 PDF)", data=html_export, file_name=f"{safe_file_name}_기업분석리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
@@ -415,58 +527,100 @@ if check_password():
         st.subheader(f"📌 분석 대상 기업: {c_name}")
         
         if not st.session_state["api_key"]:
-            st.error("⚠️ 좌측 사이드바에 API 키를 입력하세요.")
+            st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
-                with st.status("🚀 잼(Jam)이 심사를 진행 중입니다...", expanded=True) as status:
-                    model = genai.GenerativeModel('gemini-1.5-flash' if 'models/gemini-1.5-flash' in [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods] else 'gemini-pro')
+                with st.status("🚀 잼(Jam)이 전년도 매출을 기준으로 깐깐한 심사를 진행 중입니다...", expanded=True) as status:
+                    tax_status = d.get('in_tax_status', '무')
+                    fin_status = d.get('in_fin_status', '무')
                     
-                    tax_status, fin_status = d.get('in_tax_status', '무'), d.get('in_fin_status', '무')
-                    total_debt_val = sum([safe_int(d.get(k, 0)) for k in ['in_debt_kosme', 'in_debt_semas', 'in_debt_koreg', 'in_debt_kodit', 'in_debt_kibo', 'in_debt_etc', 'in_debt_credit', 'in_debt_coll']])
+                    total_debt_val = sum([
+                        safe_int(d.get('in_debt_kosme', 0)),
+                        safe_int(d.get('in_debt_semas', 0)),
+                        safe_int(d.get('in_debt_koreg', 0)),
+                        safe_int(d.get('in_debt_kodit', 0)),
+                        safe_int(d.get('in_debt_kibo', 0)),
+                        safe_int(d.get('in_debt_etc', 0)),
+                        safe_int(d.get('in_debt_credit', 0)),
+                        safe_int(d.get('in_debt_coll', 0))
+                    ])
                     total_debt = format_kr_currency(total_debt_val)
                     
                     s_25_val = safe_int(d.get('in_sales_2025', 0))
                     s_25 = format_kr_currency(s_25_val)
                     s_cur = format_kr_currency(safe_int(d.get('in_sales_current', 0)))
                     
-                    c_ind, biz_type, item = d.get('in_industry', '미입력'), d.get('in_biz_type', '개인'), d.get('in_item_desc', '미입력')
+                    c_ind = d.get('in_industry', '미입력')
+                    biz_type = d.get('in_biz_type', '개인')
+                    item = d.get('in_item_desc', '미입력')
                     nice_score = safe_int(d.get('in_nice_score', 0))
-                    req_fund = format_kr_currency(safe_int(d.get('in_req_amount', 0)))
-                    cert_status = "보유" if d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False) else "미보유"
+                    fund_type = d.get('in_fund_type', '운전자금')
+                    fund_req = format_kr_currency(safe_int(d.get('in_req_amount', 0)))
+                    
+                    has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
+                    cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                     
                     biz_years = 0
-                    if d.get('in_start_date', '').strip():
-                        try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
+                    start_date_str = d.get('in_start_date', '').strip()
+                    if start_date_str:
+                        try: biz_years = max(0, 2026 - int(start_date_str[:4]))
                         except: pass
                     
                     prompt = f"""
-                    당신은 전문 경영컨설턴트입니다. 마크다운 사용 절대 금지. 
-                    ※ 모든 매출 기준은 **전년도 매출액({s_25})** 기준입니다.
-                    - 1순위: 중진공(비제조 전년매출 50억 이상) or 소진공. (중복가능 언급)
-                    - 2순위: 신보 or 기보 (무조건 1억 이상 기재). 전년매출 4억 이상 신보 우대, 인증보유 기보 우대. 중복불가.
-                    - 3순위: 지역신용보증재단 (신보/기보 먼저 진행 강조).
-                    - 4순위: 법인은 P-CBO 등 추천.
-                    - 연체 '유'면 모두 비우고 연체 해소 조언.
+                    당신은 20년 경력의 중소기업 정책자금 전문 경영컨설턴트입니다. 
+                    아래 [입력 데이터]와 [절대 매칭 비법 DB]를 100% 반영하여, 제공된 [출력 양식]의 HTML 태그만 사용하여 리포트를 출력하세요.
 
-                    [입력] 기업명:{c_name} / 업종:{c_ind} / 전년도매출:{s_25} / 총기대출:{total_debt} / 필요자금:{req_fund}
+                    [작성 및 포맷팅 규칙 - 절대 엄수!!!]
+                    1. 마크다운 사용 금지: 제목 기호(##), 볼드체(**), 리스트(-) 등 **마크다운 기호를 절대 사용하지 마세요.** 출력 양식에 제공된 `<h2>`, `<b>`, `&bull;`, `<table>` 등의 순수 HTML 태그만 사용해야 합니다. 
+                    2. 어투: 모든 문장은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 간결하게 작성하세요.
+                    3. 줄바꿈: 문장이 마침표('.')로 끝날 때마다 무조건 HTML 태그 `<br>`을 삽입하여 시원하게 줄바꿈 하세요.
+                    4. 내용 분량 (A4 1장 절대 사수): A4 1장에 완벽하게 들어갈 수 있도록 각 세부 항목은 **2~3줄 이내로 팩트만 압축해서** 작성하세요.
 
-                    [출력 양식]
+                    [절대 매칭 비법 DB - 기관별 한도 및 순위 룰 (가장 중요!)]
+                    ※ 모든 매출 기준 판단(컷오프, 보증한도 계산 등)은 **전년도 매출액({s_25})**을 기준으로 심사하세요! 
+
+                    1. 🥇 1순위 (직접대출): '중진공' 또는 '소진공' 중 택 1 하세요.
+                       - [소진공/중진공 중복 룰]: 두 기관의 자금은 **중복 이용이 가능**하다는 점을 꿀팁에 반드시 언급하세요.
+                       - [중진공 컷오프 룰]: 비제조업은 전년도 매출({s_25_val}만원) 50억 이상, 상시근로자 5인 이상이어야 신청 가능합니다. 비제조업인데 전년도 매출 50억 미만이면 무조건 소진공을 추천하세요.
+                       - [소진공 룰]: 신용취약(NICE 839 이하)은 3,000만 원 제한. 그 외는 최대 7천만 원 한도.
+                    2. 🥈 2순위 (메이저 보증 - 절대 고정!): **무조건 '신용보증기금(신보)' 또는 '기술보증기금(기보)'을 배정하세요.** - [1억 절대 룰 - 경고!]: 신보와 기보는 **무조건 최소 1억 원 이상으로 표기하세요!**
+                       - [한도 산출]: 제조업은 전년도 매출의 1/2, 그 외는 전년도 매출의 1/6~1/10 수준에서 총 기대출({total_debt})을 차감하여 계산합니다.
+                       - [매출 4억 룰]: 전년도 매출액 4억 이상이면 신보 강력 추천.
+                       - [기보 예외 룰]: 벤처/특허 보유시 기보 강력 추천. 중복 불가.
+                    3. 🥉 3순위 (지역재단 - 절대 고정!): **무조건 '지역신용보증재단'을 배정하세요.** (신보/기보 먼저, 지역신보 나중 순서의 중요성 강조).
+                    4. 🏅 4순위 (유동화/기타): 법인기업({biz_type})의 한도가 찼을 때 P-CBO 추천. 조건 미달시 타 기관 배치.
+                    5. 🚫 연체 컷오프: 세금/금융연체 '유'인 경우 1~4순위 비우고 연체 해소 조언만 작성.
+
+                    [입력 데이터]
+                    - 기업명: {c_name} / 사업자유형: {biz_type} / 업종: {c_ind} / 업력: 약 {biz_years}년
+                    - 세금체납: {tax_status} / 금융연체: {fin_status} / NICE 점수: {nice_score}점
+                    - 기술/벤처 인증: {cert_status} / 아이템: {item}
+                    - 전년도 매출: {s_25} / 금년 예상 매출: {s_cur}
+                    - 총 기대출 합계: {total_debt} / 희망자금: {fund_req}
+
+                    [출력 양식 - HTML 태그 및 양식 100% 동일하게 유지. 마크다운 절대 쓰지 말것]
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
                     <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
-                      <b>기업명:</b> {c_name} | <b>업종:</b> {c_ind} ({biz_type}) | <b>업력:</b> 약 {biz_years}년 <br>
-                      <b>NICE 점수:</b> {nice_score}점 | <b>기술/벤처 인증:</b> {cert_status} <br>
-                      <b>전년도매출:</b> <span style="color:#1565c0; font-weight:bold;">{s_25}</span> | <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> | <b style="font-size:1.15em;">필요자금: {req_fund}</b>
+                      <b>기업명:</b> {c_name} &nbsp;|&nbsp; <b>업종:</b> {c_ind} ({biz_type}) &nbsp;|&nbsp; <b>업력:</b> 약 {biz_years}년 <br>
+                      <b>NICE 점수:</b> {nice_score}점 &nbsp;|&nbsp; <b>기술/벤처 인증:</b> {cert_status} <br>
+                      <b>전년도매출:</b> <span style="color:#1565c0; font-weight:bold;">{s_25}</span> &nbsp;|&nbsp; <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> &nbsp;|&nbsp; <b style="font-size:1.15em;">필요자금: {fund_req}</b>
                     </div>
-                    <div style="margin-bottom:20px;">(2~3줄 요약. &lt;br&gt;)</div>
+                    <div style="margin-bottom:20px;">
+                      (데이터를 바탕으로 정책자금 합격 가능성에 대한 팩트폭격 스펙 평가. 2~3줄 요약, 문장마다 마침표 뒤 줄바꿈 &lt;br&gt;)
+                    </div>
 
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. 우선순위 추천 정책자금 (1~2순위)</h2>
                     <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px;">
                       <tr>
                         <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top;">
-                          <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (전략 2~3줄 &lt;br&gt;)
+                          <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명] / 예상 한도</b><br><br>
+                          &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                          &bull; (합격 꿀팁 및 전략 2~3줄 상세 작성. 소진공/중진공 중복가능 언급. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                         </td>
                         <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top;">
-                          <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [신보 or 기보] / [상품명] / 예상 한도 (최소 1억 이상)</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (전략 2~3줄 &lt;br&gt;)
+                          <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [신용보증기금 또는 기술보증기금] / [보증 상품명] / 예상 한도 (최소 1억 원 이상)</b><br><br>
+                          &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                          &bull; (합격 꿀팁 및 심사절차 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                         </td>
                       </tr>
                     </table>
@@ -475,27 +629,54 @@ if check_password():
                     <table style="width:100%; table-layout:fixed; border-collapse: separate; border-spacing: 15px; margin-bottom:15px;">
                       <tr>
                         <td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top;">
-                          <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신보] / [자금명] / 예상 한도</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (기금 우선진행 전략 강조 &lt;br&gt;)
+                          <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신용보증재단] / [세부 자금명] / 예상 한도 (최대 2억 원)</b><br><br>
+                          &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                          &bull; (기금 우선, 재단 나중 순서의 중요성 등 전략 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                         </td>
                         <td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top;">
-                          <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [기관명] / [자금명] / 예상 한도</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (전략 2~3줄 &lt;br&gt;)
+                          <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [추천 기관명] / [세부 자금명(또는 P-CBO)] / 예상 한도</b><br><br>
+                          &bull; (추천 사유 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                          &bull; (접근 전략 2~3줄 상세 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                         </td>
                       </tr>
                     </table>
 
                     <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 심사 전 필수 체크리스트 및 보완 가이드</h2>
                     <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:15px;">
-                      <b style="font-size:1.1em; color:#c62828;">🚨 보완 조언:</b><br><br>&bull; (전략 1 &lt;br&gt;)<br>&bull; (전략 2 &lt;br&gt;)
+                      <b style="font-size:1.1em; color:#c62828;">🚨 AI 컨설턴트 보완 조언:</b><br><br>
+                      &bull; (보완 전략 1 2~3줄 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                      &bull; (보완 전략 2 2~3줄 작성. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                     </div>
                     """
-                    response = model.generate_content(prompt)
-                    status.update(label="✅ 매칭 리포트 생성 완료!", state="complete")
+                    
+                    # [핵심 수정] Session State를 이용한 다운로드 리셋(새로고침) 방어!
+                    if "generated_matching" not in st.session_state:
+                        try:
+                            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                        except Exception as e:
+                            raise Exception(f"API 키 권한 오류입니다. (상세: {e})")
+
+                        if 'models/gemini-1.5-flash' in available_models: target_model = 'gemini-1.5-flash'
+                        elif 'models/gemini-1.5-pro' in available_models: target_model = 'gemini-1.5-pro'
+                        elif 'models/gemini-pro' in available_models: target_model = 'gemini-pro'
+                        elif len(available_models) > 0: target_model = available_models[0].replace('models/', '')
+                        else: raise Exception("사용 가능한 생성형 모델이 없습니다.")
+
+                        model = genai.GenerativeModel(target_model)
+                        response = model.generate_content(prompt)
+                        st.session_state["generated_matching"] = response.text
+                        status.update(label="✅ 최적화 매칭 리포트 생성 완료!", state="complete")
+                        st.balloons()
+                    else:
+                        status.update(label="✅ 캐시된 매칭 리포트 불러오기 완료!", state="complete")
                 
-                st.markdown(response.text, unsafe_allow_html=True)
-                st.balloons()
+                response_text = st.session_state.get("generated_matching", "")
+                st.markdown(response_text, unsafe_allow_html=True)
                 
+                # --- [다운로드 버튼 기능] ---
                 st.divider()
-                st.subheader("💾 매칭 리포트 저장 (1페이지 압축)")
+                st.subheader("💾 매칭 리포트 저장 (화면 폰트 100% 보존 1페이지 꽉 찬 출력)")
+                
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
@@ -507,28 +688,35 @@ if check_password():
                     <title>{c_name} 정책자금 매칭 리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 30px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; background-color: #fff; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 30px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
+                        h1 {{ color: #111; text-align: center; margin-bottom: 30px; font-size: 32px; font-weight: bold; }}
+                        h2 {{ color: #174EA6; border-bottom: 2px solid #174EA6; padding-bottom: 8px; margin-top: 30px; font-size: 24px; font-weight: bold; }}
                         .print-btn {{ display: block; width: 100%; padding: 15px; background-color: #174EA6; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 30px; text-align: center; }}
+                        .print-btn:hover {{ background-color: #123C85; }}
+                        
                         @media print {{ 
                             .print-btn {{ display: none; }} 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; font-size: 13px !important; color: black !important; max-width: 100% !important; zoom: 0.85; }} 
+                            body {{ padding: 0 !important; font-size: 13px !important; color: black !important; max-width: 100% !important; line-height: 1.4 !important; zoom: 0.85; }} 
                             h1 {{ margin: 0 0 10px 0 !important; font-size: 24px !important; }}
                             h2 {{ margin: 15px 0 5px 0 !important; font-size: 18px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
                             div {{ padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.4 !important; }}
                             table {{ font-size: 12.5px !important; margin-bottom: 8px !important; width: 100% !important; table-layout: fixed !important; }}
                             th, td {{ padding: 8px !important; word-wrap: break-word; vertical-align: top; }}
+                            br {{ display: block; content: ""; margin-top: 3px; }}
+                            hr {{ margin-bottom: 10px !important; margin-top: 5px !important; }}
                         }}
                     </style>
                 </head>
                 <body>
-                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기</button>
+                    <button class="print-btn" onclick="window.print()">🖨️ 클릭하여 PDF로 저장하기 (1페이지 압축)</button>
                     <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
-                    {response.text}
+                    <hr style="margin-bottom: 15px;">
+                    {response_text}
                 </body>
                 </html>
                 """
-                st.download_button(label="📥 매칭 리포트 다운로드", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
+                st.download_button(label="📥 매칭 리포트 다운로드 (1페이지 압축 PDF)", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
@@ -570,7 +758,8 @@ if check_password():
             except: pass
 
         data_summary = f"""[기업 기본정보]
-- 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 업력: 약 {biz_years}년 / 경력: {career}
+- 기업명: {c_name} / 대표자: {rep_name} / 사업자유형: {biz_type}
+- 업종: {c_ind} / 업력: 약 {biz_years}년 / 경력: {career}
 [재무 상태]
 - 전년매출: {s_25} / 총 기대출: {total_debt} / NICE: {nice_score}점
 [비즈니스 모델]
@@ -682,11 +871,13 @@ if check_password():
             if st.button("📊 1. 기업분석리포트 생성", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "REPORT"
+                st.session_state.pop("generated_report", None) # 리셋 방지 캐시 초기화
                 st.rerun()
         with col_t2: 
             if st.button("💡 2. 정책자금 매칭 리포트", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "MATCHING"
+                st.session_state.pop("generated_matching", None) # 리셋 방지 캐시 초기화
                 st.rerun()
         with col_t3: 
             if st.button("📝 3. 사업계획서 생성 (Gems 연결)", use_container_width=True, type="primary"):
