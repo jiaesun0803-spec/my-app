@@ -205,7 +205,6 @@ if check_password():
             st.error("⚠️ 좌측 사이드바에 API 키를 입력하거나, 서버 설정에 키를 등록해주세요.")
         else:
             try:
-                # 데이터 세팅
                 biz_type = d.get('in_biz_type', '개인')
                 c_ind = d.get('in_industry', '미입력')
                 rep_name = d.get('in_rep_name', '미입력')
@@ -294,7 +293,6 @@ if check_password():
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
                             
-                            # [핵심 수정] 마지막 7번 조언 영역 글자수 통제 및 박스 다이어트 CSS 적용
                             prompt = f"""
                             당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                             아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
@@ -457,10 +455,22 @@ if check_password():
                               &bull; (아이템 보호를 위한 지식재산권 전략을 1~2줄로 핵심만 간결히 요약. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                             </div>
                             """
-                            response = model.generate_content(prompt)
-                            st.session_state["generated_report"] = response.text
-                            status.update(label="✅ AI기업분석리포트 생성 완료!", state="complete")
-                            st.balloons()
+                            
+                            # [핵심] 429 한도 초과 방어 (자동 재시도 로직)
+                            max_retries = 3
+                            for attempt in range(max_retries):
+                                try:
+                                    response = model.generate_content(prompt)
+                                    st.session_state["generated_report"] = response.text
+                                    status.update(label="✅ AI기업분석리포트 생성 완료!", state="complete")
+                                    st.balloons()
+                                    break
+                                except Exception as e:
+                                    if "429" in str(e) and attempt < max_retries - 1:
+                                        status.update(label=f"⏳ 구글 서버 응답 지연 (할당량 초과). 5초 후 자동 재시도합니다... ({attempt+1}/{max_retries})", state="running")
+                                        time.sleep(5)
+                                    else:
+                                        raise e
                         except Exception as e:
                             status.update(label=f"❌ 오류가 발생했습니다. API 키 권한을 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
@@ -562,6 +572,7 @@ if check_password():
                             c_ind, biz_type, item = d.get('in_industry', '미입력'), d.get('in_biz_type', '개인'), d.get('in_item_desc', '미입력')
                             nice_score = safe_int(d.get('in_nice_score', 0))
                             fund_type = d.get('in_fund_type', '운전자금')
+                            
                             req_fund = format_kr_currency(safe_int(d.get('in_req_amount', 0)))
                             
                             has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
@@ -623,10 +634,22 @@ if check_password():
                               <b style="font-size:1.1em; color:#c62828;">🚨 보완 조언:</b><br><br>&bull; (전략 1 &lt;br&gt;)<br>&bull; (전략 2 &lt;br&gt;)
                             </div>
                             """
-                            response = model.generate_content(prompt)
-                            st.session_state["generated_matching"] = response.text
-                            status.update(label="✅ 매칭 리포트 생성 완료!", state="complete")
-                            st.balloons()
+                            
+                            # [핵심] 429 한도 초과 방어 (자동 재시도 로직)
+                            max_retries = 3
+                            for attempt in range(max_retries):
+                                try:
+                                    response = model.generate_content(prompt)
+                                    st.session_state["generated_matching"] = response.text
+                                    status.update(label="✅ 최적화 매칭 리포트 생성 완료!", state="complete")
+                                    st.balloons()
+                                    break
+                                except Exception as e:
+                                    if "429" in str(e) and attempt < max_retries - 1:
+                                        status.update(label=f"⏳ 구글 서버 응답 지연 (할당량 초과). 5초 후 자동 재시도합니다... ({attempt+1}/{max_retries})", state="running")
+                                        time.sleep(5)
+                                    else:
+                                        raise e
                         except Exception as e:
                             status.update(label=f"❌ 오류가 발생했습니다. (상세: {str(e)})", state="error")
                             st.stop()
@@ -769,50 +792,50 @@ if check_password():
             st.subheader("🏢 중소벤처기업진흥공단")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_중진공_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kosme_plan, language="markdown")
             with c2:
-                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_중진공_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kosme_loan, language="markdown")
 
         with tabs[1]:
             st.subheader("🏪 소상공인시장진흥공단")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_소진공_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_semas_plan, language="markdown")
             with c2:
-                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_소진공_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_semas_loan, language="markdown")
 
         with tabs[2]:
             st.subheader("🏦 신용보증기금 / 지역신보")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_신보_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kodit_plan, language="markdown")
             with c2:
-                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_신보_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kodit_loan, language="markdown")
 
         with tabs[3]:
             st.subheader("🔬 기술보증기금")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_기보_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kibo_plan, language="markdown")
             with c2:
-                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_기보_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_kibo_loan, language="markdown")
 
         with tabs[4]:
             st.subheader("📈 제안용 (IR / PSST)")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_IR_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_ir_plan, language="markdown")
             with c2:
-                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
+                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app/여기에_IR_요약서_Gems_링크를_넣으세요", use_container_width=True)
                 st.code(prompt_ir_loan, language="markdown")
 
     # --- [입력 화면 (대시보드)] ---
