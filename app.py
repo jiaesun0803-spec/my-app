@@ -219,6 +219,9 @@ if check_password():
                 if add_biz_status == '유' and add_biz_addr:
                     address += f" <br>(추가사업장: {add_biz_addr})"
                 
+                lease_status = d.get('in_lease_status', '자가')
+                lease_text = "[임대]" if lease_status == '임대' else "[자가]"
+                
                 s_cur = format_kr_currency(d.get('in_sales_current', 0))
                 fund_type = d.get('in_fund_type', '운전자금')
                 req_fund = format_kr_currency(d.get('in_req_amount', 0))
@@ -291,7 +294,7 @@ if check_password():
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
                             
-                            # [핵심 수정 1 & 2 적용] 기업현황 3단 배열 및 자금사용계획 3줄 세분화 프롬프트
+                            # [핵심 수정] 마지막 7번 조언 영역 글자수 통제 및 박스 다이어트 CSS 적용
                             prompt = f"""
                             당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                             아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
@@ -299,7 +302,7 @@ if check_password():
                             [작성 규칙 - 절대 엄수!!!]
                             1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 HTML 태그만 사용해야 합니다.
                             2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
-                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 단, 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
+                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. (단, 마지막 7번의 '핵심 인증 및 특허 확보 조언'은 무조건 1~2줄로 간결하게 요약하세요.) 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
 
                             [기업 정보]
                             - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 사업자유형: {biz_type}
@@ -448,10 +451,10 @@ if check_password():
                               </tr>
                             </table>
                             
-                            <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:25px; border-radius:15px; margin-top:15px; line-height:1.8;">
-                              <b>💡 벤처/이노비즈, ISO 등 필수 인증 및 특허 확보 조언:</b><br><br>
-                              &bull; (기업 업종에 맞는 인증 제도 혜택 및 취득 방법 등 외부 지식을 동원하여 전문적으로 조언. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                              &bull; (아이템 보호를 위한 지식재산권 전략을 구체적으로 조언. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                            <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:20px; border-radius:15px; margin-top:15px; line-height:1.6;">
+                              <b>💡 핵심 인증 및 특허 확보 조언:</b><br><br>
+                              &bull; (기업 업종에 맞는 필수 인증 혜택 및 전략을 1~2줄로 핵심만 간결히 요약. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
+                              &bull; (아이템 보호를 위한 지식재산권 전략을 1~2줄로 핵심만 간결히 요약. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
                             </div>
                             """
                             response = model.generate_content(prompt)
@@ -570,7 +573,6 @@ if check_password():
                                 try: biz_years = max(0, 2026 - int(start_date_str[:4]))
                                 except: pass
                             
-                            # [핵심 수정 3] 어투(명사형) 강력 통제 및 4순위 시중은행 추천 명시!
                             prompt = f"""
                             당신은 전문 경영컨설턴트입니다. 마크다운 기호 절대 금지. 
                             ※ 모든 문장은 반드시 '~음', '~함', '~임', '~기대됨' 등의 명사형으로 끝내야 합니다. '~습니다', '~합니다', '~해요' 등의 서술어는 절대 사용 금지!!!
