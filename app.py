@@ -169,11 +169,17 @@ if check_password():
         st.session_state.pop("generated_matching", None)
         st.rerun()
         
-    if st.sidebar.button("📝 3. 사업계획서 생성", use_container_width=True):
+    if st.sidebar.button("📝 3. 기관 맞춤형 융자/사업계획서 AI자동 생성기", use_container_width=True):
         if st.session_state.get("view_mode", "INPUT") == "INPUT":
             st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         st.session_state["view_mode"] = "PLAN"
         st.session_state.pop("kosme_result_html", None)
+        st.rerun()
+        
+    if st.sidebar.button("📑 4. 정식 사업계획서 (마스터) 생성", use_container_width=True):
+        if st.session_state.get("view_mode", "INPUT") == "INPUT":
+            st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+        st.session_state["view_mode"] = "FULL_PLAN"
         st.rerun()
 
     # ==========================================
@@ -183,7 +189,7 @@ if check_password():
     if "permanent_data" not in st.session_state: st.session_state["permanent_data"] = {}
 
     # ---------------------------------------------------------
-    # [모드 A: 1. 기업분석리포트] (기존코드 완벽 보존)
+    # [모드 A: 1. 기업분석리포트]
     # ---------------------------------------------------------
     if st.session_state["view_mode"] == "REPORT":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -267,7 +273,7 @@ if check_password():
                             [작성 규칙 - 절대 엄수!!!]
                             1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 HTML 태그만 사용해야 합니다.
                             2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
-                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. (단, 마지막 7번의 '조언' 부분만 1~2줄로 짧게 쓰세요.) 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
+                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
                             4. 자금 사용계획 작성 규칙: 5번의 좌측 항목명은 반드시 '및'을 기준으로 <br> 태그를 사용해 줄바꿈 하세요.
                             5. 경쟁사 비교 분석표 규칙: 헤더(주요 경쟁사 A, B) 작성 시, 미리 제공된 양식대로 괄호 부분은 반드시 <br> 태그 아래에 작성하여 줄바꿈을 강제하세요.
 
@@ -455,7 +461,13 @@ if check_password():
                             status.update(label=f"❌ 오류가 발생했습니다. API 키 권한을 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
 
-                response_text = st.session_state.get("generated_report", "")
+                raw_text = st.session_state.get("generated_report", "")
+                if "```html" in raw_text:
+                    response_text = raw_text.split("```html")[1].split("```")[0].strip()
+                elif "```" in raw_text:
+                    response_text = raw_text.split("```")[1].split("```")[0].strip()
+                else:
+                    response_text = raw_text.strip()
 
                 if "[GRAPH_INSERT_POINT]" in response_text:
                     parts = response_text.partition("[GRAPH_INSERT_POINT]")
@@ -506,7 +518,7 @@ if check_password():
                 st.error(f"❌ 시스템 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 2. 정책자금 매칭 리포트] (기존코드 완벽 보존)
+    # [모드 B: 2. 정책자금 매칭 리포트]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -554,8 +566,16 @@ if check_password():
                             fund_type = d.get('in_fund_type', '운전자금')
                             req_fund = format_kr_currency(safe_int(d.get('in_req_amount', 0)))
                             
-                            has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
-                            cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
+                            certs = []
+                            if d.get('in_chk_1', False): certs.append("소상공인")
+                            if d.get('in_chk_2', False): certs.append("창업기업")
+                            if d.get('in_chk_3', False): certs.append("여성기업")
+                            if d.get('in_chk_4', False): certs.append("이노비즈")
+                            if d.get('in_chk_6', False): certs.append("벤처")
+                            if d.get('in_chk_7', False): certs.append("뿌리기업")
+                            if d.get('in_chk_10', False): certs.append("ISO")
+                            if d.get('in_chk_11', False): certs.append("HACCP")
+                            cert_status = ", ".join(certs) if certs else "미보유"
                             
                             pat_str = ""
                             if d.get('in_has_patent') == '유':
@@ -654,7 +674,14 @@ if check_password():
                             status.update(label=f"❌ 오류 발생. API 키(새 계정)를 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
                 
-                response_text = st.session_state.get("generated_matching", "")
+                raw_text = st.session_state.get("generated_matching", "")
+                if "```html" in raw_text:
+                    response_text = raw_text.split("```html")[1].split("```")[0].strip()
+                elif "```" in raw_text:
+                    response_text = raw_text.split("```")[1].split("```")[0].strip()
+                else:
+                    response_text = raw_text.strip()
+                    
                 st.markdown(response_text, unsafe_allow_html=True)
                 
                 st.divider()
@@ -695,7 +722,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 C: 3. 사업계획서 생성 (2단 UI 분리 및 내부 HTML 자동 생성)]
+    # [모드 C: 3. 기관 맞춤형 융자/사업계획서 생성]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "PLAN":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -714,6 +741,7 @@ if check_password():
         edu_school = d.get('in_edu_school', '')
         edu_major = d.get('in_edu_major', '')
         home_addr = d.get('in_home_addr', '')
+        process_desc = d.get('in_process_desc', '미입력')
         
         s_25 = format_kr_currency(d.get('in_sales_2025', 0))
         s_cur = format_kr_currency(d.get('in_sales_current', 0))
@@ -729,8 +757,8 @@ if check_password():
             try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
             except: pass
 
-        st.title("📝 기관/서류별 맞춤형 사업계획서 자동 생성기")
-        st.info("💡 좌측은 '자금별 별첨 양식', 우측은 '공통 융자신청서'입니다. 각각의 버튼을 누르면 완벽한 HTML 양식으로 생성됩니다.")
+        st.title("📝 기관/서류별 맞춤형 융자·사업계획서 자동 생성기")
+        st.info("💡 좌측은 '공통 융자신청서', 우측은 '자금별 사업계획서(별첨)'입니다. 버튼을 누르면 완벽한 HTML 양식으로 생성됩니다.")
 
         tabs = st.tabs(["1. 중진공", "2. 소진공", "3. 신보/재단", "4. 기술보증기금", "5. 제안용(IR)"])
 
@@ -747,9 +775,102 @@ if check_password():
             
             col_p1, col_p2 = st.columns(2)
             
-            # --- 좌측: 사업계획서 (별첨 양식) ---
+            # --- 좌측: 융자신청서 (공통 양식) ---
             with col_p1:
-                st.markdown(f"#### 📝 중진공 '{kosme_fund_type}' 사업계획서(별첨) 생성")
+                st.markdown(f"#### 📄 중진공 '{kosme_fund_type}' 융자신청서(공통)")
+                st.caption("💡 포커스: 자금소요 내역, 상환계획, 27/28년 예상매출 및 공정도")
+                
+                if st.button("🚀 중진공 융자신청서(공통) HTML 생성", use_container_width=True):
+                    with st.status("🚀 융자신청서(공통양식) 빈칸을 완벽하게 채우는 중입니다...", expanded=True) as status:
+                        try:
+                            model_name = get_best_model_name()
+                            model = genai.GenerativeModel(model_name)
+                            
+                            prompt_loan = f"""
+                            당신은 정책자금 전문 경영컨설턴트입니다. 
+                            중진공 융자신청서(공통양식)를 아래 [작성 규칙]에 맞춰 HTML 표로 출력하세요. 마크다운 절대 금지.
+
+                            [기업 데이터]
+                            - 기업명: {c_name} / 대표자: {rep_name} / 사업자유형: {biz_type} / 업종: {c_ind}
+                            - 본사주소: {address} / 학력: {edu_school} {edu_major} / 자택: {home_addr}
+                            - 매출: 23년({sales_23}), 24년({sales_24}), 금년({s_cur})
+                            - 신청자금: {req_fund} ({fund_type} / {fund_purpose})
+                            - 아이템: {item} / 시장: {market} / 차별성: {diff} / 판매루트: {route}
+                            - 기초 공정: {process_desc}
+
+                            [작성 규칙 - 절대 엄수]
+                            1. 체크박스는 무조건 '▣' 기호를 사용하세요. 그 외는 '□'.
+                            2. 아래 항목은 지정된 값으로 '▣' 처리: 담보(▣신용), 융자방식(▣직접대출), 고정금리(▣해당없음), 이차보전(▣해당없음), 기업진단(▣미신청)
+                            3. 대시보드에 없는 정보(수출액, 직원, 주주, 경영진 등) 칸은 무조건 공란(빈칸)으로 두세요.
+                            4. [제품생산공정도]는 입력된 '기초 공정'을 바탕으로 제조/서비스업에 맞는 전문 용어를 사용하여 상세한 단계별 흐름도(텍스트)로 살을 붙이세요.
+                            5. [매출현황]의 '27년(예상)'과 '28년(예상)' 매출은 현재 매출을 기반으로 스케일업(J커브) 성장을 가정한 현실적인 금액을 자동으로 계산하여 채워 넣으세요.
+                            6. [사업계획서 (자금활용 계획)] 시작 직전에 반드시 `<div style="page-break-before: always; padding-top: 20px;"></div>` 태그를 삽입하여 인쇄 시 페이지가 1페이지(현황)와 2페이지(계획)로 깔끔하게 나뉘도록 하세요.
+                            7. '윤리준수 약속' 표는 작성하지 마세요.
+
+                            [출력 HTML 뼈대 - 반드시 아래 구조의 표를 사용할 것]
+                            <h2 style="text-align:center;">중소기업 정책자금 융자신청서</h2>
+                            
+                            <h3>[신청내용]</h3>
+                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
+                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">신청자금명</th><td style="border:1px solid #333; padding:8px;">▣ {kosme_fund_type}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">신청금액</th><td style="border:1px solid #333; padding:8px;">{req_fund}</td></tr>
+                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">담보종류</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 신용 &nbsp;&nbsp; □ 부동산 &nbsp;&nbsp; □ 기타</td></tr>
+                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">융자방식</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 중진공 직접대출 &nbsp;&nbsp; □ 대리대출</td></tr>
+                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">고정금리/이차보전</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 해당없음</td></tr>
+                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">기업진단 희망여부</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 미신청 &nbsp;&nbsp; □ 신청</td></tr>
+                            </table>
+
+                            <h3>[기업현황 및 실질적 기업주]</h3>
+                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
+                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">소재지</th><td colspan="3" style="border:1px solid #333; padding:8px; text-align:left;">본사: {address}</td></tr>
+                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">기업주 성명</th><td style="border:1px solid #333; padding:8px;">{rep_name}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">직위</th><td style="border:1px solid #333; padding:8px;">대표</td></tr>
+                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">학력</th><td style="border:1px solid #333; padding:8px;">{edu_school} {edu_major}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">주택</th><td style="border:1px solid #333; padding:8px;">{home_addr}</td></tr>
+                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">대표자와 동일여부</th><td colspan="3" style="border:1px solid #333; padding:8px; text-align:left;">▣ 같음 &nbsp;&nbsp; □ 다름</td></tr>
+                            </table>
+
+                            <h3>[매출 현황]</h3>
+                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
+                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">구분</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">23년</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">24년</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">금년(당월)</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">27년(예상)</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">28년(예상)</th></tr>
+                              <tr><td style="border:1px solid #333; padding:8px;">총매출액</td><td style="border:1px solid #333; padding:8px;">{sales_23}</td><td style="border:1px solid #333; padding:8px;">{sales_24}</td><td style="border:1px solid #333; padding:8px;">{s_cur}</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td></tr>
+                              <tr><td style="border:1px solid #333; padding:8px;">수출액</td><td style="border:1px solid #333; padding:8px;"></td><td style="border:1px solid #333; padding:8px;"></td><td style="border:1px solid #333; padding:8px;"></td><td style="border:1px solid #333; padding:8px;"></td><td style="border:1px solid #333; padding:8px;"></td></tr>
+                            </table>
+
+                            <h3>[주요 생산제품 개요]</h3>
+                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
+                              <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0; width:20%;">제품용도 및 특성</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 상세 서술)</td></tr>
+                              <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">제품생산공정도</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(대시보드 공정도를 전문적으로 살을 붙여 서술)</td></tr>
+                              <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">시장상황</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 시장규모, 경쟁업체 등 상세 서술)</td></tr>
+                              <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">기술품질경쟁력</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 차별성 상세 서술)</td></tr>
+                              <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">판매계획</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 상세 서술)</td></tr>
+                            </table>
+
+                            <div style="page-break-before: always; padding-top: 20px;"></div>
+
+                            <h3>[사업계획서 (자금활용 계획)]</h3>
+                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
+                              <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0; width:20%;">사업내용 및 목적/효과</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(자금 활용 시 예상되는 원가절감, 매출상승, 생산성 향상 효과를 금액/비율을 섞어 500자 내외로 매우 구체적으로 작성)</td></tr>
+                              <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">자금 소요내역</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(시설/운전 자금을 구분하여, 인건비/마케팅/기계 등 세부 용도와 예상 금액을 표나 리스트 형태로 아주 상세히 쪼개서 작성)</td></tr>
+                            </table>
+                            """
+                            response = model.generate_content(prompt_loan)
+                            
+                            # Markdown HTML block strip logic
+                            raw_text = response.text
+                            if "```html" in raw_text:
+                                cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
+                            elif "```" in raw_text:
+                                cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
+                            else:
+                                cleaned_html = raw_text.strip()
+                                
+                            st.session_state["kosme_result_type"] = "loan"
+                            st.session_state["kosme_result_html"] = cleaned_html
+                            status.update(label="✅ 공통 융자신청서 생성 완료!", state="complete")
+                        except Exception as e:
+                            status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
+            
+            # --- 우측: 사업계획서 (별첨 양식) ---
+            with col_p2:
+                st.markdown(f"#### 📝 중진공 '{kosme_fund_type}' 사업계획서(별첨)")
                 if kosme_fund_type == "청년전용창업자금":
                     st.caption("💡 포커스: 창업자 역량(실행력), J커브 성장성, 구체적 타겟 및 스케일업")
                 else:
@@ -763,7 +884,7 @@ if check_password():
                             
                             if kosme_fund_type == "청년전용창업자금":
                                 prompt_plan = f"""
-                                당신은 중소기업진흥공단의 깐깐한 심사역입니다. 마크다운 기호 금지. HTML 태그만 사용하세요.
+                                당신은 중소기업진흥공단의 깐깐한 심사역입니다. 마크다운 기호 금지. 순수 HTML 태그만 사용하세요.
                                 
                                 [기업데이터]
                                 - 기업명: {c_name} / 대표자: {rep_name} / 업력: {biz_years}년 / 경력: {career}
@@ -835,88 +956,19 @@ if check_password():
                                 현재 시스템 고도화 중입니다. '{kosme_fund_type}'의 사업계획서를 자유 양식(HTML)으로 상세히 서술하세요.
                                 """
                             response = model.generate_content(prompt_plan)
+                            
+                            # Markdown HTML block strip logic
+                            raw_text = response.text
+                            if "```html" in raw_text:
+                                cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
+                            elif "```" in raw_text:
+                                cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
+                            else:
+                                cleaned_html = raw_text.strip()
+                                
                             st.session_state["kosme_result_type"] = "plan"
-                            st.session_state["kosme_result_html"] = response.text
+                            st.session_state["kosme_result_html"] = cleaned_html
                             status.update(label="✅ 사업계획서(별첨) 생성 완료!", state="complete")
-                        except Exception as e:
-                            status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
-            
-            # --- 우측: 융자신청서 (공통 양식) ---
-            with col_p2:
-                st.markdown(f"#### 📄 중진공 '{kosme_fund_type}' 융자신청서(공통)")
-                st.caption("💡 포커스: 대시보드 데이터 자동 매핑, 자금소요 및 시장 상세 분석")
-                
-                if st.button("🚀 중진공 융자신청서(공통) HTML 생성", use_container_width=True):
-                    with st.status("🚀 융자신청서(공통양식 1~6p) 빈칸을 완벽하게 채우는 중입니다...", expanded=True) as status:
-                        try:
-                            model_name = get_best_model_name()
-                            model = genai.GenerativeModel(model_name)
-                            
-                            prompt_loan = f"""
-                            당신은 정책자금 전문 경영컨설턴트입니다. 
-                            중진공 융자신청서(공통양식)를 아래 [작성 규칙]에 맞춰 HTML 표로 출력하세요. 마크다운 절대 금지.
-
-                            [기업 데이터]
-                            - 기업명: {c_name} / 대표자: {rep_name} / 사업자유형: {biz_type} / 업종: {c_ind}
-                            - 본사주소: {address}
-                            - 학력: {edu_school} {edu_major} / 자택: {home_addr}
-                            - 매출: 23년({sales_23}), 24년({sales_24}), 금년({s_cur})
-                            - 신청자금: {req_fund} ({fund_type} / {fund_purpose})
-                            - 아이템: {item} / 시장: {market} / 차별성: {diff} / 판매루트: {route}
-
-                            [작성 규칙 - 절대 엄수]
-                            1. 체크박스 문양은 무조건 '▣' 기호를 사용하세요. 그 외는 '□'.
-                            2. 아래 항목은 지정된 값으로 '▣' 처리: 담보(▣신용), 융자방식(▣직접대출), 고정금리(▣해당없음), 이차보전(▣해당없음), 기업진단(▣미신청)
-                            3. 대시보드에 없는 정보(수출액, 직원, 주주, 경영진 등) 칸은 무조건 공란(빈칸)으로 두세요. 소설 쓰지 마세요.
-                            4. [주요 생산제품] 및 [사업계획(자금사용처)]은 외부 데이터를 동원해 매우 상세하게(각 4~5줄) 작성하세요.
-                            5. '윤리준수 약속' 표는 작성하지 마세요.
-
-                            [출력 HTML 뼈대 - 반드시 아래 구조의 표를 사용할 것]
-                            <h2 style="text-align:center;">중소기업 정책자금 융자신청서</h2>
-                            
-                            <h3>[신청내용]</h3>
-                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
-                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">신청자금명</th><td style="border:1px solid #333; padding:8px;">▣ {kosme_fund_type}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">신청금액</th><td style="border:1px solid #333; padding:8px;">{req_fund}</td></tr>
-                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">담보종류</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 신용 &nbsp;&nbsp; □ 부동산 &nbsp;&nbsp; □ 기타</td></tr>
-                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">융자방식</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 중진공 직접대출 &nbsp;&nbsp; □ 대리대출</td></tr>
-                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">고정금리/이차보전</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 해당없음</td></tr>
-                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">기업진단 희망여부</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 미신청 &nbsp;&nbsp; □ 신청</td></tr>
-                            </table>
-
-                            <h3>[기업현황 및 실질적 기업주]</h3>
-                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
-                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">소재지</th><td colspan="3" style="border:1px solid #333; padding:8px; text-align:left;">본사: {address}</td></tr>
-                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">기업주 성명</th><td style="border:1px solid #333; padding:8px;">{rep_name}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">직위</th><td style="border:1px solid #333; padding:8px;">대표</td></tr>
-                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">학력</th><td style="border:1px solid #333; padding:8px;">{edu_school} {edu_major}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">주택</th><td style="border:1px solid #333; padding:8px;">{home_addr}</td></tr>
-                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">대표자와 동일여부</th><td colspan="3" style="border:1px solid #333; padding:8px; text-align:left;">▣ 같음 &nbsp;&nbsp; □ 다름</td></tr>
-                            </table>
-
-                            <h3>[매출 현황]</h3>
-                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
-                              <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">구분</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">23년</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">24년</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">금년(당월)</th></tr>
-                              <tr><td style="border:1px solid #333; padding:8px;">총매출액</td><td style="border:1px solid #333; padding:8px;">{sales_23}</td><td style="border:1px solid #333; padding:8px;">{sales_24}</td><td style="border:1px solid #333; padding:8px;">{s_cur}</td></tr>
-                              <tr><td style="border:1px solid #333; padding:8px;">수출액</td><td style="border:1px solid #333; padding:8px;"></td><td style="border:1px solid #333; padding:8px;"></td><td style="border:1px solid #333; padding:8px;"></td></tr>
-                            </table>
-
-                            <h3>[주요 생산제품 개요]</h3>
-                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
-                              <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0; width:20%;">제품용도 및 특성</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 상세 서술)</td></tr>
-                              <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">제품생산공정도</th><td style="border:1px solid #333; padding:10px;"></td></tr>
-                              <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">시장상황</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 시장규모, 경쟁업체 등 상세 서술)</td></tr>
-                              <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">기술품질경쟁력</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 차별성 상세 서술)</td></tr>
-                              <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">판매계획</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 상세 서술)</td></tr>
-                            </table>
-
-                            <h3>[사업계획서 (자금활용 계획)]</h3>
-                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
-                              <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0; width:20%;">사업내용 및 목적/효과</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(자금 활용 시 예상되는 원가절감, 매출상승, 생산성 향상 효과를 금액/비율을 섞어 500자 내외로 매우 구체적으로 작성)</td></tr>
-                              <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">자금 소요내역</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(시설/운전 자금을 구분하여, 인건비/마케팅/기계 등 세부 용도와 예상 금액을 표나 리스트 형태로 아주 상세히 쪼개서 작성)</td></tr>
-                            </table>
-                            """
-                            response = model.generate_content(prompt_loan)
-                            st.session_state["kosme_result_type"] = "loan"
-                            st.session_state["kosme_result_html"] = response.text
-                            status.update(label="✅ 공통 융자신청서(1~6p) 생성 완료!", state="complete")
                         except Exception as e:
                             status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
                             
@@ -974,11 +1026,22 @@ if check_password():
 
         with tabs[4]:
             st.subheader("📈 제안용 (IR / PSST) (준비 중)")
+            
+    # ---------------------------------------------------------
+    # [모드 D: 4. 정식 사업계획서 (마스터)] - 뼈대 추가
+    # ---------------------------------------------------------
+    elif st.session_state["view_mode"] == "FULL_PLAN":
+        if st.button("⬅️ 대시보드로 돌아가기"):
+            st.session_state["view_mode"] = "INPUT"
+            st.rerun()
+            
+        st.title("📑 마스터 사업계획서 자동 생성 (IR / FSS 등)")
+        st.info("투자 유치 및 대형 자금 조달을 위한 '풀버전(Full-Version) 정식 사업계획서' 생성 메뉴입니다. (곧 업데이트 예정)")
 
     # --- [입력 화면 (대시보드)] ---
     else:
         st.title("📊 AI 컨설팅 대시보드")
-        col_t1, col_t2, col_t3 = st.columns(3)
+        col_t1, col_t2, col_t3, col_t4 = st.columns(4)
         with col_t1:
             if st.button("📊 1. 기업분석리포트 생성", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
@@ -992,10 +1055,15 @@ if check_password():
                 st.session_state.pop("generated_matching", None)
                 st.rerun()
         with col_t3: 
-            if st.button("📝 3. 사업계획서 생성", use_container_width=True, type="primary"):
+            if st.button("📝 3. 기관 맞춤형 융자/사업계획서 AI자동 생성기", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "PLAN"
                 st.session_state.pop("kosme_result_html", None)
+                st.rerun()
+        with col_t4: 
+            if st.button("📑 4. 정식 사업계획서 (마스터) 생성", use_container_width=True, type="primary"):
+                st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+                st.session_state["view_mode"] = "FULL_PLAN"
                 st.rerun()
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1087,7 +1155,7 @@ if check_password():
         with ac1: st.checkbox("소상공인확인서", key="in_chk_1"); st.checkbox("창업확인서", key="in_chk_2")
         with ac2: st.checkbox("여성기업확인서", key="in_chk_3"); st.checkbox("이노비즈", key="in_chk_4")
         with ac3: st.checkbox("벤처인증", key="in_chk_6"); st.checkbox("뿌리기업확인서", key="in_chk_7")
-        with ac4: st.checkbox("ISO인증", key="in_chk_10")
+        with ac4: st.checkbox("ISO인증", key="in_chk_10"); st.checkbox("HACCP인증", key="in_chk_11")
 
         # [신설] 8. 특허정보
         st.markdown("<br>", unsafe_allow_html=True)
@@ -1106,10 +1174,11 @@ if check_password():
                 st.text_input("희망특허 (분야/명칭)", key="in_buy_pat_desc")
                 st.number_input("예상금액(만원)", value=0, step=1, key="in_buy_pat_amount")
 
-        # [번호 밀림] 9. 비즈니스 정보
+        # [번호 밀림] 9. 비즈니스 정보 (+공정도 신설)
         st.markdown("<br>", unsafe_allow_html=True)
         st.header("9. 비즈니스 정보")
         st.text_area("[아이템]", key="in_item_desc")
+        st.text_input("[제품생산공정도 (간략 기재)]", placeholder="예: 원물 입고 -> 세척 -> 조리 -> 포장 -> 출하", key="in_process_desc")
         st.markdown("**[주거래처 정보]**")
         cli1, cli2, cli3 = st.columns(3)
         with cli1: st.text_input("거래처 1", key="in_client_1")
