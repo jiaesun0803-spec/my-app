@@ -274,7 +274,7 @@ if check_password():
                             [작성 규칙 - 절대 엄수!!!]
                             1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 HTML 태그만 사용해야 합니다.
                             2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
-                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
+                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 마침표 뒤 줄바꿈 &lt;br&gt; 태그를 넣으세요.
                             4. 자금 사용계획 작성 규칙: 5번의 좌측 항목명은 반드시 '및'을 기준으로 <br> 태그를 사용해 줄바꿈 하세요.
                             5. 경쟁사 비교 분석표 규칙: 헤더(주요 경쟁사 A, B) 작성 시, 미리 제공된 양식대로 괄호 부분은 반드시 <br> 태그 아래에 작성하여 줄바꿈을 강제하세요.
 
@@ -348,17 +348,17 @@ if check_password():
                             <table style="width:100%; border-collapse: collapse; margin-bottom:15px; text-align:center; table-layout: fixed;">
                               <tr>
                                 <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden; width:31.3%;">
-                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 1<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성, 괄호제외)</span></div>
+                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 1<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성)</span></div>
                                   <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (외부 지식 활용 구체적 분석 3~4줄)</div>
                                 </td>
                                 <td style="width:3%;"></td>
                                 <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden; width:31.3%;">
-                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 2<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성, 괄호제외)</span></div>
+                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 2<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성)</span></div>
                                   <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (외부 지식 활용 구체적 분석 3~4줄)</div>
                                 </td>
                                 <td style="width:3%;"></td>
                                 <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden; width:31.3%;">
-                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 3<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성, 괄호제외)</span></div>
+                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 3<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성)</span></div>
                                   <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (외부 지식 활용 구체적 분석 3~4줄)</div>
                                 </td>
                               </tr>
@@ -692,7 +692,7 @@ if check_password():
                 st.markdown(response_text, unsafe_allow_html=True)
                 
                 st.divider()
-                st.subheader("💾 리포트 저장")
+                st.subheader("💾 HTML 리포트 다운로드")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
@@ -849,6 +849,11 @@ if check_password():
                             6. [사업계획서 (자금활용 계획)] 시작 직전에 반드시 `<div style="page-break-before: always; padding-top: 20px;"></div>` 태그를 삽입하여 인쇄 시 페이지가 1페이지(현황)와 2페이지(계획)로 깔끔하게 나뉘도록 하세요.
                             7. '윤리준수 약속' 표는 작성하지 마세요.
 
+                            [AI 작성 흔적 제거 및 전문가 톤 강제]
+                            - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                            - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                            - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 극도로 풍성하고 전문적으로 채우세요.
+
                             [출력 HTML 뼈대 - 반드시 아래 구조의 표를 사용할 것]
                             <h2 style="text-align:center;">중소기업 정책자금 융자신청서</h2>
                             
@@ -895,6 +900,7 @@ if check_password():
                             """
                             response = model.generate_content(prompt_loan)
                             
+                            # Markdown HTML block strip logic
                             raw_text = response.text
                             if "```html" in raw_text:
                                 cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
@@ -941,6 +947,11 @@ if check_password():
                                 1. 아이디어보다 "대표자의 문제 해결 능력과 실행력", "앞으로 폭발적으로 성장할 가능성"을 집중적으로 어필하세요.
                                 2. 사업추진계획에는 작은 성과라도 테스트/피드백 결과를 반드시 포함시키고, 시장 성장 스토리(스케일업)를 엮으세요.
                                 3. 자금 조달 계획은 "돈을 쓰면 반드시 성과로 직결되는 구조"로 설득력 있게 작성하세요.
+
+                                [AI 작성 흔적 제거 및 전문가 톤 강제]
+                                - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                                - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                                - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 극도로 풍성하고 전문적으로 채우세요.
 
                                 [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
                                 <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">청년전용창업자금 세부계획서</h2>
@@ -1013,6 +1024,11 @@ if check_password():
                                 3. 차별성은 단순 스펙 비교가 아니라 "고객이 우리 제품을 사야만 하는 이유(수익성/원가/고객가치)"로 연결하세요.
                                 4. "이 자금이 투입되면 즉각 양산/마케팅이 진행되어 J커브 매출이 발생할 기업"임을 강조하세요.
                                 5. 판매계획 표의 3개 품목 줄을 모두 채우세요. 기업의 수출여부({export_info})를 반영하여, 수출이 없으면 수출액을 빈칸으로 두고 내수 위주로, 수출이 있으면 내수와 수출액을 현실적인 비율로 나누어 작성하세요.
+
+                                [AI 작성 흔적 제거 및 전문가 톤 강제]
+                                - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                                - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                                - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 극도로 풍성하고 전문적으로 채우세요.
 
                                 [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
                                 <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">개발기술사업화자금 신청기업 사업계획서</h2>
@@ -1124,6 +1140,10 @@ if check_password():
                                 [기업데이터] 기업명:{c_name} / 아이템:{item}
                                 현재 시스템 고도화 중입니다. '{kosme_fund_type}'의 사업계획서를 자유 양식(HTML)으로 상세히 서술하세요.
                                 절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
+
+                                [AI 작성 흔적 제거 및 전문가 톤 강제]
+                                - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                                - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
                                 """
                             response = model.generate_content(prompt_plan)
                             
@@ -1232,6 +1252,10 @@ if check_password():
                             - 신청자금: {req_fund} ({fund_type} / {semas_fund_type})
                             - 아이템: {item} / 시장: {market}
 
+                            [AI 작성 흔적 제거 및 전문가 톤 강제]
+                            - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                            - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                            
                             [출력 양식 - 무조건 이 HTML 표 양식을 사용할 것]
                             <h2 style="text-align:center;">소상공인 정책자금 융자신청서</h2>
                             
@@ -1286,6 +1310,11 @@ if check_password():
                             [기업데이터] 기업명:{c_name} / 아이템:{item}
                             현재 '{main_semas_type} - {semas_fund_type}' 전용 공식 양식 업데이트 전입니다. 해당 자금의 성격(예: 수출, 스마트기술, 일시적 애로 등)에 맞춰 소상공인의 생존 전략과 자생력 강화, 상권 분석에 초점을 맞춘 자유 양식 사업계획서(HTML)를 작성해 주세요. 
                             절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
+
+                            [AI 작성 흔적 제거 및 전문가 톤 강제]
+                            - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                            - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                            - 외부 지식베이스(상권 데이터, 트렌드 등)를 적극 끌어와 전문적으로 채우세요.
                             """
                             response = model.generate_content(prompt_plan_semas)
                             
