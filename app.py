@@ -275,7 +275,8 @@ if check_password():
                             1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 HTML 태그만 사용해야 합니다.
                             2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
                             3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
-                            4. 절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
+                            4. 자금 사용계획 작성 규칙: 5번의 좌측 항목명은 반드시 '및'을 기준으로 <br> 태그를 사용해 줄바꿈 하세요.
+                            5. 경쟁사 비교 분석표 규칙: 헤더(주요 경쟁사 A, B) 작성 시, 미리 제공된 양식대로 괄호 부분은 반드시 <br> 태그 아래에 작성하여 줄바꿈을 강제하세요.
 
                             [기업 정보]
                             - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 사업자유형: {biz_type}
@@ -347,17 +348,17 @@ if check_password():
                             <table style="width:100%; border-collapse: collapse; margin-bottom:15px; text-align:center; table-layout: fixed;">
                               <tr>
                                 <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden; width:31.3%;">
-                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 1<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성)</span></div>
+                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 1<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성, 괄호제외)</span></div>
                                   <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (외부 지식 활용 구체적 분석 3~4줄)</div>
                                 </td>
                                 <td style="width:3%;"></td>
                                 <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden; width:31.3%;">
-                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 2<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성)</span></div>
+                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 2<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성, 괄호제외)</span></div>
                                   <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (외부 지식 활용 구체적 분석 3~4줄)</div>
                                 </td>
                                 <td style="width:3%;"></td>
                                 <td style="border:1px solid #e0e0e0; border-radius:15px; padding:0; vertical-align:top; overflow:hidden; width:31.3%;">
-                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 3<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성)</span></div>
+                                  <div style="background-color:#e0f7fa; padding:15px; font-weight:bold; font-size:1.0em; border-bottom:1px solid #e0e0e0;">포인트 3<br><span style="font-size:1.15em; color:#00838F;">(핵심키워드 작성, 괄호제외)</span></div>
                                   <div style="padding:20px; font-size:0.95em; text-align:left; line-height:1.6;">&bull; (외부 지식 활용 구체적 분석 3~4줄)</div>
                                 </td>
                               </tr>
@@ -779,6 +780,13 @@ if check_password():
             pat_str += f"출원 {d.get('in_pat_apply','0')}건, 등록 {d.get('in_pat_reg','0')}건, 상표 {d.get('in_tm_reg','0')}건, 디자인 {d.get('in_design_reg','0')}건."
         else:
             pat_str = "특허/지재권 미보유"
+            
+        # 수출 정보 세팅
+        is_export = d.get('in_is_export', '무')
+        exp_24 = format_kr_currency(d.get('in_exp_2024', 0))
+        exp_25 = format_kr_currency(d.get('in_exp_2025', 0))
+        exp_cur = format_kr_currency(d.get('in_exp_current', 0))
+        export_info = f"유 (24년 {exp_24}, 25년 {exp_25}, 금년 {exp_cur})" if is_export == '유' else "무 (전액 내수)"
 
         st.title("📝 기관/서류별 맞춤형 융자·사업계획서 자동 생성기")
         st.info("💡 좌측은 '공통 융자신청서', 우측은 '자금별 사업계획서(별첨)'입니다. 버튼을 누르면 완벽한 HTML 양식으로 생성됩니다.")
@@ -827,6 +835,7 @@ if check_password():
                             - 기업명: {c_name} / 대표자: {rep_name} / 사업자유형: {biz_type} / 업종: {c_ind}
                             - 본사주소: {address} / 학력: {edu_school} {edu_major} / 자택: {home_addr}
                             - 매출: 23년({sales_23}), 24년({sales_24}), 금년({s_cur})
+                            - 수출여부: {export_info}
                             - 신청자금: {req_fund} ({fund_type} / {fund_purpose})
                             - 아이템: {item} / 시장: {market} / 차별성: {diff} / 판매루트: {route}
                             - 기초 공정: {process_desc}
@@ -834,9 +843,9 @@ if check_password():
                             [작성 규칙 - 절대 엄수]
                             1. 체크박스는 무조건 '▣' 기호를 사용하세요. 그 외는 '□'.
                             2. 아래 항목은 지정된 값으로 '▣' 처리: 담보(▣신용), 융자방식(▣직접대출), 고정금리(▣해당없음), 이차보전(▣해당없음), 기업진단(▣미신청)
-                            3. 대시보드에 없는 정보(수출액, 직원, 주주, 경영진 등) 칸은 무조건 공란(빈칸)으로 두세요.
+                            3. 대시보드에 없는 정보(직원, 주주, 경영진 등) 칸은 무조건 공란(빈칸)으로 두세요.
                             4. [제품생산공정도]는 입력된 '기초 공정'을 바탕으로 제조/서비스업에 맞는 전문 용어를 사용하여 상세한 단계별 흐름도(텍스트)로 살을 붙이세요.
-                            5. [매출현황]의 '27년(예상)'과 '28년(예상)' 매출은 현재 매출을 기반으로 스케일업(J커브) 성장을 가정한 현실적인 금액을 자동으로 계산하여 채워 넣으세요.
+                            5. [매출현황]의 '27년(예상)'과 '28년(예상)' 매출은 현재 매출을 기반으로 스케일업(J커브) 성장을 가정한 현실적인 금액을 자동으로 계산하여 채워 넣으세요. 수출액 칸에는 24년({exp_24}), 금년({exp_cur}) 수치를 넣고 예상 수출액도 채워주세요. 수출이 없으면 빈칸으로 두세요.
                             6. [사업계획서 (자금활용 계획)] 시작 직전에 반드시 `<div style="page-break-before: always; padding-top: 20px;"></div>` 태그를 삽입하여 인쇄 시 페이지가 1페이지(현황)와 2페이지(계획)로 깔끔하게 나뉘도록 하세요.
                             7. '윤리준수 약속' 표는 작성하지 마세요.
 
@@ -864,7 +873,7 @@ if check_password():
                             <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
                             <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">구분</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">23년</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">24년</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">금년(당월)</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">27년(예상)</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">28년(예상)</th></tr>
                             <tr><td style="border:1px solid #333; padding:8px;">총매출액</td><td style="border:1px solid #333; padding:8px;">{sales_23}</td><td style="border:1px solid #333; padding:8px;">{sales_24}</td><td style="border:1px solid #333; padding:8px;">{s_cur}</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td></tr>
-                            <tr><td style="border:1px solid #333; padding:8px;">수출액</td><td style="border:1px solid #333; padding:8px;"></td><td style="border:1px solid #333; padding:8px;"></td><td style="border:1px solid #333; padding:8px;"></td><td style="border:1px solid #333; padding:8px;"></td><td style="border:1px solid #333; padding:8px;"></td></tr>
+                            <tr><td style="border:1px solid #333; padding:8px;">수출액</td><td style="border:1px solid #333; padding:8px;"> </td><td style="border:1px solid #333; padding:8px;">{exp_24}</td><td style="border:1px solid #333; padding:8px;">{exp_cur}</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td></tr>
                             </table>
 
                             <h3>[주요 생산제품 개요]</h3>
@@ -996,13 +1005,14 @@ if check_password():
                                 - 기업명: {c_name} / 대표자: {rep_name} / 업력: {biz_years}년
                                 - 아이템: {item} / 시장현황: {market} / 경쟁우위: {diff}
                                 - 특허/인증: {cert_status} / {pat_str}
-                                - 매출현황: 금년 {s_cur}
+                                - 매출현황: 금년 {s_cur} / 수출여부: {export_info}
                                 
                                 [개발기술사업화자금 핵심 작성 룰]
                                 1. R&D(기술개발) 중심이 아닌 "사업화(돈 버는 구조)" 중심으로 작성하세요. 기술 자체보다 '시장성', '양산 가능성', '실행력'을 압도적으로 강조해야 합니다.
                                 2. 타겟 시장 규모(TAM/SAM/SOM), 구체적 고객, 구매 시나리오를 구체적인 수치와 함께 설득력 있게 제시하세요.
                                 3. 차별성은 단순 스펙 비교가 아니라 "고객이 우리 제품을 사야만 하는 이유(수익성/원가/고객가치)"로 연결하세요.
                                 4. "이 자금이 투입되면 즉각 양산/마케팅이 진행되어 J커브 매출이 발생할 기업"임을 강조하세요.
+                                5. 판매계획 표의 3개 품목 줄을 모두 채우세요. 기업의 수출여부({export_info})를 반영하여, 수출이 없으면 수출액을 빈칸으로 두고 내수 위주로, 수출이 있으면 내수와 수출액을 현실적인 비율로 나누어 작성하세요.
 
                                 [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
                                 <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">개발기술사업화자금 신청기업 사업계획서</h2>
@@ -1045,18 +1055,18 @@ if check_password():
 
                                 <h3 style="margin-top:30px;">□ 신청 개발기술 제품(상품 또는 서비스) 영업계획</h3>
                                 <h4 style="margin-top:10px;">○ 시장성</h4>
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:13px; margin-bottom:20px; table-layout: fixed;">
                                 <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; font-weight:bold; padding:8px; width:15%;">판매형태</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; font-weight:bold; padding:8px; width:16.6%;">판매형태</td>
                                 <td colspan="5" style="border:1px solid #333; text-align:left; padding:8px;">주문판매( )%, 시장판매( )%, 임가공( )%, (내수( )%, 수출( )%) (합계 100%가 되도록 가상 분배)</td>
                                 </tr>
                                 <tr>
-                                <td rowspan="2" style="background-color:#f0f0f0; border:1px solid #333; font-weight:bold; padding:8px;">경쟁<br>현황</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px;">제품명<br>(상품및서비스)</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px;">시장규모</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px;">주요기업체명<br>(1순위/2순위)</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px;">귀사의 동업계 지위</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px;">경쟁<br>상태</td>
+                                <td rowspan="2" style="background-color:#f0f0f0; border:1px solid #333; font-weight:bold; padding:8px; width:16.6%;">경쟁<br>현황</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px; width:16.6%;">제품명<br>(상품및서비스)</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px; width:16.6%;">시장규모</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px; width:16.6%;">주요기업체명<br>(1순위/2순위)</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px; width:16.6%;">귀사의 동업계 지위</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px; width:16.6%;">경쟁<br>상태</td>
                                 </tr>
                                 <tr>
                                 <td style="border:1px solid #333; padding:8px; line-height:1.4;">{item}</td>
@@ -1068,24 +1078,38 @@ if check_password():
                                 </table>
 
                                 <h4 style="margin-top:10px;">○ 판매계획</h4>
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:13px; margin-bottom:20px; table-layout: fixed;">
                                 <tr style="background-color:#f0f0f0;">
-                                <th rowspan="2" style="border:1px solid #333; padding:8px;">품목명</th>
-                                <th rowspan="2" style="border:1px solid #333; padding:8px;">생산능력<br>(수량/금액)</th>
-                                <th rowspan="2" style="border:1px solid #333; padding:8px;">판매처<br>(업체명)</th>
+                                <th rowspan="2" style="border:1px solid #333; padding:8px; width:18%;">품목명</th>
+                                <th rowspan="2" style="border:1px solid #333; padding:8px; width:18%;">생산능력<br>(수량/금액)</th>
+                                <th rowspan="2" style="border:1px solid #333; padding:8px; width:18%;">판매처<br>(업체명)</th>
                                 <th colspan="2" style="border:1px solid #333; padding:8px;">당해년도 판매액</th>
                                 <th colspan="2" style="border:1px solid #333; padding:8px;">차년도 판매액</th>
                                 </tr>
                                 <tr style="background-color:#f0f0f0;">
-                                <th style="border:1px solid #333; padding:8px;">내수</th><th style="border:1px solid #333; padding:8px;">수출</th>
-                                <th style="border:1px solid #333; padding:8px;">내수</th><th style="border:1px solid #333; padding:8px;">수출</th>
+                                <th style="border:1px solid #333; padding:8px; width:11.5%;">내수</th><th style="border:1px solid #333; padding:8px; width:11.5%;">수출</th>
+                                <th style="border:1px solid #333; padding:8px; width:11.5%;">내수</th><th style="border:1px solid #333; padding:8px; width:11.5%;">수출</th>
                                 </tr>
                                 <tr>
-                                <td style="border:1px solid #333; padding:8px; line-height:1.4;">{item}</td>
+                                <td style="border:1px solid #333; padding:8px; line-height:1.4;">(품목 1)</td>
                                 <td style="border:1px solid #333; padding:8px;">(수치)</td>
                                 <td style="border:1px solid #333; padding:8px;">(주요타겟처)</td>
-                                <td style="border:1px solid #333; padding:8px;">(자동계산)</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td>
-                                <td style="border:1px solid #333; padding:8px;">(자동계산)</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td>
+                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
+                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
+                                </tr>
+                                <tr>
+                                <td style="border:1px solid #333; padding:8px; line-height:1.4;">(품목 2)</td>
+                                <td style="border:1px solid #333; padding:8px;">(수치)</td>
+                                <td style="border:1px solid #333; padding:8px;">(주요타겟처)</td>
+                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
+                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
+                                </tr>
+                                <tr>
+                                <td style="border:1px solid #333; padding:8px; line-height:1.4;">(품목 3)</td>
+                                <td style="border:1px solid #333; padding:8px;">(수치)</td>
+                                <td style="border:1px solid #333; padding:8px;">(주요타겟처)</td>
+                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
+                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
                                 </tr>
                                 <tr style="background-color:#f9f9f9; font-weight:bold;">
                                 <td colspan="3" style="border:1px solid #333; padding:8px;">합 계 (백만원)</td>
@@ -1409,6 +1433,16 @@ if check_password():
         with m2: st.number_input("25년도 매출합계(만원)", value=0, step=1, key="in_sales_2025")
         with m3: st.number_input("24년도 매출합계(만원)", value=0, step=1, key="in_sales_2024")
         with m4: st.number_input("23년도 매출합계(만원)", value=0, step=1, key="in_sales_2023")
+
+        c_ind = st.session_state.get("in_industry", "기타")
+        if c_ind in ["제조업", "도소매업"]:
+            st.markdown("**(수출 정보)**")
+            has_export = st.radio("수출 유무", ["무", "유"], horizontal=True, key="in_is_export")
+            if has_export == "유":
+                e1, e2, e3 = st.columns(3)
+                with e1: st.number_input("24년도 수출액(만원)", value=0, step=1, key="in_exp_2024")
+                with e2: st.number_input("25년도 수출액(만원)", value=0, step=1, key="in_exp_2025")
+                with e3: st.number_input("26년도(금년) 수출액(만원)", value=0, step=1, key="in_exp_current")
 
         st.markdown("<br>", unsafe_allow_html=True)
         st.header("5. 기대출현황")
