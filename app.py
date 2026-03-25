@@ -278,11 +278,6 @@ if check_password():
                             4. 자금 사용계획 작성 규칙: 5번의 좌측 항목명은 반드시 '및'을 기준으로 <br> 태그를 사용해 줄바꿈 하세요.
                             5. 경쟁사 비교 분석표 규칙: 헤더(주요 경쟁사 A, B) 작성 시, 미리 제공된 양식대로 괄호 부분은 반드시 <br> 태그 아래에 작성하여 줄바꿈을 강제하세요.
 
-                            [AI 작성 흔적 제거 및 전문가 톤 강제]
-                            - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
-                            - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
-                            - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 극도로 풍성하고 전문적으로 채우세요.
-
                             [기업 정보]
                             - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 사업자유형: {biz_type}
                             - 아이템: {item} / 시장현황: {market} / 차별화: {diff}
@@ -854,7 +849,7 @@ if check_password():
                             1. 체크박스는 무조건 '▣' 기호를 사용하세요. 그 외는 '□'.
                             2. 아래 항목은 지정된 값으로 '▣' 처리: 담보(▣신용), 융자방식(▣직접대출), 고정금리(▣해당없음), 이차보전(▣해당없음), 기업진단(▣미신청)
                             3. 대시보드에 없는 정보(직원, 주주, 경영진 등) 칸은 무조건 공란(빈칸)으로 두세요.
-                            4. [제품생산공정도]는 입력된 '기초 공정'을 바탕으로 제조/서비스업에 맞는 전문 용어를 사용하여 상세한 단계별 흐름도(텍스트)로 살을 붙이세요.
+                            4. [제품생산공정도]는 입력된 '기초 공정'을 바탕으로 제조/서비스업에 맞는 전문 용어를 사용하여 최소 3~4개의 상세한 단락으로 나누어 엄청나게 길고 풍성하게 살을 붙이세요.
                             5. [매출현황]의 '27년(예상)'과 '28년(예상)' 매출은 현재 매출을 기반으로 스케일업(J커브) 성장을 가정한 현실적인 금액을 자동으로 계산하여 채워 넣으세요. 수출액 칸에는 24년({exp_24}), 금년({exp_cur}) 수치를 넣고 예상 수출액도 채워주세요. 수출이 없으면 빈칸으로 두세요.
                             6. [사업계획서 (자금활용 계획)] 시작 직전에 반드시 `<div style="page-break-before: always; padding-top: 20px;"></div>` 태그를 삽입하여 인쇄 시 페이지가 1페이지(현황)와 2페이지(계획)로 깔끔하게 나뉘도록 하세요.
                             7. '윤리준수 약속' 표는 작성하지 마세요.
@@ -862,7 +857,7 @@ if check_password():
                             [AI 작성 흔적 제거 및 전문가 톤 강제]
                             - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                             - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
-                            - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 극도로 풍성하고 전문적으로 채우세요.
+                            - 출력 길이 제한을 무시하고, 각 서술 항목마다 당신이 생성할 수 있는 최대 길이의 텍스트(각 칸별로 800자 이상)를 쏟아내세요.
 
                             [출력 HTML 뼈대 - 반드시 아래 구조의 표를 사용할 것]
                             <h2 style="text-align:center;">중소기업 정책자금 융자신청서</h2>
@@ -890,23 +885,23 @@ if check_password():
                             <tr><td style="border:1px solid #333; padding:8px;">총매출액</td><td style="border:1px solid #333; padding:8px;">{sales_23}</td><td style="border:1px solid #333; padding:8px;">{sales_24}</td><td style="border:1px solid #333; padding:8px;">{s_cur}</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td></tr>
                             <tr><td style="border:1px solid #333; padding:8px;">수출액</td><td style="border:1px solid #333; padding:8px;"> </td><td style="border:1px solid #333; padding:8px;">{exp_24}</td><td style="border:1px solid #333; padding:8px;">{exp_cur}</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td></tr>
                             </table>
-                             [GRAPH_INSERT_POINT]
+                            [GRAPH_INSERT_POINT]
 
                             <h3>[주요 생산제품 개요]</h3>
                             <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
-                            <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0; width:20%;">제품용도 및 특성</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 상세 서술)</td></tr>
-                            <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">제품생산공정도</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(대시보드 공정도를 전문적으로 살을 붙여 서술)</td></tr>
-                            <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">시장상황</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 시장규모, 경쟁업체 등 상세 서술)</td></tr>
-                            <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">기술품질경쟁력</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 차별성 상세 서술)</td></tr>
-                            <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">판매계획</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(데이터 기반으로 상세 서술)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0; width:20%;">제품용도 및 특성</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(최소 3~4개의 거대한 문단으로 매우 깊이 있고 방대하게 작성할 것)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">제품생산공정도</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(대시보드 공정도를 바탕으로 전문 용어를 사용하여 최소 3~4개 문단으로 방대하게 작성할 것)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">시장상황</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(외부 데이터를 기반으로 시장규모, 경쟁업체 등 최소 3~4개 문단으로 방대하게 작성할 것)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">기술품질경쟁력</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(경쟁사 대비 차별성을 최소 3~4개 문단으로 방대하게 작성할 것)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">판매계획</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(타겟 고객 및 판매 시나리오를 최소 3~4개 문단으로 방대하게 작성할 것)</td></tr>
                             </table>
 
                             <div style="page-break-before: always; padding-top: 20px;"></div>
 
                             <h3>[사업계획서 (자금활용 계획)]</h3>
                             <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
-                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0; width:20%;">사업내용 및 목적/효과</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(자금 활용 시 예상되는 원가절감, 매출상승, 생산성 향상 효과를 금액/비율을 섞어 500자 내외로 매우 구체적으로 작성)</td></tr>
-                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">자금 소요내역</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(시설/운전 자금을 구분하여, 인건비/마케팅/기계 등 세부 용도와 예상 금액을 표나 리스트 형태로 아주 상세히 쪼개서 작성)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0; width:20%;">사업내용 및 목적/효과</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(자금 활용 시 예상되는 원가절감, 매출상승, 생산성 향상 효과를 최소 3~4개의 거대한 문단으로 방대하게 작성할 것)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">자금 소요내역</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(시설/운전 자금을 구분하여, 인건비/마케팅/기계 등 세부 용도와 예상 금액을 표나 리스트 형태로 최소 3~4개 문단으로 방대하게 쪼개서 작성할 것)</td></tr>
                             </table>
                             """
                             # 그래프 데이터 생성
@@ -932,7 +927,7 @@ if check_password():
                                 marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
                             ))
                             fig.update_layout(
-                                title="📈 향후 1년간 월별 예상 매출 상승 곡선", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                                title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
                                 xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
                                 template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                             )
@@ -940,7 +935,6 @@ if check_password():
 
                             response = model.generate_content(prompt_loan)
                             
-                            # Markdown HTML block strip logic
                             raw_text = response.text
                             if "```html" in raw_text:
                                 cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
@@ -951,6 +945,7 @@ if check_password():
                             
                             # 들여쓰기(Indentation) 제거 로직 적용
                             cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
+                            
                             # 그래프 삽입
                             if "[GRAPH_INSERT_POINT]" in cleaned_html:
                                 parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
@@ -992,10 +987,11 @@ if check_password():
                                 2. 사업추진계획에는 작은 성과라도 테스트/피드백 결과를 반드시 포함시키고, 시장 성장 스토리(스케일업)를 엮으세요.
                                 3. 자금 조달 계획은 "돈을 쓰면 반드시 성과로 직결되는 구조"로 설득력 있게 작성하세요.
 
-                                [AI 작성 흔적 제거 및 전문가 톤 강제]
+                                [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                                - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
                                 - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
-                                - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
-                                - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 극도로 풍성하고 전문적으로 채우세요.
+                                - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
+                                - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
 
                                 [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
                                 <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">청년전용창업자금 세부계획서</h2>
@@ -1028,25 +1024,25 @@ if check_password():
                                 <tr>
                                 <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; vertical-align:top;">창업 동기</td>
                                 <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
-                                (대표자의 경험과 직무에서 파악한 문제점, 그리고 윤리의식을 4~5줄의 상세한 문장으로 작성. 마침표 후 줄바꿈)
+                                (대표자의 뼈저린 현장 경험, 시장의 거시적 문제점, 타겟 고객의 미충족 수요를 엮어서 최소 4~5개의 거대한 문단으로 나누어, 1000자 이상의 압도적인 분량으로 매우 깊이 있게 서술. 일반적인 AI 요약체를 버리고 전문가의 통찰력이 담긴 긴 호흡의 칼럼처럼 작성할 것)
                                 </td>
                                 </tr>
                                 <tr>
                                 <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; vertical-align:top;">창업아이템의 개요</td>
                                 <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
-                                (아이템의 핵심 내용, 타사 대비 차별성, 경쟁력, 기술 확장성을 4~5줄로 상세히 작성. 마침표 후 줄바꿈)
+                                (아이템의 핵심 내용, 타사 대비 차별성, 경쟁력, 기술 확장성을 외부 전문 데이터를 동원하여 최소 4~5개의 거대한 문단으로 나누어 1000자 이상 작성할 것)
                                 </td>
                                 </tr>
                                 <tr>
                                 <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; vertical-align:top;">사업추진 계획</td>
                                 <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
-                                (1. 제품개발/품질관리 목표 2. 시장상황 및 수요 3. 마케팅 전략 4. 자금조달 및 중진공 상환계획을 각각 나누어 매우 구체적으로 작성. 마침표 후 줄바꿈)
+                                (1. 제품개발/품질관리 목표 2. 시장상황 및 수요 3. 마케팅 전략 4. 자금조달 및 중진공 상환계획을 각각 나누어 매우 구체적으로 최소 4~5개의 거대한 문단으로 1000자 이상 방대하게 작성할 것)
                                 </td>
                                 </tr>
                                 <tr>
                                 <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; vertical-align:top;">기대 효과</td>
                                 <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
-                                (고용 창출 효과 및 사회/경제적 파급 효과를 숫자를 섞어 설득력 있게 3~4줄로 작성. 마침표 후 줄바꿈)
+                                (고용 창출 효과 및 사회/경제적 파급 효과를 구체적 숫자를 섞어 설득력 있게 최소 4~5개의 거대한 문단으로 1000자 이상 방대하게 작성할 것)
                                 </td>
                                 </tr>
                                 </table>
@@ -1070,10 +1066,11 @@ if check_password():
                                 4. "이 자금이 투입되면 즉각 양산/마케팅이 진행되어 J커브 매출이 발생할 기업"임을 강조하세요.
                                 5. 판매계획 표의 3개 품목 줄을 모두 채우세요. 기업의 수출여부({export_info})를 반영하여, 수출이 없으면 수출액을 빈칸으로 두고 내수 위주로, 수출이 있으면 내수와 수출액을 현실적인 비율로 나누어 작성하세요.
 
-                                [AI 작성 흔적 제거 및 전문가 톤 강제]
+                                [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                                - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
                                 - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
-                                - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
-                                - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 극도로 풍성하고 전문적으로 채우세요.
+                                - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
+                                - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 서술형 칸을 각 800~1000자 이상의 꽉 찬 내용으로 채우세요.
 
                                 [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
                                 <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">개발기술사업화자금 신청기업 사업계획서</h2>
@@ -1088,28 +1085,28 @@ if check_password():
                                 <td style="border:1px solid #333; padding:10px; line-height:1.6;">- R&D성공과제/특허기술 등: {pat_str}<br>- 관련기술 평가/인증 년월일: (가상 작성)</td>
                                 </tr>
                                 <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:10px; font-weight:bold; text-align:center;">제품용도 및 특성<br><span style="font-size:0.9em; font-weight:normal;">(주요내용)</span></td>
-                                <td style="border:1px solid #333; padding:15px; line-height:1.6;">
-                                (고객의 Pain-point를 해결하는 제품/서비스의 핵심 용도와 특성을 3~4줄로 명확히 작성)
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; text-align:center;">제품용도 및 특성<br><span style="font-size:0.9em; font-weight:normal;">(주요내용)</span></td>
+                                <td style="border:1px solid #333; padding:20px; line-height:1.8;">
+                                (고객의 Pain-point를 해결하는 제품/서비스의 핵심 용도와 특성을 최소 4~5개의 거대한 문단으로 1000자 이상 명확히 작성)
                                 </td>
                                 </tr>
                                 <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:10px; font-weight:bold; text-align:center;">대체, 경쟁제품과의<br>차별성</td>
-                                <td style="border:1px solid #333; padding:15px; line-height:1.6;">
-                                (경쟁사 대비 기술적 비교우위를 넘어, 수익성/원가/고객가치 측면의 사업적 차별성을 3~4줄 작성)
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; text-align:center;">대체, 경쟁제품과의<br>차별성</td>
+                                <td style="border:1px solid #333; padding:20px; line-height:1.8;">
+                                (경쟁사 대비 기술적 비교우위를 넘어, 수익성/원가/고객가치 측면의 사업적 차별성을 최소 4~5개의 거대한 문단으로 1000자 이상 작성)
                                 </td>
                                 </tr>
                                 <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:10px; font-weight:bold; text-align:center;">사업화(양산) 및<br>납품계획</td>
-                                <td style="border:1px solid #333; padding:15px; line-height:1.6;">
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; text-align:center;">사업화(양산) 및<br>납품계획</td>
+                                <td style="border:1px solid #333; padding:20px; line-height:1.8;">
                                 - 양산 시작 후 3년 경과 여부: ▣ No <br>
-                                (현재 시제품/MVP 완료 및 향후 구체적인 양산 일정, 유통망/납품처 확보 계획을 상세히 작성)
+                                (현재 시제품/MVP 완료 및 향후 구체적인 양산 일정, 유통망/납품처 확보 계획을 상세히 최소 4~5개의 거대한 문단으로 1000자 이상 작성)
                                 </td>
                                 </tr>
                                 <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:10px; font-weight:bold; text-align:center;">기대효과<br><span style="font-size:0.9em; font-weight:normal;">(기술의 파급효과)</span></td>
-                                <td style="border:1px solid #333; padding:15px; line-height:1.6;">
-                                (매출 증대, 수입 대체, 고용 창출 등 경제적/산업적 파급효과를 수치를 포함하여 3줄로 작성)
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; text-align:center;">기대효과<br><span style="font-size:0.9em; font-weight:normal;">(기술의 파급효과)</span></td>
+                                <td style="border:1px solid #333; padding:20px; line-height:1.8;">
+                                (매출 증대, 수입 대체, 고용 창출 등 경제적/산업적 파급효과를 수치를 포함하여 최소 4~5개의 거대한 문단으로 1000자 이상 작성)
                                 </td>
                                 </tr>
                                 </table>
@@ -1187,10 +1184,12 @@ if check_password():
                                 현재 시스템 고도화 중입니다. '{kosme_fund_type}'의 사업계획서를 자유 양식(HTML)으로 상세히 서술하세요.
                                 절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
 
-                                [AI 작성 흔적 제거 및 전문가 톤 강제]
+                                [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                                - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
                                 - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                                 - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
                                 """
+                            
                             # 그래프 데이터 생성
                             val_cur = safe_int(d.get('in_sales_current', 0))
                             if val_cur <= 0: val_cur = 1000
@@ -1214,7 +1213,7 @@ if check_password():
                                 marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
                             ))
                             fig.update_layout(
-                                title="📈 향후 1년간 월별 예상 매출 상승 곡선", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                                title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
                                 xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
                                 template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                             )
@@ -1232,6 +1231,7 @@ if check_password():
                             
                             # 들여쓰기(Indentation) 제거 로직 적용
                             cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
+                            
                             # 그래프 삽입
                             if "[GRAPH_INSERT_POINT]" in cleaned_html:
                                 parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
@@ -1266,7 +1266,7 @@ if check_password():
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
                         body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; background-color: #fff; }}
                         table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }}
-                        td, th {{ border: 1px solid #333; padding: 10px; }}
+                        td, th {{ border: 1px solid #333; padding: 15px; }}
                         th {{ background-color: #f0f0f0; }}
                         @media print {{ 
                             @page {{ size: A4; margin: 15mm; }}
@@ -1351,10 +1351,10 @@ if check_password():
 
                             <h3>[매출 및 자금 소요계획]</h3>
                             <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
-                            <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0; width:20%;">전년도 매출</th><td style="border:1px solid #333; padding:10px;">{sales_24}</td></tr>
-                            <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">자금 활용계획</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(소상공인의 사업 생존과 자생력 강화, 지역 상권 내 영업 전략을 중심으로 자금 활용 목적을 4~5줄로 상세 작성)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0; width:20%;">전년도 매출</th><td style="border:1px solid #333; padding:15px;">{sales_24}</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">자금 활용계획</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(소상공인의 사업 생존과 자생력 강화, 지역 상권 내 영업 전략을 중심으로 자금 활용 목적을 최소 3~4개의 거대한 문단으로 매우 상세하게 작성)</td></tr>
                             </table>
-                             [GRAPH_INSERT_POINT]
+                            [GRAPH_INSERT_POINT]
                             """
                             # 그래프 데이터 생성
                             val_cur = safe_int(d.get('in_sales_current', 0))
@@ -1424,11 +1424,41 @@ if check_password():
                             현재 '{main_semas_type} - {semas_fund_type}' 전용 공식 양식 업데이트 전입니다. 해당 자금의 성격(예: 수출, 스마트기술, 일시적 애로 등)에 맞춰 소상공인의 생존 전략과 자생력 강화, 상권 분석에 초점을 맞춘 자유 양식 사업계획서(HTML)를 작성해 주세요. 
                             절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
 
-                            [AI 작성 흔적 제거 및 전문가 톤 강제]
+                            [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                            - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
                             - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                             - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
-                            - 외부 지식베이스(상권 데이터, 트렌드 등)를 적극 끌어와 전문적으로 채우세요.
+                            - 외부 지식베이스(상권 데이터, 트렌드 등)를 적극 끌어와 서술형 칸을 전문적으로 아주 방대하게 채우세요.
                             """
+                            # 그래프 데이터 생성
+                            val_cur = safe_int(d.get('in_sales_current', 0))
+                            if val_cur <= 0: val_cur = 1000
+                            start_val = val_cur / 12
+                            end_val = start_val * 1.5
+                            
+                            monthly_vals = []
+                            for i in range(12):
+                                progress = i / 11.0
+                                linear_part = start_val + (end_val - start_val) * progress
+                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
+                                monthly_vals.append(int(linear_part + wave_part))
+                                
+                            monthly_labels = [f"{i}월" for i in range(1, 13)]
+
+                            fig = go.Figure()
+                            fig.add_trace(go.Scatter(
+                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
+                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
+                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
+                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
+                            ))
+                            fig.update_layout(
+                                title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
+                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+                            )
+                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+
                             response = model.generate_content(prompt_plan_semas)
                             
                             raw_text = response.text
@@ -1440,6 +1470,8 @@ if check_password():
                                 cleaned_html = raw_text.strip()
                             
                             cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
+                            # 그래프 삽입 (만약 AI가 그래프 포인트를 넣지 않았다면 수동으로 하단에 추가)
+                            cleaned_html += f"<br><br>{plotly_html}"
                                 
                             st.session_state["semas_result_type"] = "plan"
                             st.session_state["semas_result_html"] = cleaned_html
@@ -1459,7 +1491,7 @@ if check_password():
                 html_export = f"""
                 <!DOCTYPE html>
                 <html><head><meta charset="utf-8"><title>{c_name} {doc_title}</title>
-                <style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; max-width: 900px; margin: 0 auto; }} table {{ width: 100%; border-collapse: collapse; }} td, th {{ border: 1px solid #333; padding: 10px; }} th {{ background-color: #f0f0f0; }}</style></head>
+                <style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; max-width: 900px; margin: 0 auto; }} table {{ width: 100%; border-collapse: collapse; }} td, th {{ border: 1px solid #333; padding: 15px; }} th {{ background-color: #f0f0f0; }}</style></head>
                 <body>{st.session_state["semas_result_html"]}</body></html>
                 """
                 st.download_button(label=f"📥 {doc_title} HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_{doc_title}.html", mime="text/html", type="primary")
@@ -1626,7 +1658,7 @@ if check_password():
                 st.text_input("상표등록 (건)", key="in_tm_reg")
                 st.text_input("디자인등록 (건)", key="in_design_reg")
         with pat_col2:
-            buy_patent = st.radio("특허매입예정", ["무", "유"], horizontal=True, key="in_buy_patent")
+            buy_patent = radio("특허매입예정", ["무", "유"], horizontal=True, key="in_buy_patent")
             if buy_patent == "유":
                 st.text_input("희망특허 (분야/명칭)", key="in_buy_pat_desc")
                 st.number_input("예상금액(만원)", value=0, step=1, key="in_buy_pat_amount")
