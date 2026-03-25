@@ -207,14 +207,12 @@ if check_password():
                 biz_no = format_biz_no(d.get('in_raw_biz_no', '미입력'))
                 corp_no = format_corp_no(d.get('in_raw_corp_no', ''))
                 
-                # 법인번호 줄바꿈 적용 완벽 수정
                 corp_text = f"<br><span style='font-size:0.9em; color:#555;'>({corp_no})</span>" if corp_no else ""
                 address = d.get('in_biz_addr', '미입력')
                 
                 add_biz_status = d.get('in_has_additional_biz', '무')
                 add_biz_addr = d.get('in_additional_biz_addr', '').strip()
                 
-                # 추가사업장 행 생성 (제목칸 폰트 통일)
                 add_biz_row = ""
                 if add_biz_status == '유' and add_biz_addr:
                     add_biz_row = f"<tr><td style='padding:15px; background-color:#eceff1; font-size:0.95em; white-space:nowrap;'><b>추가사업장</b></td><td colspan='5' style='padding:15px; text-align:left;'>{add_biz_addr}</td></tr>"
@@ -261,7 +259,6 @@ if check_password():
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
                             
-                            # [디테일 패치] 경쟁사 A, B 괄호 줄바꿈 명시!
                             prompt = f"""
                             당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                             아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
@@ -575,7 +572,6 @@ if check_password():
                                 
                             employee_count = safe_int(d.get('in_employee_count', 0))
                             
-                            # [디테일 패치] 1페이지 분량 압축 강제 명령 추가
                             prompt = f"""
                             당신은 전문 경영컨설턴트입니다. 마크다운 기호 절대 금지. 
                             ※ 모든 문장은 반드시 '~음', '~함', '~임', '~기대됨' 등의 명사형으로 끝내야 합니다. '~습니다', '~합니다', '~해요' 등의 서술어는 절대 사용 금지!!!
@@ -665,7 +661,6 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # [디테일 패치] 1페이지 완벽 압축 CSS
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -699,7 +694,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 C: 신규 3. 사업계획서 생성 (Gems 맞춤형 프롬프트 생성기)]
+    # [모드 C: 3. 사업계획서 생성 (중진공 프롬프트 자동 렌더링 추가)]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "PLAN":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -723,9 +718,7 @@ if check_password():
         total_debt = format_kr_currency(total_debt_val)
         
         nice_score = d.get('in_nice_score', 0)
-        tax_status, fin_status = d.get('in_tax_status', '무'), d.get('in_fin_status', '무')
         item, market, diff = d.get('in_item_desc', '미입력'), d.get('in_market_status', '미입력'), d.get('in_diff_point', '미입력')
-        cert_status = "보유" if d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False) else "미보유"
         req_fund = format_kr_currency(d.get('in_req_amount', 0))
         fund_type, fund_purpose = d.get('in_fund_type', '운전자금'), d.get('in_fund_purpose', '미입력')
         
@@ -733,112 +726,92 @@ if check_password():
         if d.get('in_start_date', '').strip():
             try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
             except: pass
+            
+        # 특허 정보 수집
+        pat_str = ""
+        if d.get('in_has_patent') == '유':
+            pat_str += f"[보유] 출원 {d.get('in_pat_apply','0')}건, 등록 {d.get('in_pat_reg','0')}건, 상표 {d.get('in_tm_reg','0')}건, 디자인 {d.get('in_design_reg','0')}건."
+        else:
+            pat_str = "특허/지재권 없음"
 
         data_summary = f"""[기업 기본정보]
 - 기업명: {c_name} / 대표자: {rep_name} / 사업자유형: {biz_type}
 - 업종: {c_ind} / 업력: 약 {biz_years}년 / 경력: {career}
 [재무 상태]
-- 전년매출: {s_25} / 총 기대출: {total_debt} / NICE: {nice_score}점
+- 전년매출: {s_25} / 총 기대출: {total_debt}
 [비즈니스 모델]
-- 아이템: {item} / 시장: {market} / 차별화: {diff} / 인증: {cert_status}
+- 아이템: {item} / 특허현황: {pat_str}
 [신청 자금]
 - 금액/용도: {req_fund} ({fund_type} / {fund_purpose})
 """
-
-        prompt_kosme_plan = f"""당신은 중소벤처기업진흥공단(중진공) 전문 심사역입니다. 아래 [데이터]로 '사업계획서' 초안을 작성하세요.
-포커스: 고용 창출, 기술성, 미래 성장성 어필.
-{data_summary}"""
-
-        prompt_kosme_loan = f"""당신은 중소벤처기업진흥공단(중진공) 전문 심사역입니다. 아래 [데이터]로 '융자신청서' 초안을 작성하세요.
-포커스: 재무 분석, 자금 조달 및 상환 계획 구체화.
-{data_summary}"""
-
-        prompt_semas_plan = f"""당신은 소상공인시장진흥공단(소진공) 전문 심사역입니다. 아래 [데이터]로 '사업계획서' 초안을 작성하세요.
-포커스: 사업 생존 가능성(자생력), 현실적인 지역 상권 영업 전략.
-{data_summary}"""
-
-        prompt_semas_loan = f"""당신은 소상공인시장진흥공단(소진공) 전문 심사역입니다. 아래 [데이터]로 '융자신청서' 초안을 작성하세요.
-포커스: 안정적 매출 대비 고정비 지출 및 대출 상환 능력 증빙.
-{data_summary}"""
-
-        prompt_kodit_plan = f"""당신은 신용보증기금(신보) 전문 심사역입니다. 아래 [데이터]로 '사업계획서' 초안을 작성하세요.
-포커스: 매출 J커브 성장세, 차별성이 매출 확대로 이어지는 논리 증명.
-{data_summary}"""
-
-        prompt_kodit_loan = f"""당신은 신용보증기금(신보) 전문 심사역입니다. 아래 [데이터]로 '보증신청서' 초안을 작성하세요.
-포커스: 기대출 대비 유동성 해결 방안 및 명확한 상환 능력 확보 계획.
-{data_summary}"""
-
-        prompt_kibo_plan = f"""당신은 기술보증기금(기보) 전문 심사역입니다. 아래 [데이터]로 '기술사업계획서' 초안을 작성하세요.
-포커스: 기술 혁신성, 무형자산(특허 등) 현황, R&D 역량 심도 있게 작성.
-{data_summary}"""
-
-        prompt_kibo_loan = f"""당신은 기술보증기금(기보) 전문 심사역입니다. 아래 [데이터]로 '기술평가 보증신청서' 초안을 작성하세요.
-포커스: 기술 개발/사업화 자금 사용처와 기술 상용화 이후의 재무적 성과 예측.
-{data_summary}"""
-
-        prompt_ir_plan = f"""당신은 전문 VC 심사역입니다. 아래 [데이터]로 'PSST(Problem-Solution-Scale up-Team) 기반 사업계획서' 초안을 작성하세요.
-포커스: 시장의 Problem, 자사의 Solution, 수익모델 Scale-up, Team 역량.
-{data_summary}"""
-
-        prompt_ir_loan = f"""당신은 전문 VC 심사역입니다. 아래 [데이터]로 '투자 제안 요약서(1-Pager)' 초안을 작성하세요.
-포커스: 기업 핵심 가치, 자금 조달 필요성, 예상 Exit 시나리오 압축 요약.
-{data_summary}"""
 
         st.title("📝 기관별 맞춤형 Gems 프롬프트 팩")
         st.info("아래 프롬프트를 복사하여 **각 기관별 Gems 주소**로 들어가 붙여넣기 하세요.")
 
         tabs = st.tabs(["1. 중진공", "2. 소진공", "3. 신용보증기금", "4. 기술보증기금", "5. 제안용(IR)"])
 
+        # ==========================================
+        # [1. 중진공 탭] - 드롭다운 연동 맞춤형 프롬프트 구현
+        # ==========================================
         with tabs[0]:
-            st.subheader("🏢 중소벤처기업진흥공단")
-            c1, c2 = st.columns(2)
+            st.subheader("🏢 중소벤처기업진흥공단 융자신청서 자동 작성기")
+            
+            # 자금 선택 드롭다운
+            kosme_fund_type = st.selectbox(
+                "💡 신청하실 중진공 세부 자금을 선택하세요:",
+                ["청년전용창업자금", "혁신창업사업화자금", "개발기술사업화자금", "신시장진출지원자금", "사업전환자금"]
+            )
+            
+            # 선택된 자금에 따른 프롬프트 동적 생성
+            if kosme_fund_type == "청년전용창업자금":
+                kosme_focus = "창업자의 역량(실행력, 집요함), 문제 해결 능력, 그리고 향후 폭발적으로 성장할 수 있는 아이템의 스케일업 가능성을 최우선으로 강조하세요. '지금 당장 돈을 버는가'보다 '이 돈을 주면 얼마나 크게 성장할 팀인가'에 집중하세요."
+            elif kosme_fund_type == "혁신창업사업화자금":
+                kosme_focus = "우수한 기술력과 혁신적인 비즈니스 모델을 바탕으로 한 사업화 가능성, 제품 양산 및 시장 진입 전략, 그리고 이에 따른 고용 창출 효과를 중점적으로 어필하세요."
+            elif kosme_fund_type == "개발기술사업화자금":
+                kosme_focus = f"보유 중인 특허 및 지식재산권({pat_str})을 기반으로 기술의 독창성과 우수성을 강조하고, 이 기술이 어떻게 구체적으로 상용화되고 매출로 직결될 수 있는지 상세한 사업화 계획을 작성하세요."
+            elif kosme_fund_type == "신시장진출지원자금":
+                kosme_focus = "내수 시장의 한계를 극복하고 글로벌 시장(수출)으로 진출하기 위한 구체적인 타겟 국가, 수출 마케팅 전략, 그리고 기대되는 외화 획득 효과를 집중적으로 강조하세요."
+            else: # 사업전환자금
+                kosme_focus = "기존 사업의 한계(또는 사양화)를 분석하고, 새로운 유망 업종으로 피보팅(사업전환)했을 때 얻을 수 있는 시너지 효과, 경쟁력 회복 방안, 그리고 안정적인 연착륙 전략을 강조하세요."
+
+            prompt_kosme_plan = f"""당신은 중소벤처기업진흥공단(중진공) 전문 심사역입니다. 
+제공된 대시보드 데이터를 바탕으로 '{kosme_fund_type}'에 제출할 융자신청서(공통양식 및 별첨 사업계획서) 초안을 작성하세요.
+
+[핵심 강조 포인트 (반드시 반영할 것)]
+{kosme_focus}
+
+[작성 지침 - 절대 엄수]
+1. 체크박스 문양은 무조건 '▣' 기호를 사용하세요. (기본 설정: 융자방식 ▣직접대출, 담보종류 ▣신용, 융자상환조정/이차보전/기업진단 ▣미신청/해당없음)
+2. 주주상황, 경영진, 매출 및 직원현황의 '수출액/직원수/매출세부내용' 등 대시보드에 없는 정보는 무조건 표를 공란으로 비워두세요. 임의로 창작하지 마세요.
+3. [주요 생산제품] 및 [사업계획서]의 서술형 빈칸은 대시보드 데이터(아이템, 판매루트, 차별화 등)를 뼈대로 삼되, 당신이 보유한 외부 웹 데이터와 시장 조사 자료를 총동원하여 심사역이 감탄할 수준의 500자 내외 전문적인 문장으로 상세히 작성하세요.
+4. [자금 소요 내역]은 운전자금과 시설자금을 명확히 구분하여 표 형태로 작성하고, 기계구입, 인건비, 마케팅비 등을 아주 구체적으로 쪼개서 산출 근거와 함께 작성하세요.
+5. '윤리준수 약속' 부분은 출력하지 마세요.
+
+[대시보드 데이터]
+{data_summary}
+"""
+            c1, c2 = st.columns([1, 3])
             with c1:
-                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
-                st.code(prompt_kosme_plan, language="markdown")
+                st.link_button("🚀 중진공 Gems 바로가기", "https://gemini.google.com/app", use_container_width=True)
+                st.info("우측의 맞춤형 프롬프트를 복사하여 Gems에 붙여넣으세요.")
             with c2:
-                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
-                st.code(prompt_kosme_loan, language="markdown")
+                st.code(prompt_kosme_plan, language="markdown")
 
         with tabs[1]:
-            st.subheader("🏪 소상공인시장진흥공단")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
-                st.code(prompt_semas_plan, language="markdown")
-            with c2:
-                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
-                st.code(prompt_semas_loan, language="markdown")
+            st.subheader("🏪 소상공인시장진흥공단 (준비 중)")
+            st.warning("내일 세부 자금 리스트가 취합되면 업데이트됩니다.")
 
         with tabs[2]:
-            st.subheader("🏦 신용보증기금")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
-                st.code(prompt_kodit_plan, language="markdown")
-            with c2:
-                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
-                st.code(prompt_kodit_loan, language="markdown")
+            st.subheader("🏦 신용보증기금 (준비 중)")
+            st.warning("내일 세부 자금 리스트가 취합되면 업데이트됩니다.")
 
         with tabs[3]:
-            st.subheader("🔬 기술보증기금")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
-                st.code(prompt_kibo_plan, language="markdown")
-            with c2:
-                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
-                st.code(prompt_kibo_loan, language="markdown")
+            st.subheader("🔬 기술보증기금 (준비 중)")
+            st.warning("내일 세부 자금 리스트가 취합되면 업데이트됩니다.")
 
         with tabs[4]:
-            st.subheader("📈 제안용 (IR / PSST)")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
-                st.code(prompt_ir_plan, language="markdown")
-            with c2:
-                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
-                st.code(prompt_ir_loan, language="markdown")
+            st.subheader("📈 제안용 (IR / PSST) (준비 중)")
+            st.warning("내일 세부 자금 리스트가 취합되면 업데이트됩니다.")
 
     # --- [입력 화면 (대시보드)] ---
     else:
