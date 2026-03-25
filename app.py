@@ -189,7 +189,7 @@ if check_password():
     if "permanent_data" not in st.session_state: st.session_state["permanent_data"] = {}
 
     # ---------------------------------------------------------
-    # [모드 A: 1. 기업분석리포트]
+    # [모드 A: 1. 기업분석리포트] (완벽 보존)
     # ---------------------------------------------------------
     if st.session_state["view_mode"] == "REPORT":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -518,7 +518,7 @@ if check_password():
                 st.error(f"❌ 시스템 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 2. 정책자금 매칭 리포트]
+    # [모드 B: 2. 정책자금 매칭 리포트] (완벽 보존)
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -756,6 +756,23 @@ if check_password():
         if d.get('in_start_date', '').strip():
             try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
             except: pass
+            
+        certs = []
+        if d.get('in_chk_1', False): certs.append("소상공인")
+        if d.get('in_chk_2', False): certs.append("창업기업")
+        if d.get('in_chk_3', False): certs.append("여성기업")
+        if d.get('in_chk_4', False): certs.append("이노비즈")
+        if d.get('in_chk_6', False): certs.append("벤처")
+        if d.get('in_chk_7', False): certs.append("뿌리기업")
+        if d.get('in_chk_10', False): certs.append("ISO")
+        if d.get('in_chk_11', False): certs.append("HACCP")
+        cert_status = ", ".join(certs) if certs else "미보유"
+
+        pat_str = ""
+        if d.get('in_has_patent') == '유':
+            pat_str += f"출원 {d.get('in_pat_apply','0')}건, 등록 {d.get('in_pat_reg','0')}건, 상표 {d.get('in_tm_reg','0')}건, 디자인 {d.get('in_design_reg','0')}건."
+        else:
+            pat_str = "특허/지재권 미보유"
 
         st.title("📝 기관/서류별 맞춤형 융자·사업계획서 자동 생성기")
         st.info("💡 좌측은 '공통 융자신청서', 우측은 '자금별 사업계획서(별첨)'입니다. 버튼을 누르면 완벽한 HTML 양식으로 생성됩니다.")
@@ -872,7 +889,9 @@ if check_password():
             with col_p2:
                 st.markdown(f"#### 📝 중진공 '{kosme_fund_type}' 사업계획서(별첨)")
                 if kosme_fund_type == "청년전용창업자금":
-                    st.caption("💡 포커스: 창업자 역량(실행력), J커브 성장성, 구체적 타겟 및 스케일업")
+                    st.caption("💡 포커스: 창업자 역량(실행력), J커브 성장성, 스케일업")
+                elif kosme_fund_type == "개발기술사업화자금":
+                    st.caption("💡 포커스: 양산 가능성, 시장성(매출), 기술의 사업화 구조")
                 else:
                     st.caption("💡 포커스: 기술성, 양산 및 매출 확대, 고용창출 중심")
                 
@@ -946,6 +965,112 @@ if check_password():
                                     <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
                                       (고용 창출 효과 및 사회/경제적 파급 효과를 숫자를 섞어 설득력 있게 3~4줄로 작성. 마침표 후 줄바꿈)
                                     </td>
+                                  </tr>
+                                </table>
+                                """
+                            elif kosme_fund_type == "개발기술사업화자금":
+                                prompt_plan = f"""
+                                당신은 중소기업진흥공단의 깐깐한 심사역입니다. 마크다운 기호 금지. 순수 HTML 태그만 사용하세요.
+                                
+                                [기업데이터]
+                                - 기업명: {c_name} / 대표자: {rep_name} / 업력: {biz_years}년
+                                - 아이템: {item} / 시장현황: {market} / 경쟁우위: {diff}
+                                - 특허/인증: {cert_status} / {pat_str}
+                                - 매출현황: 금년 {s_cur}
+                                
+                                [개발기술사업화자금 핵심 작성 룰]
+                                1. R&D(기술개발) 중심이 아닌 "사업화(돈 버는 구조)" 중심으로 작성하세요. 기술 자체보다 '시장성', '양산 가능성', '실행력'을 압도적으로 강조해야 합니다.
+                                2. 타겟 시장 규모(TAM/SAM/SOM), 구체적 고객, 구매 시나리오를 구체적인 수치와 함께 설득력 있게 제시하세요.
+                                3. 차별성은 단순 스펙 비교가 아니라 "고객이 우리 제품을 사야만 하는 이유(수익성/원가/고객가치)"로 연결하세요.
+                                4. "이 자금이 투입되면 즉각 양산/마케팅이 진행되어 J커브 매출이 발생할 기업"임을 강조하세요.
+
+                                [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
+                                <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">개발기술사업화자금 신청기업 사업계획서</h2>
+                                
+                                <h3 style="margin-top:20px;">□ 신청 개발기술의 제품(상품 및 서비스) 개요</h3>
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px; text-align:left;">
+                                  <tr>
+                                    <td rowspan="2" style="background-color:#f0f0f0; border:1px solid #333; width:20%; font-weight:bold; text-align:center;">사업화<br>제품·기술</td>
+                                    <td style="border:1px solid #333; padding:10px;">(제품명) {item}</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="border:1px solid #333; padding:10px; line-height:1.6;">- R&D성공과제/특허기술 등: {pat_str}<br>- 관련기술 평가/인증 년월일: (가상 작성)</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="background-color:#f0f0f0; border:1px solid #333; padding:10px; font-weight:bold; text-align:center;">제품용도 및 특성<br><span style="font-size:0.9em; font-weight:normal;">(주요내용)</span></td>
+                                    <td style="border:1px solid #333; padding:15px; line-height:1.6;">
+                                      (고객의 Pain-point를 해결하는 제품/서비스의 핵심 용도와 특성을 3~4줄로 명확히 작성)
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td style="background-color:#f0f0f0; border:1px solid #333; padding:10px; font-weight:bold; text-align:center;">대체, 경쟁제품과의<br>차별성</td>
+                                    <td style="border:1px solid #333; padding:15px; line-height:1.6;">
+                                      (경쟁사 대비 기술적 비교우위를 넘어, 수익성/원가/고객가치 측면의 사업적 차별성을 3~4줄 작성)
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td style="background-color:#f0f0f0; border:1px solid #333; padding:10px; font-weight:bold; text-align:center;">사업화(양산) 및<br>납품계획</td>
+                                    <td style="border:1px solid #333; padding:15px; line-height:1.6;">
+                                      - 양산 시작 후 3년 경과 여부: ▣ No <br>
+                                      (현재 시제품/MVP 완료 및 향후 구체적인 양산 일정, 유통망/납품처 확보 계획을 상세히 작성)
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td style="background-color:#f0f0f0; border:1px solid #333; padding:10px; font-weight:bold; text-align:center;">기대효과<br><span style="font-size:0.9em; font-weight:normal;">(기술의 파급효과)</span></td>
+                                    <td style="border:1px solid #333; padding:15px; line-height:1.6;">
+                                      (매출 증대, 수입 대체, 고용 창출 등 경제적/산업적 파급효과를 수치를 포함하여 3줄로 작성)
+                                    </td>
+                                  </tr>
+                                </table>
+
+                                <h3 style="margin-top:30px;">□ 신청 개발기술 제품(상품 또는 서비스) 영업계획</h3>
+                                <h4 style="margin-top:10px;">○ 시장성</h4>
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
+                                  <tr>
+                                    <td style="background-color:#f0f0f0; border:1px solid #333; font-weight:bold; padding:8px; width:15%;">판매형태</td>
+                                    <td colspan="5" style="border:1px solid #333; text-align:left; padding:8px;">주문판매( )%, 시장판매( )%, 임가공( )%, (내수( )%, 수출( )%) (합계 100%가 되도록 가상 분배)</td>
+                                  </tr>
+                                  <tr>
+                                    <td rowspan="2" style="background-color:#f0f0f0; border:1px solid #333; font-weight:bold; padding:8px;">경쟁<br>현황</td>
+                                    <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px;">제품명<br>(상품및서비스)</td>
+                                    <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px;">시장규모</td>
+                                    <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px;">주요기업체명<br>(1순위/2순위)</td>
+                                    <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px;">귀사의 동업계 지위</td>
+                                    <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px;">경쟁<br>상태</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="border:1px solid #333; padding:8px; line-height:1.4;">{item}</td>
+                                    <td style="border:1px solid #333; padding:8px;">(객관적 추산액)</td>
+                                    <td style="border:1px solid #333; padding:8px;">(가상의 주요경쟁사명)</td>
+                                    <td style="border:1px solid #333; padding:8px;">시설능력: (상/중/하)<br>시장지위: (상/중/하)</td>
+                                    <td style="border:1px solid #333; padding:8px;">(보통/과당/독점)</td>
+                                  </tr>
+                                </table>
+
+                                <h4 style="margin-top:10px;">○ 판매계획</h4>
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
+                                  <tr style="background-color:#f0f0f0;">
+                                    <th rowspan="2" style="border:1px solid #333; padding:8px;">품목명</th>
+                                    <th rowspan="2" style="border:1px solid #333; padding:8px;">생산능력<br>(수량/금액)</th>
+                                    <th rowspan="2" style="border:1px solid #333; padding:8px;">판매처<br>(업체명)</th>
+                                    <th colspan="2" style="border:1px solid #333; padding:8px;">당해년도 판매액</th>
+                                    <th colspan="2" style="border:1px solid #333; padding:8px;">차년도 판매액</th>
+                                  </tr>
+                                  <tr style="background-color:#f0f0f0;">
+                                    <th style="border:1px solid #333; padding:8px;">내수</th><th style="border:1px solid #333; padding:8px;">수출</th>
+                                    <th style="border:1px solid #333; padding:8px;">내수</th><th style="border:1px solid #333; padding:8px;">수출</th>
+                                  </tr>
+                                  <tr>
+                                    <td style="border:1px solid #333; padding:8px; line-height:1.4;">{item}</td>
+                                    <td style="border:1px solid #333; padding:8px;">(수치)</td>
+                                    <td style="border:1px solid #333; padding:8px;">(주요타겟처)</td>
+                                    <td style="border:1px solid #333; padding:8px;">(자동계산)</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td>
+                                    <td style="border:1px solid #333; padding:8px;">(자동계산)</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td>
+                                  </tr>
+                                  <tr style="background-color:#f9f9f9; font-weight:bold;">
+                                    <td colspan="3" style="border:1px solid #333; padding:8px;">합 계 (백만원)</td>
+                                    <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
+                                    <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
                                   </tr>
                                 </table>
                                 """
