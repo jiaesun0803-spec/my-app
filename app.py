@@ -261,7 +261,7 @@ if check_password():
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
                             
-                            # 프롬프트 디테일 수정 (1, 3, 4, 5번 양식 완벽 패치)
+                            # [디테일 패치] 경쟁사 A, B 괄호 줄바꿈 명시!
                             prompt = f"""
                             당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                             아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
@@ -271,6 +271,7 @@ if check_password():
                             2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
                             3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. (단, 마지막 7번의 '조언' 부분만 1~2줄로 짧게 쓰세요.) 문장 끝마다 반드시 줄바꿈 &lt;br&gt; 태그를 넣으세요.
                             4. 자금 사용계획 작성 규칙: 5번의 좌측 항목명은 반드시 '및'을 기준으로 <br> 태그를 사용해 줄바꿈 하세요. (예: 인건비<br>및<br>운영비)
+                            5. 경쟁사 비교 분석표 규칙: 헤더(주요 경쟁사 A, B) 작성 시, 미리 제공된 양식대로 괄호 부분은 반드시 <br> 태그 아래에 작성하여 줄바꿈을 강제하세요.
 
                             [기업 정보]
                             - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 사업자유형: {biz_type}
@@ -320,8 +321,8 @@ if check_password():
                                 <tr style="background-color:#eceff1;">
                                   <th style="padding:12px; border:1px solid #ccc; width:20%;">비교 항목</th>
                                   <th style="padding:12px; border:1px solid #ccc; width:26%;">{c_name} (자사)</th>
-                                  <th style="padding:12px; border:1px solid #ccc; width:27%;">주요 경쟁사 A</th>
-                                  <th style="padding:12px; border:1px solid #ccc; width:27%;">주요 경쟁사 B</th>
+                                  <th style="padding:12px; border:1px solid #ccc; width:27%;">주요 경쟁사 A<br><span style="font-size:0.85em; font-weight:normal; color:#555;">(경쟁사 특징 기재)</span></th>
+                                  <th style="padding:12px; border:1px solid #ccc; width:27%;">주요 경쟁사 B<br><span style="font-size:0.85em; font-weight:normal; color:#555;">(경쟁사 특징 기재)</span></th>
                                 </tr>
                                 <tr>
                                   <td style="padding:12px; border:1px solid #ccc; font-weight:bold;">핵심 타겟/<br>포지셔닝</td>
@@ -473,7 +474,6 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
-                # HTML 다운로드 파일 내에 Plotly 라이브러리를 포함한 완벽한 그래프 삽입
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -484,6 +484,15 @@ if check_password():
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
                         body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
                         h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
+                        @media print {{ 
+                            @page {{ size: A4; margin: 15mm; }}
+                            body {{ padding: 0 !important; font-size: 14px !important; color: black !important; max-width: 100% !important; }} 
+                            h1 {{ margin: 0 0 30px 0 !important; font-size: 28px !important; }}
+                            h2.section-title {{ page-break-before: always !important; margin-top: 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            h2.section-title:first-of-type {{ page-break-before: avoid !important; margin-top: 20px !important; }}
+                            table {{ font-size: 13px !important; margin-bottom: 10px !important; width: 100% !important; table-layout: fixed !important; }}
+                            th, td {{ padding: 10px !important; word-wrap: break-word; vertical-align: top; }}
+                        }}
                     </style>
                 </head>
                 <body>
@@ -550,7 +559,6 @@ if check_password():
                             has_cert = d.get('in_chk_6', False) or d.get('in_chk_4', False) or d.get('in_chk_10', False)
                             cert_status = "보유 (벤처/이노비즈 등)" if has_cert else "미보유"
                             
-                            # 특허 정보 수집
                             pat_str = ""
                             if d.get('in_has_patent') == '유':
                                 pat_str += f"[보유] 특허출원 {d.get('in_pat_apply','0')}건, 특허등록 {d.get('in_pat_reg','0')}건, 상표등록 {d.get('in_tm_reg','0')}건, 디자인등록 {d.get('in_design_reg','0')}건. "
@@ -567,7 +575,7 @@ if check_password():
                                 
                             employee_count = safe_int(d.get('in_employee_count', 0))
                             
-                            # [핵심 로직] 우선순위, 기보/신보 배타적 룰, 간격 조정 Spacer 방식 프롬프트 강제
+                            # [디테일 패치] 1페이지 분량 압축 강제 명령 추가
                             prompt = f"""
                             당신은 전문 경영컨설턴트입니다. 마크다운 기호 절대 금지. 
                             ※ 모든 문장은 반드시 '~음', '~함', '~임', '~기대됨' 등의 명사형으로 끝내야 합니다. '~습니다', '~합니다', '~해요' 등의 서술어는 절대 사용 금지!!!
@@ -588,6 +596,7 @@ if check_password():
                             4. 보완 조언 룰 (인증/특허 활용):
                                - 이 기업의 인증({cert_status}) 및 특허 현황({pat_str})을 바탕으로, 추가적인 자금 조달처나 금리 우대 혜택 등을 방대한 외부 데이터를 검색/참고하여 컨설팅할 것.
                             5. 연체 컷오프: 세금/금융연체 '유'인 경우 1~4순위 비우고 연체 해소 조언만 작성.
+                            6. 분량 제한: PDF 인쇄 시 무조건 1페이지에 모두 들어갈 수 있도록, 각 항목의 사유와 전략은 핵심만 1~2줄로 아주 간결하게 작성하세요.
 
                             [출력 양식]
                             <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
@@ -596,17 +605,17 @@ if check_password():
                               <b>NICE 점수:</b> {nice_score}점 | <b>기술/벤처 인증:</b> {cert_status} | <b>특허정보:</b> {pat_str} <br>
                               <b>전년도매출:</b> <span style="color:#1565c0; font-weight:bold;">{s_25}</span> | <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> | <b style="font-size:1.15em;">희망 필요자금: {req_fund}</b>
                             </div>
-                            <div style="margin-bottom:20px;">(2~3줄 요약. &lt;br&gt;)</div>
+                            <div style="margin-bottom:20px;">(1~2줄 아주 짧은 요약. &lt;br&gt;)</div>
 
                             <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. 우선순위 추천 정책자금 (1~2순위)</h2>
                             <table style="width:100%; border-collapse: collapse; margin-bottom:15px; table-layout: fixed;">
                               <tr>
                                 <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top; width:48.5%;">
-                                  <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명]<br>AI 추산 예상 한도</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (전략 2~3줄 &lt;br&gt;)
+                                  <b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [추천 기관명] / [세부 자금명]<br>AI 추산 예상 한도</b><br><br>&bull; (사유 1~2줄 핵심만 &lt;br&gt;)<br>&bull; (전략 1~2줄 핵심만 &lt;br&gt;)
                                 </td>
                                 <td style="width:3%;"></td>
                                 <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top; width:48.5%;">
-                                  <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [신보 or 기보 중 택1 (절대 룰 준수)] / [상품명]<br>AI 추산 예상 한도</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (전략 2~3줄 &lt;br&gt;)
+                                  <b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [신보 or 기보 중 택1 (절대 룰 준수)] / [상품명]<br>AI 추산 예상 한도</b><br><br>&bull; (사유 1~2줄 핵심만 &lt;br&gt;)<br>&bull; (전략 1~2줄 핵심만 &lt;br&gt;)
                                 </td>
                               </tr>
                             </table>
@@ -615,18 +624,18 @@ if check_password():
                             <table style="width:100%; border-collapse: collapse; margin-bottom:15px; table-layout: fixed;">
                               <tr>
                                 <td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top; width:48.5%;">
-                                  <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신보] / [자금명]<br>AI 추산 예상 한도</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (기금 우선진행 전략 강조 &lt;br&gt;)
+                                  <b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신보] / [자금명]<br>AI 추산 예상 한도</b><br><br>&bull; (사유 1~2줄 핵심만 &lt;br&gt;)<br>&bull; (기금 우선진행 전략 1~2줄 핵심만 &lt;br&gt;)
                                 </td>
                                 <td style="width:3%;"></td>
                                 <td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top; width:48.5%;">
-                                  <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [시중은행 연계자금 등] / [자금명]<br>AI 추산 예상 한도</b><br><br>&bull; (사유 2~3줄 &lt;br&gt;)<br>&bull; (전략 2~3줄 &lt;br&gt;)
+                                  <b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [시중은행 연계자금 등] / [자금명]<br>AI 추산 예상 한도</b><br><br>&bull; (사유 1~2줄 핵심만 &lt;br&gt;)<br>&bull; (전략 1~2줄 핵심만 &lt;br&gt;)
                                 </td>
                               </tr>
                             </table>
 
                             <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 심사 전 필수 체크리스트 및 보완 가이드</h2>
-                            <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; margin-top:15px;">
-                              <b style="font-size:1.1em; color:#c62828;">🚨 보완 조언 (특허/인증 활용 방안 포함):</b><br><br>&bull; (외부 데이터를 활용한 구체적인 전략 1 &lt;br&gt;)<br>&bull; (외부 데이터를 활용한 구체적인 전략 2 &lt;br&gt;)
+                            <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:15px; border-radius:15px; margin-top:15px;">
+                              <b style="font-size:1.1em; color:#c62828;">🚨 보완 조언 (특허/인증 활용 방안 포함):</b><br><br>&bull; (외부 데이터를 활용한 구체적인 전략 1~2줄 &lt;br&gt;)<br>&bull; (외부 데이터를 활용한 구체적인 전략 1~2줄 &lt;br&gt;)
                             </div>
                             """
                             
@@ -656,6 +665,7 @@ if check_password():
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
+                # [디테일 패치] 1페이지 완벽 압축 CSS
                 html_export = f"""
                 <!DOCTYPE html>
                 <html>
@@ -664,7 +674,16 @@ if check_password():
                     <title>{c_name} 정책자금 매칭 리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 30px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; background-color: #fff; }}
+                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 30px; line-height: 1.5; color: #333; max-width: 1000px; margin: 0 auto; background-color: #fff; }}
+                        @media print {{ 
+                            @page {{ size: A4; margin: 10mm; }}
+                            body {{ padding: 0 !important; font-size: 11.5px !important; color: black !important; max-width: 100% !important; zoom: 0.85; }} 
+                            h1 {{ margin: 0 0 10px 0 !important; font-size: 20px !important; }}
+                            h2 {{ margin: 10px 0 5px 0 !important; font-size: 15px !important; padding-bottom: 2px !important; border-bottom: 2px solid #174EA6 !important; }}
+                            div {{ padding: 10px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.3 !important; }}
+                            table {{ font-size: 11.5px !important; margin-bottom: 8px !important; width: 100% !important; table-layout: fixed !important; }}
+                            th, td {{ padding: 8px !important; word-wrap: break-word; vertical-align: top; }}
+                        }}
                     </style>
                 </head>
                 <body>
