@@ -189,7 +189,7 @@ if check_password():
     if "permanent_data" not in st.session_state: st.session_state["permanent_data"] = {}
 
     # ---------------------------------------------------------
-    # [모드 A: 1. 기업분석리포트] (완벽 보존)
+    # [모드 A: 1. 기업분석리포트]
     # ---------------------------------------------------------
     if st.session_state["view_mode"] == "REPORT":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -785,19 +785,28 @@ if check_password():
         with tabs[0]:
             st.subheader("🏢 중소벤처기업진흥공단 (중진공)")
             
-            kosme_fund_type = st.selectbox(
-                "💡 1. 자금종류 드롭박스",
-                ["청년전용창업자금", "혁신창업사업화자금", "개발기술사업화자금", "신시장진출지원자금", "사업전환자금"]
-            )
+            fund_categories = {
+                "혁신창업화자금": ["청년전용창업자금", "개발기술사업화자금"],
+                "신시장진출지원자금": ["내수기업 수출기업화자금", "수출기업 글로벌화 자금"],
+                "신성장기반자금": ["혁신성장지원자금", "혁신성장지원자금(협동화포함)", "스케일업금융자금", "Net Zero 유망기업지원자금", "제조현장스마트화자금"],
+                "재도약지원자금": ["재창업자금", "구조개선전용자금", "사업전환지원자금", "통상변화대응지원사업", "선제적 자율구조개선프로그램"],
+                "긴급경영안전자금": ["긴급경영안전자금(재해중소기업지원)", "긴급경영안전자금(일시적경영애로지원)"]
+            }
+            
+            col_dd1, col_dd2 = st.columns(2)
+            with col_dd1:
+                main_fund_type = st.selectbox("💡 1. 대분류 자금종류", list(fund_categories.keys()))
+            with col_dd2:
+                kosme_fund_type = st.selectbox("💡 2. 세부 자금종류", fund_categories[main_fund_type])
             
             col_p1, col_p2 = st.columns(2)
             
             # --- 좌측: 융자신청서 (공통 양식) ---
             with col_p1:
-                st.markdown(f"#### 📄 중진공 '{kosme_fund_type}' 융자신청서(공통)")
+                st.markdown("#### 📄 중진공 융자신청서(공통)")
                 st.caption("💡 포커스: 자금소요 내역, 상환계획, 27/28년 예상매출 및 공정도")
                 
-                if st.button("🚀 중진공 융자신청서(공통) HTML 생성", use_container_width=True):
+                if st.button("🚀 중진공 융자신청서(공통) 바로보기", use_container_width=True):
                     with st.status("🚀 융자신청서(공통양식) 빈칸을 완벽하게 채우는 중입니다...", expanded=True) as status:
                         try:
                             model_name = get_best_model_name()
@@ -887,7 +896,7 @@ if check_password():
             
             # --- 우측: 사업계획서 (별첨 양식) ---
             with col_p2:
-                st.markdown(f"#### 📝 중진공 '{kosme_fund_type}' 사업계획서(별첨)")
+                st.markdown(f"#### 📝 중진공 사업계획서 ({kosme_fund_type})")
                 if kosme_fund_type == "청년전용창업자금":
                     st.caption("💡 포커스: 창업자 역량(실행력), J커브 성장성, 스케일업")
                 elif kosme_fund_type == "개발기술사업화자금":
@@ -895,7 +904,7 @@ if check_password():
                 else:
                     st.caption("💡 포커스: 기술성, 양산 및 매출 확대, 고용창출 중심")
                 
-                if st.button("🚀 중진공 사업계획서(별첨) HTML 생성", use_container_width=True):
+                if st.button(f"🚀 중진공 {kosme_fund_type} 바로보기", use_container_width=True):
                     with st.status(f"🚀 '{kosme_fund_type}' 전용 1타 심사역 로직으로 작성 중입니다...", expanded=True) as status:
                         try:
                             model_name = get_best_model_name()
