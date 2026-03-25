@@ -278,6 +278,11 @@ if check_password():
                             4. 자금 사용계획 작성 규칙: 5번의 좌측 항목명은 반드시 '및'을 기준으로 <br> 태그를 사용해 줄바꿈 하세요.
                             5. 경쟁사 비교 분석표 규칙: 헤더(주요 경쟁사 A, B) 작성 시, 미리 제공된 양식대로 괄호 부분은 반드시 <br> 태그 아래에 작성하여 줄바꿈을 강제하세요.
 
+                            [AI 작성 흔적 제거 및 전문가 톤 강제]
+                            - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                            - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                            - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 극도로 풍성하고 전문적으로 채우세요.
+
                             [기업 정보]
                             - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 사업자유형: {biz_type}
                             - 아이템: {item} / 시장현황: {market} / 차별화: {diff}
@@ -604,6 +609,11 @@ if check_password():
 
                             [입력] 기업명:{c_name} / 업종:{c_ind} / 상시근로자수:{employee_count}명 / 전년매출:{s_25} / 총기대출:{total_debt} / 인증현황:{cert_status} / 특허현황:{pat_str} / 희망 필요자금:{req_fund}
                             
+                            [AI 작성 흔적 제거 및 전문가 톤 강제]
+                            - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                            - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                            - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 극도로 풍성하고 전문적으로 채우세요.
+
                             [자금 추천 순위 및 절대 룰]
                             1. 업종 및 규모에 따른 순위 룰:
                                - 제조업: 중진공 -> 소진공 -> 신용보증기금/기술보증기금 -> 신용보증재단 -> 은행권 협약
@@ -880,6 +890,7 @@ if check_password():
                             <tr><td style="border:1px solid #333; padding:8px;">총매출액</td><td style="border:1px solid #333; padding:8px;">{sales_23}</td><td style="border:1px solid #333; padding:8px;">{sales_24}</td><td style="border:1px solid #333; padding:8px;">{s_cur}</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td></tr>
                             <tr><td style="border:1px solid #333; padding:8px;">수출액</td><td style="border:1px solid #333; padding:8px;"> </td><td style="border:1px solid #333; padding:8px;">{exp_24}</td><td style="border:1px solid #333; padding:8px;">{exp_cur}</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td></tr>
                             </table>
+                             [GRAPH_INSERT_POINT]
 
                             <h3>[주요 생산제품 개요]</h3>
                             <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
@@ -898,6 +909,35 @@ if check_password():
                             <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">자금 소요내역</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(시설/운전 자금을 구분하여, 인건비/마케팅/기계 등 세부 용도와 예상 금액을 표나 리스트 형태로 아주 상세히 쪼개서 작성)</td></tr>
                             </table>
                             """
+                            # 그래프 데이터 생성
+                            val_cur = safe_int(d.get('in_sales_current', 0))
+                            if val_cur <= 0: val_cur = 1000
+                            start_val = val_cur / 12
+                            end_val = start_val * 1.5
+                            
+                            monthly_vals = []
+                            for i in range(12):
+                                progress = i / 11.0
+                                linear_part = start_val + (end_val - start_val) * progress
+                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
+                                monthly_vals.append(int(linear_part + wave_part))
+                                
+                            monthly_labels = [f"{i}월" for i in range(1, 13)]
+
+                            fig = go.Figure()
+                            fig.add_trace(go.Scatter(
+                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
+                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
+                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
+                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
+                            ))
+                            fig.update_layout(
+                                title="📈 향후 1년간 월별 예상 매출 상승 곡선", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
+                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+                            )
+                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+
                             response = model.generate_content(prompt_loan)
                             
                             # Markdown HTML block strip logic
@@ -911,6 +951,10 @@ if check_password():
                             
                             # 들여쓰기(Indentation) 제거 로직 적용
                             cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
+                            # 그래프 삽입
+                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
+                                parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
+                                cleaned_html = parts[0] + plotly_html + parts[2]
                                 
                             st.session_state["kosme_result_type"] = "loan"
                             st.session_state["kosme_result_html"] = cleaned_html
@@ -1006,6 +1050,7 @@ if check_password():
                                 </td>
                                 </tr>
                                 </table>
+                                [GRAPH_INSERT_POINT]
                                 """
                             elif kosme_fund_type == "개발기술사업화자금":
                                 prompt_plan = f"""
@@ -1092,6 +1137,7 @@ if check_password():
                                 <td style="border:1px solid #333; padding:8px;">(보통/과당/독점)</td>
                                 </tr>
                                 </table>
+                                [GRAPH_INSERT_POINT]
 
                                 <h4 style="margin-top:10px;">○ 판매계획</h4>
                                 <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:13px; margin-bottom:20px; table-layout: fixed;">
@@ -1145,6 +1191,35 @@ if check_password():
                                 - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                                 - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
                                 """
+                            # 그래프 데이터 생성
+                            val_cur = safe_int(d.get('in_sales_current', 0))
+                            if val_cur <= 0: val_cur = 1000
+                            start_val = val_cur / 12
+                            end_val = start_val * 1.5
+                            
+                            monthly_vals = []
+                            for i in range(12):
+                                progress = i / 11.0
+                                linear_part = start_val + (end_val - start_val) * progress
+                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
+                                monthly_vals.append(int(linear_part + wave_part))
+                                
+                            monthly_labels = [f"{i}월" for i in range(1, 13)]
+
+                            fig = go.Figure()
+                            fig.add_trace(go.Scatter(
+                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
+                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
+                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
+                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
+                            ))
+                            fig.update_layout(
+                                title="📈 향후 1년간 월별 예상 매출 상승 곡선", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
+                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+                            )
+                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+
                             response = model.generate_content(prompt_plan)
                             
                             raw_text = response.text
@@ -1157,6 +1232,10 @@ if check_password():
                             
                             # 들여쓰기(Indentation) 제거 로직 적용
                             cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
+                            # 그래프 삽입
+                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
+                                parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
+                                cleaned_html = parts[0] + plotly_html + parts[2]
                                 
                             st.session_state["kosme_result_type"] = "plan"
                             st.session_state["kosme_result_html"] = cleaned_html
@@ -1275,7 +1354,37 @@ if check_password():
                             <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0; width:20%;">전년도 매출</th><td style="border:1px solid #333; padding:10px;">{sales_24}</td></tr>
                             <tr><th style="border:1px solid #333; padding:10px; background:#f0f0f0;">자금 활용계획</th><td style="border:1px solid #333; padding:10px; line-height:1.6;">(소상공인의 사업 생존과 자생력 강화, 지역 상권 내 영업 전략을 중심으로 자금 활용 목적을 4~5줄로 상세 작성)</td></tr>
                             </table>
+                             [GRAPH_INSERT_POINT]
                             """
+                            # 그래프 데이터 생성
+                            val_cur = safe_int(d.get('in_sales_current', 0))
+                            if val_cur <= 0: val_cur = 1000
+                            start_val = val_cur / 12
+                            end_val = start_val * 1.5
+                            
+                            monthly_vals = []
+                            for i in range(12):
+                                progress = i / 11.0
+                                linear_part = start_val + (end_val - start_val) * progress
+                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
+                                monthly_vals.append(int(linear_part + wave_part))
+                                
+                            monthly_labels = [f"{i}월" for i in range(1, 13)]
+
+                            fig = go.Figure()
+                            fig.add_trace(go.Scatter(
+                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
+                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
+                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
+                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
+                            ))
+                            fig.update_layout(
+                                title="📈 향후 1년간 월별 예상 매출 상승 곡선", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
+                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+                            )
+                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+
                             response = model.generate_content(prompt_loan_semas)
                             
                             raw_text = response.text
@@ -1287,6 +1396,10 @@ if check_password():
                                 cleaned_html = raw_text.strip()
                             
                             cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
+                            # 그래프 삽입
+                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
+                                parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
+                                cleaned_html = parts[0] + plotly_html + parts[2]
                                 
                             st.session_state["semas_result_type"] = "loan"
                             st.session_state["semas_result_html"] = cleaned_html
