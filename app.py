@@ -86,17 +86,30 @@ if check_password():
     def save_db(db_data):
         with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(db_data, f, ensure_ascii=False, indent=4)
 
+    # [수정] SyntaxError를 방지하기 위해 파이썬 표준 줄바꿈으로 안전하게 복구
     def get_credit_grade(score, type="NICE"):
         score = safe_int(score)
         if type == "NICE":
-            if score >= 900: return 1; elif score >= 870: return 2; elif score >= 840: return 3
-            elif score >= 805: return 4; elif score >= 750: return 5; elif score >= 665: return 6
-            elif score >= 600: return 7; elif score >= 515: return 8; elif score >= 445: return 9
+            if score >= 900: return 1
+            elif score >= 870: return 2
+            elif score >= 840: return 3
+            elif score >= 805: return 4
+            elif score >= 750: return 5
+            elif score >= 665: return 6
+            elif score >= 600: return 7
+            elif score >= 515: return 8
+            elif score >= 445: return 9
             else: return 10
         else: # KCB
-            if score >= 942: return 1; elif score >= 891: return 2; elif score >= 832: return 3
-            elif score >= 768: return 4; elif score >= 698: return 5; elif score >= 630: return 6
-            elif score >= 530: return 7; elif score >= 454: return 8; elif score >= 335: return 9
+            if score >= 942: return 1
+            elif score >= 891: return 2
+            elif score >= 832: return 3
+            elif score >= 768: return 4
+            elif score >= 698: return 5
+            elif score >= 630: return 6
+            elif score >= 530: return 7
+            elif score >= 454: return 8
+            elif score >= 335: return 9
             else: return 10
 
     # ==========================================
@@ -429,7 +442,7 @@ if check_password():
                                     else:
                                         raise e
                         except Exception as e:
-                            status.update(label=f"❌ 오류 발생. API 키(새 계정)를 확인해주세요. (상세: {str(e)})", state="error")
+                            status.update(label=f"❌ 오류가 발생했습니다. API 키 권한을 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
 
                 response_text = st.session_state.get("generated_report", "")
@@ -767,50 +780,50 @@ if check_password():
             st.subheader("🏢 중소벤처기업진흥공단")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_중진공_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 중진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kosme_plan, language="markdown")
             with c2:
-                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_중진공_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 중진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kosme_loan, language="markdown")
 
         with tabs[1]:
             st.subheader("🏪 소상공인시장진흥공단")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_소진공_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 소진공 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_semas_plan, language="markdown")
             with c2:
-                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_소진공_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 소진공 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_semas_loan, language="markdown")
 
         with tabs[2]:
             st.subheader("🏦 신용보증기금")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_신보_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 신보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kodit_plan, language="markdown")
             with c2:
-                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_신보_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 신보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kodit_loan, language="markdown")
 
         with tabs[3]:
             st.subheader("🔬 기술보증기금")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_기보_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 기보 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kibo_plan, language="markdown")
             with c2:
-                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app/여기에_기보_융자신청서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 기보 융자신청서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_kibo_loan, language="markdown")
 
         with tabs[4]:
             st.subheader("📈 제안용 (IR / PSST)")
             c1, c2 = st.columns(2)
             with c1:
-                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app/여기에_IR_사업계획서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("🚀 PSST 사업계획서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_ir_plan, language="markdown")
             with c2:
-                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app/여기에_IR_요약서_Gems_링크를_넣으세요", use_container_width=True)
+                st.link_button("📝 1-Pager 요약서 Gems 열기", "https://gemini.google.com/app", use_container_width=True)
                 st.code(prompt_ir_loan, language="markdown")
 
     # --- [입력 화면 (대시보드)] ---
