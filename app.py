@@ -13,13 +13,14 @@ from datetime import datetime
 # ==========================================
 st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
-# [UI 패치] 버튼 텍스트 줄바꿈 허용 및 박스 크기(높이) 강제 통일 CSS
+# [UI 패치] 버튼 박스 크기(높이) 강제 통일 CSS
 st.markdown("""
 <style>
 div.stButton > button {
-    min-height: 75px;
+    min-height: 70px;
     white-space: pre-wrap;
     line-height: 1.4;
+    font-size: 15px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -166,21 +167,21 @@ if check_password():
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
     
-    if st.sidebar.button("📊 기업분석리포트\n생성", use_container_width=True):
+    if st.sidebar.button("📊 AI 기업분석리포트", use_container_width=True):
         if st.session_state.get("view_mode", "INPUT") == "INPUT":
             st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         st.session_state["view_mode"] = "REPORT"
         st.session_state.pop("generated_report", None)
         st.rerun()
         
-    if st.sidebar.button("💡 정책자금 매칭\n리포트", use_container_width=True):
+    if st.sidebar.button("💡 AI 정책자금 매칭리포트", use_container_width=True):
         if st.session_state.get("view_mode", "INPUT") == "INPUT":
             st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         st.session_state["view_mode"] = "MATCHING"
         st.session_state.pop("generated_matching", None)
         st.rerun()
         
-    if st.sidebar.button("📝 융자·사업계획서\n맞춤형 AI 생성", use_container_width=True):
+    if st.sidebar.button("📝 융자·사업계획서 맞춤형 AI 생성", use_container_width=True):
         if st.session_state.get("view_mode", "INPUT") == "INPUT":
             st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         st.session_state["view_mode"] = "PLAN"
@@ -188,7 +189,7 @@ if check_password():
         st.session_state.pop("semas_result_html", None)
         st.rerun()
         
-    if st.sidebar.button("📑 정식 사업계획서\n마스터 생성", use_container_width=True):
+    if st.sidebar.button("📑 AI 사업계획서", use_container_width=True):
         if st.session_state.get("view_mode", "INPUT") == "INPUT":
             st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         st.session_state["view_mode"] = "FULL_PLAN"
@@ -201,7 +202,7 @@ if check_password():
     if "permanent_data" not in st.session_state: st.session_state["permanent_data"] = {}
 
     # ---------------------------------------------------------
-    # [모드 A: 기업분석리포트]
+    # [모드 A: 1. 기업분석리포트]
     # ---------------------------------------------------------
     if st.session_state["view_mode"] == "REPORT":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -538,7 +539,7 @@ if check_password():
                 st.error(f"❌ 시스템 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 정책자금 매칭 리포트]
+    # [모드 B: 2. 정책자금 매칭 리포트]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -750,7 +751,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 C: 기관 맞춤형 융자/사업계획서 생성]
+    # [모드 C: 3. 기관 맞춤형 융자/사업계획서 생성]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "PLAN":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -944,7 +945,7 @@ if check_password():
                                 marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
                             ))
                             fig.update_layout(
-                                title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                                title="📈 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
                                 xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
                                 template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
                             )
@@ -952,6 +953,7 @@ if check_password():
 
                             response = model.generate_content(prompt_loan)
                             
+                            # Markdown HTML block strip logic
                             raw_text = response.text
                             if "```html" in raw_text:
                                 cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
@@ -962,7 +964,6 @@ if check_password():
                             
                             # 들여쓰기(Indentation) 제거 로직 적용
                             cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
-                            
                             # 그래프 삽입
                             if "[GRAPH_INSERT_POINT]" in cleaned_html:
                                 parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
@@ -1007,7 +1008,7 @@ if check_password():
                                 [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
                                 - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
                                 - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
-                                - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                                - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
                                 - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
 
                                 [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
@@ -1525,7 +1526,7 @@ if check_password():
             st.subheader("📈 제안용 (IR / PSST) (준비 중)")
             
     # ---------------------------------------------------------
-    # [모드 D: 4. 정식 사업계획서 (마스터)] - 뼈대 추가
+    # [모드 D: 4. 정식 사업계획서 (마스터)]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "FULL_PLAN":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -1540,26 +1541,26 @@ if check_password():
         st.title("📊 AI 컨설팅 대시보드")
         col_t1, col_t2, col_t3, col_t4 = st.columns(4)
         with col_t1:
-            if st.button("📊 기업분석리포트\n생성", use_container_width=True, type="primary"):
+            if st.button("📊 AI 기업분석리포트", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "REPORT"
                 st.session_state.pop("generated_report", None)
                 st.rerun()
         with col_t2: 
-            if st.button("💡 정책자금 매칭\n리포트", use_container_width=True, type="primary"):
+            if st.button("💡 AI 정책자금 매칭리포트", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "MATCHING"
                 st.session_state.pop("generated_matching", None)
                 st.rerun()
         with col_t3: 
-            if st.button("📝 융자·사업계획서\n맞춤형 AI 생성", use_container_width=True, type="primary"):
+            if st.button("📝 융자·사업계획서 맞춤형 AI 생성", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "PLAN"
                 st.session_state.pop("kosme_result_html", None)
                 st.session_state.pop("semas_result_html", None)
                 st.rerun()
         with col_t4: 
-            if st.button("📑 정식 사업계획서\n마스터 생성", use_container_width=True, type="primary"):
+            if st.button("📑 AI 사업계획서", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "FULL_PLAN"
                 st.rerun()
