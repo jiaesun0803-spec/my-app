@@ -97,6 +97,12 @@ def get_best_model_name():
         pass
     return 'gemini-pro'
 
+# --- 클린 텍스트 로직 (마크다운 코드 블록 제거) ---
+def clean_html_output(raw_text):
+    clean_text = raw_text.replace("```html", "").replace("```", "").strip()
+    # 들여쓰기 제거 (표 렌더링 오류 방지)
+    return "\n".join([line.lstrip() for line in clean_text.split("\n")])
+
 if check_password():
     DB_FILE = "company_db.json"
     
@@ -301,6 +307,7 @@ if check_password():
                             3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 마침표 뒤 줄바꿈 &lt;br&gt; 태그를 넣으세요.
                             4. 자금 사용계획 작성 규칙: 5번의 좌측 항목명은 반드시 '및'을 기준으로 <br> 태그를 사용해 줄바꿈 하세요.
                             5. 경쟁사 비교 분석표 규칙: 헤더(주요 경쟁사 A, B) 작성 시, 미리 제공된 양식대로 괄호 부분은 반드시 <br> 태그 아래에 작성하여 줄바꿈을 강제하세요.
+                            6. 절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
 
                             [AI 작성 흔적 제거 및 전문가 톤 강제]
                             - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
@@ -491,16 +498,7 @@ if check_password():
                             status.update(label=f"❌ 오류가 발생했습니다. API 키 권한을 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
 
-                raw_text = st.session_state.get("generated_report", "")
-                if "```html" in raw_text:
-                    response_text = raw_text.split("```html")[1].split("```")[0].strip()
-                elif "```" in raw_text:
-                    response_text = raw_text.split("```")[1].split("```")[0].strip()
-                else:
-                    response_text = raw_text.strip()
-                    
-                # 스트림릿 코드 블록 오작동 방지를 위해 줄 시작 공백 제거
-                response_text = "\n".join([line.lstrip() for line in response_text.split("\n")])
+                response_text = clean_html_output(st.session_state.get("generated_report", ""))
 
                 if "[GRAPH_INSERT_POINT]" in response_text:
                     parts = response_text.partition("[GRAPH_INSERT_POINT]")
@@ -525,7 +523,7 @@ if check_password():
                     <title>{c_name} AI기업분석리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; white-space: pre-wrap; }}
                         h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
                         @media print {{ 
                             @page {{ size: A4; margin: 15mm; }}
@@ -545,7 +543,7 @@ if check_password():
                 </body>
                 </html>
                 """
-                st.download_button(label="📥 HTML 파일로 저장", data=html_export, file_name=f"{safe_file_name}_기업분석리포트.html", mime="text/html", type="primary")
+                st.download_button(label="📥 AI 기업분석리포트 HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_기업분석리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
                 st.error(f"❌ 시스템 오류 발생: {str(e)}")
@@ -713,20 +711,12 @@ if check_password():
                             status.update(label=f"❌ 오류 발생. API 키(새 계정)를 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
                 
-                raw_text = st.session_state.get("generated_matching", "")
-                if "```html" in raw_text:
-                    response_text = raw_text.split("```html")[1].split("```")[0].strip()
-                elif "```" in raw_text:
-                    response_text = raw_text.split("```")[1].split("```")[0].strip()
-                else:
-                    response_text = raw_text.strip()
-                    
-                response_text = "\n".join([line.lstrip() for line in response_text.split("\n")])
+                response_text = clean_html_output(st.session_state.get("generated_matching", ""))
                     
                 st.markdown(response_text, unsafe_allow_html=True)
                 
                 st.divider()
-                st.subheader("💾 HTML 리포트 다운로드")
+                st.subheader("💾 리포트 저장")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
                 
@@ -738,7 +728,7 @@ if check_password():
                     <title>{c_name} 정책자금 매칭 리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 30px; line-height: 1.5; color: #333; max-width: 1000px; margin: 0 auto; background-color: #fff; }}
+                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 30px; line-height: 1.5; color: #333; max-width: 1000px; margin: 0 auto; background-color: #fff; white-space: pre-wrap; }}
                         @media print {{ 
                             @page {{ size: A4; margin: 10mm; }}
                             body {{ padding: 0 !important; font-size: 11.5px !important; color: black !important; max-width: 100% !important; zoom: 0.85; }} 
@@ -757,7 +747,7 @@ if check_password():
                 </body>
                 </html>
                 """
-                st.download_button(label="📥 매칭리포트 HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
+                st.download_button(label="📥 AI 정책자금 매칭리포트 HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
@@ -915,7 +905,6 @@ if check_password():
                             <tr><td style="border:1px solid #333; padding:8px;">총매출액</td><td style="border:1px solid #333; padding:8px;">{sales_23}</td><td style="border:1px solid #333; padding:8px;">{sales_24}</td><td style="border:1px solid #333; padding:8px;">{s_cur}</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td></tr>
                             <tr><td style="border:1px solid #333; padding:8px;">수출액</td><td style="border:1px solid #333; padding:8px;"> </td><td style="border:1px solid #333; padding:8px;">{exp_24}</td><td style="border:1px solid #333; padding:8px;">{exp_cur}</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td></tr>
                             </table>
-                            [GRAPH_INSERT_POINT]
 
                             <h3>[주요 생산제품 개요]</h3>
                             <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
@@ -934,55 +923,10 @@ if check_password():
                             <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">자금 소요내역</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(시설/운전 자금을 구분하여, 인건비/마케팅/기계 등 세부 용도와 예상 금액을 표나 리스트 형태로 최소 3~4개 문단으로 방대하게 쪼개서 작성할 것)</td></tr>
                             </table>
                             """
-                            # 그래프 데이터 생성
-                            val_cur = safe_int(d.get('in_sales_current', 0))
-                            if val_cur <= 0: val_cur = 1000
-                            start_val = val_cur / 12
-                            end_val = start_val * 1.5
-                            
-                            monthly_vals = []
-                            for i in range(12):
-                                progress = i / 11.0
-                                linear_part = start_val + (end_val - start_val) * progress
-                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
-                                monthly_vals.append(int(linear_part + wave_part))
-                                
-                            monthly_labels = [f"{i}월" for i in range(1, 13)]
-
-                            fig = go.Figure()
-                            fig.add_trace(go.Scatter(
-                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
-                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
-                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
-                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
-                            ))
-                            fig.update_layout(
-                                title="📈 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
-                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
-                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
-                            )
-                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
-
                             response = model.generate_content(prompt_loan)
                             
-                            # Markdown HTML block strip logic
-                            raw_text = response.text
-                            if "```html" in raw_text:
-                                cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
-                            elif "```" in raw_text:
-                                cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
-                            else:
-                                cleaned_html = raw_text.strip()
-                            
-                            # 들여쓰기(Indentation) 제거 로직 적용
-                            cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
-                            # 그래프 삽입
-                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
-                                parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
-                                cleaned_html = parts[0] + plotly_html + parts[2]
-                                
                             st.session_state["kosme_result_type"] = "loan"
-                            st.session_state["kosme_result_html"] = cleaned_html
+                            st.session_state["kosme_result_html"] = clean_html_output(response.text)
                             status.update(label="✅ 공통 융자신청서 생성 완료!", state="complete")
                         except Exception as e:
                             status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
@@ -1076,7 +1020,6 @@ if check_password():
                                 </td>
                                 </tr>
                                 </table>
-                                [GRAPH_INSERT_POINT]
                                 """
                             elif kosme_fund_type == "개발기술사업화자금":
                                 prompt_plan = f"""
@@ -1164,7 +1107,6 @@ if check_password():
                                 <td style="border:1px solid #333; padding:8px;">(보통/과당/독점)</td>
                                 </tr>
                                 </table>
-                                [GRAPH_INSERT_POINT]
 
                                 <h4 style="margin-top:10px;">○ 판매계획</h4>
                                 <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:13px; margin-bottom:20px; table-layout: fixed;">
@@ -1221,55 +1163,9 @@ if check_password():
                                 - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
                                 """
                             
-                            # 그래프 데이터 생성
-                            val_cur = safe_int(d.get('in_sales_current', 0))
-                            if val_cur <= 0: val_cur = 1000
-                            start_val = val_cur / 12
-                            end_val = start_val * 1.5
-                            
-                            monthly_vals = []
-                            for i in range(12):
-                                progress = i / 11.0
-                                linear_part = start_val + (end_val - start_val) * progress
-                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
-                                monthly_vals.append(int(linear_part + wave_part))
-                                
-                            monthly_labels = [f"{i}월" for i in range(1, 13)]
-
-                            fig = go.Figure()
-                            fig.add_trace(go.Scatter(
-                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
-                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
-                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
-                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
-                            ))
-                            fig.update_layout(
-                                title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
-                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
-                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
-                            )
-                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
-
                             response = model.generate_content(prompt_plan)
-                            
-                            raw_text = response.text
-                            if "```html" in raw_text:
-                                cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
-                            elif "```" in raw_text:
-                                cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
-                            else:
-                                cleaned_html = raw_text.strip()
-                            
-                            # 들여쓰기(Indentation) 제거 로직 적용
-                            cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
-                            
-                            # 그래프 삽입
-                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
-                                parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
-                                cleaned_html = parts[0] + plotly_html + parts[2]
-                                
                             st.session_state["kosme_result_type"] = "plan"
-                            st.session_state["kosme_result_html"] = cleaned_html
+                            st.session_state["kosme_result_html"] = clean_html_output(response.text)
                             status.update(label="✅ 사업계획서(별첨) 생성 완료!", state="complete")
                         except Exception as e:
                             status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
@@ -1295,7 +1191,7 @@ if check_password():
                     <title>{c_name} {doc_title}</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; background-color: #fff; }}
+                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; background-color: #fff; white-space: pre-wrap; }}
                         table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }}
                         td, th {{ border: 1px solid #333; padding: 10px; }}
                         th {{ background-color: #f0f0f0; }}
@@ -1310,7 +1206,7 @@ if check_password():
                 </html>
                 """
                 st.download_button(
-                    label=f"📥 {doc_title} HTML 파일로 다운로드", 
+                    label=f"📥 사업계획서(별첨) HTML 파일로 다운로드" if st.session_state["kosme_result_type"] == "plan" else f"📥 융자신청서(공통) HTML 파일로 다운로드", 
                     data=html_export, 
                     file_name=f"{safe_file_name}_{doc_title}.html", 
                     mime="text/html", 
@@ -1386,55 +1282,10 @@ if check_password():
                             <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0; width:20%;">전년도 매출</th><td style="border:1px solid #333; padding:15px;">{sales_24}</td></tr>
                             <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">자금 활용계획</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(소상공인의 사업 생존과 자생력 강화, 지역 상권 내 영업 전략을 중심으로 자금 활용 목적을 최소 4~5개의 거대한 문단으로 매우 상세하게 작성)</td></tr>
                             </table>
-                            [GRAPH_INSERT_POINT]
                             """
-                            # 그래프 데이터 생성
-                            val_cur = safe_int(d.get('in_sales_current', 0))
-                            if val_cur <= 0: val_cur = 1000
-                            start_val = val_cur / 12
-                            end_val = start_val * 1.5
-                            
-                            monthly_vals = []
-                            for i in range(12):
-                                progress = i / 11.0
-                                linear_part = start_val + (end_val - start_val) * progress
-                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
-                                monthly_vals.append(int(linear_part + wave_part))
-                                
-                            monthly_labels = [f"{i}월" for i in range(1, 13)]
-
-                            fig = go.Figure()
-                            fig.add_trace(go.Scatter(
-                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
-                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
-                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
-                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
-                            ))
-                            fig.update_layout(
-                                title="📈 향후 1년간 월별 예상 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
-                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
-                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
-                            )
-                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
-
                             response = model.generate_content(prompt_loan_semas)
-                            
-                            raw_text = response.text
-                            if "```html" in raw_text:
-                                cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
-                            elif "```" in raw_text:
-                                cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
-                            else:
-                                cleaned_html = raw_text.strip()
-                            
-                            cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
-                            # 그래프 삽입
-                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
-                                parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
-                                cleaned_html = parts[0] + plotly_html + parts[2]
-                                
                             st.session_state["semas_result_type"] = "loan"
-                            st.session_state["semas_result_html"] = cleaned_html
+                            st.session_state["semas_result_html"] = clean_html_output(response.text)
                             status.update(label="✅ 소진공 융자신청서 생성 완료!", state="complete")
                         except Exception as e:
                             status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
@@ -1462,51 +1313,9 @@ if check_password():
                             - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
                             - 외부 지식베이스(상권 데이터, 트렌드 등)를 적극 끌어와 서술형 칸을 전문적으로 아주 방대하게 채우세요.
                             """
-                            # 그래프 데이터 생성
-                            val_cur = safe_int(d.get('in_sales_current', 0))
-                            if val_cur <= 0: val_cur = 1000
-                            start_val = val_cur / 12
-                            end_val = start_val * 1.5
-                            
-                            monthly_vals = []
-                            for i in range(12):
-                                progress = i / 11.0
-                                linear_part = start_val + (end_val - start_val) * progress
-                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
-                                monthly_vals.append(int(linear_part + wave_part))
-                                
-                            monthly_labels = [f"{i}월" for i in range(1, 13)]
-
-                            fig = go.Figure()
-                            fig.add_trace(go.Scatter(
-                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
-                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
-                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
-                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
-                            ))
-                            fig.update_layout(
-                                title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
-                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
-                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
-                            )
-                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
-
                             response = model.generate_content(prompt_plan_semas)
-                            
-                            raw_text = response.text
-                            if "```html" in raw_text:
-                                cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
-                            elif "```" in raw_text:
-                                cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
-                            else:
-                                cleaned_html = raw_text.strip()
-                            
-                            cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
-                            # 그래프 삽입 (만약 AI가 그래프 포인트를 넣지 않았다면 수동으로 하단에 추가)
-                            cleaned_html += f"<br><br>{plotly_html}"
-                                
                             st.session_state["semas_result_type"] = "plan"
-                            st.session_state["semas_result_html"] = cleaned_html
+                            st.session_state["semas_result_html"] = clean_html_output(response.text)
                             status.update(label="✅ 사업계획서(별첨) 생성 완료!", state="complete")
                         except Exception as e:
                             status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
@@ -1523,10 +1332,10 @@ if check_password():
                 html_export = f"""
                 <!DOCTYPE html>
                 <html><head><meta charset="utf-8"><title>{c_name} {doc_title}</title>
-                <style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; max-width: 900px; margin: 0 auto; }} table {{ width: 100%; border-collapse: collapse; }} td, th {{ border: 1px solid #333; padding: 15px; }} th {{ background-color: #f0f0f0; }}</style></head>
+                <style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; max-width: 900px; margin: 0 auto; white-space: pre-wrap; }} table {{ width: 100%; border-collapse: collapse; }} td, th {{ border: 1px solid #333; padding: 15px; }} th {{ background-color: #f0f0f0; }}</style></head>
                 <body>{st.session_state["semas_result_html"]}</body></html>
                 """
-                st.download_button(label=f"📥 {doc_title} HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_{doc_title}.html", mime="text/html", type="primary")
+                st.download_button(label=f"📥 사업계획서(별첨) HTML 파일로 다운로드" if st.session_state["semas_result_type"] == "plan" else f"📥 융자신청서(공통) HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_{doc_title}.html", mime="text/html", type="primary")
 
         with tabs[2]:
             st.subheader("🏦 신용보증기금/재단 (준비 중)")
@@ -1565,7 +1374,7 @@ if check_password():
                 st.session_state.pop("generated_matching", None)
                 st.rerun()
         with col_t3: 
-            if st.button("📝 융자·사업계획서\n맞춤형 AI 생성", use_container_width=True, type="primary"):
+            if st.button("📝 융자·사업계획서 맞춤형 AI 생성", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "PLAN"
                 st.session_state.pop("kosme_result_html", None)
