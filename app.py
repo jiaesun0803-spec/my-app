@@ -938,6 +938,8 @@ if check_password():
                     st.caption("💡 포커스: 창업자 역량(실행력), J커브 성장성, 스케일업")
                 elif kosme_fund_type == "개발기술사업화자금":
                     st.caption("💡 포커스: 양산 가능성, 시장성(매출), 기술의 사업화 구조")
+                elif kosme_fund_type == "수출기업 글로벌화 자금":
+                    st.caption("💡 포커스: 기존 수출 역량, 구체적 진출국 논리, 수출 매출 전환 시나리오")
                 else:
                     st.caption("💡 포커스: 기술성, 양산 및 매출 확대, 고용창출 중심")
                 
@@ -1149,6 +1151,130 @@ if check_password():
                                 </tr>
                                 </table>
                                 """
+                            elif kosme_fund_type == "수출기업 글로벌화 자금":
+                                prompt_plan = f"""
+                                당신은 중소기업진흥공단의 깐깐한 심사역입니다. 마크다운 기호 금지. 순수 HTML 태그만 사용하세요.
+                                절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
+                                
+                                [기업데이터]
+                                - 기업명: {c_name} / 대표자: {rep_name} / 업력: {biz_years}년
+                                - 아이템: {item} / 시장현황: {market} / 경쟁우위: {diff}
+                                - 특허/인증: {cert_status} / {pat_str}
+                                - 매출현황: 금년 {s_cur} / 수출여부: {export_info}
+                                
+                                [수출기업 글로벌화 자금 핵심 작성 룰]
+                                1. 단순 "수출 예정"이 아니라 이미 수출 기반이 있는 기업이 해외시장 확장 단계로 들어갈 때 지원되는 성장형 자금임을 명심하세요.
+                                2. 수출 실행 능력 + 확장 전략의 현실성 + 매출 전환 구조를 가장 강하게 어필하세요.
+                                3. 아래 제시된 [필수 포함 숫자 6종 세트]를 각 항목에 적절히(가상으로라도 현실성 있게) 무조건 포함하세요.
+                                   ① 계약/LOI 규모 (예: 18억원) ② 설비 투자 규모 (예: 7.2억원) ③ 목표 수출 매출 (예: 12억원) ④ 목표 국가 수 (예: 2개국) ⑤ 인증 수 (예: 2건) ⑥ 수출 비중 목표 (예: 30%)
+                                4. 자금 활용 계획에는 반드시 "해외 인증 취득 비용 약 20%, 해외 마케팅 및 전시회 참가 비용 약 25%, 수출 대응 생산 준비 비용 약 35%, 원부자재 선확보 비용 약 20%"와 같은 비율(%)을 명시하세요.
+
+                                [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                                - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
+                                - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                                - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
+                                - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
+
+                                [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
+                                <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">수출기업 글로벌화 자금 사업계획서</h2>
+                                
+                                <h3>1. 기업 수출역량 및 글로벌 진출 필요성</h3>
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px;">
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">기업 수출역량<br>(설립,계약,생산능력)</td>
+                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                당사는 기존 국내 시장 중심의 사업 구조에서 벗어나 글로벌 시장 진출을 통한 매출 구조 다변화를 추진하고 있으며, 해외 시장 진입을 위한 기술 경쟁력 및 생산 대응 역량을 확보하고 있음.<br><br>
+                                특히 해외 시장 요구 수준에 대응 가능한 품질 관리 체계를 기반으로 글로벌 거래처 확대 가능성을 확보하고 있음.<br><br>
+                                현재 해외 시장 진출을 위한 인증 확보, 유통 파트너 협의 및 제품 경쟁력 검증 단계를 단계적으로 추진 중임.<br><br>
+                                (이후 방대한 외부 데이터 및 필수 숫자 6종 세트를 응용하여 최소 4~5개 거대 문단, 1000자 이상 작성)
+                                </td>
+                                </tr>
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">글로벌 진출 필요성<br>(시장성장률,규모)</td>
+                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                국내 시장 중심의 매출 구조는 중장기 성장 한계가 존재하기 때문에 지속적인 성장 기반 확보를 위해 해외 시장 진출이 필수적인 상황임.<br><br>
+                                글로벌 시장에서는 해당 산업 수요가 지속적으로 증가하고 있으며, 기술 경쟁력을 기반으로 시장 진입 가능성이 충분히 확보되어 있음.<br><br>
+                                특히 해외 시장 진출을 통해 매출 안정성 확보 및 사업 구조 고도화를 동시에 추진하고자 함.<br><br>
+                                (이후 외부 데이터 기반 상세 시장 분석을 통해 최소 4~5개 거대 문단, 1000자 이상 작성)
+                                </td>
+                                </tr>
+                                </table>
+
+                                <h3>2. 목표 시장 선정 및 제품 경쟁력</h3>
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px;">
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">목표 시장 선정 근거<br>(국가수,거래처수)</td>
+                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                목표 진출 국가인 ○○지역은 관련 산업 수요가 지속적으로 증가하고 있으며, 기존 경쟁 제품 대비 가격 및 품질 경쟁력 확보가 가능한 시장으로 판단됨.<br><br>
+                                또한 해당 국가 내 관련 산업 인프라 확대 정책에 따라 향후 시장 성장성이 높은 것으로 분석됨.<br><br>
+                                현지 유통 파트너 협의 및 시장 조사 결과 초기 진입 가능성이 높은 전략 시장으로 판단하여 우선 진출 대상 국가로 선정함.<br><br>
+                                (이후 정책/시장/파트너 3요소 및 필수 숫자를 포함하여 최소 4~5개 거대 문단, 1000자 이상 작성)
+                                </td>
+                                </tr>
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">제품 글로벌 경쟁력<br>(리드타임,가격,납기)</td>
+                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                당사 제품은 기존 경쟁 제품 대비 유지관리 효율성 및 설치 편의성이 우수하며, 현장 적용성이 높은 구조로 설계되어 있음.<br><br>
+                                또한 가격 경쟁력 확보를 통해 초기 시장 진입 장벽을 낮출 수 있는 강점을 보유하고 있음.<br><br>
+                                품질 안정성 확보를 위한 생산 공정 관리 체계를 구축하여 글로벌 시장 요구 수준에 대응 가능한 제품 경쟁력을 확보하고 있음.<br><br>
+                                (이후 기술/가격/품질/납기 경쟁력을 상세 비교하여 최소 4~5개 거대 문단, 1000자 이상 작성)
+                                </td>
+                                </tr>
+                                </table>
+
+                                <h3>3. 시장 진입 전략 및 매출 발생 계획</h3>
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px;">
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">시장 진입 전략<br>(인증,전시회,파트너)</td>
+                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                초기 시장 진입 단계에서는 현지 유통 파트너 협력을 기반으로 테스트 공급을 추진하고 이후 프로젝트 단위 납품 구조로 확대할 계획임.<br><br>
+                                동시에 해외 전시회 참가 및 현지 네트워크 구축을 통해 신규 거래처 확보를 단계적으로 추진할 예정임.<br><br>
+                                인증 확보 이후 본격적인 시장 확대 전략을 통해 안정적인 수출 매출 구조를 구축할 계획임.<br><br>
+                                (이후 단계적 진입 전략 및 필수 숫자를 상세히 최소 4~5개 거대 문단, 1000자 이상 작성)
+                                </td>
+                                </tr>
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">매출 발생 계획<br>(1~3차년도 수치)</td>
+                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                초기 단계에서는 샘플 공급 및 테스트 납품을 통해 시장 적합성을 검증하고 이후 프로젝트 단위 공급 계약으로 확대할 계획임.<br><br>
+                                중기적으로는 현지 유통망 확대를 통해 안정적인 반복 수출 구조를 구축할 예정임.<br><br>
+                                장기적으로는 전략 국가 중심의 수출 거점 확보를 통해 지속적인 매출 성장 기반을 마련할 계획임.<br><br>
+                                (이후 연도별 목표액(1~3차년도) 명시하여 최소 4~5개 거대 문단, 1000자 이상 작성)
+                                </td>
+                                </tr>
+                                </table>
+
+                                <div style="page-break-before: always; padding-top: 20px;"></div>
+
+                                <h3>4. 자금 활용 계획 및 기대효과</h3>
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px;">
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">자금 활용 계획<br>(활용 비율 필수)</td>
+                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                본 자금은 해외 인증 취득, 현지 시장 진입 마케팅, 수출 대응 생산 역량 확보 및 원부자재 선확보에 활용할 계획임.<br><br>
+                                특히 해외 시장 진입 초기 단계에서 요구되는 인증 확보 및 유통망 구축 비용에 집중 투입하여 조기 수출 성과 창출을 추진할 예정임.<br><br>
+                                (이후 반드시 "본 자금은 해외 인증 취득 비용 약 20%, 해외 마케팅 및 전시회 참가 비용 약 25%, 수출 대응 생산 준비 비용 약 35%, 원부자재 선확보 비용 약 20% 수준으로 배분하여 활용할 계획임." 이라는 비율 문장을 포함하여 상세 계획을 최소 4~5개 거대 문단, 1000자 이상 작성)
+                                </td>
+                                </tr>
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">기대 효과<br>(수출비중,매출성장률)</td>
+                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                글로벌 시장 진출을 통해 수출 비중 확대 및 매출 구조 다변화를 동시에 실현할 것으로 기대됨.<br><br>
+                                또한 해외 거래처 확보를 통해 중장기적으로 안정적인 수출 기반을 구축할 수 있을 것으로 판단됨.<br><br>
+                                향후 글로벌 시장 내 브랜드 인지도 향상 및 추가 국가 진출 기반 확보 효과가 기대됨.<br><br>
+                                (이후 목표 수출 비중 및 연평균 성장률 수치를 명시하여 최소 4~5개 거대 문단, 1000자 이상 작성)
+                                </td>
+                                </tr>
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">중장기 성장 전략<br>(마무리 코멘트)</td>
+                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                단기적으로는 전략 국가 중심의 시장 진입을 통해 초기 수출 실적을 확보하고, 중기적으로는 유통 네트워크 확대를 통해 안정적인 반복 수출 구조를 구축할 계획임.<br><br>
+                                장기적으로는 글로벌 시장 내 전략 거점 국가 확대를 통해 수출 중심 기업으로 성장 기반을 강화할 예정임.<br><br>
+                                (중장기 전략을 방대하게 1000자 이상 작성 후, 마지막 문단은 무조건 "본 사업을 통해 글로벌 시장 진출 기반을 조기에 확보하고 수출 중심 성장 구조로 전환함으로써 지속 가능한 기업 성장 체계를 구축하고자 함." 으로 마무리할 것)
+                                </td>
+                                </tr>
+                                </table>
+                                """
                             else:
                                 prompt_plan = f"""
                                 당신은 중소기업진흥공단의 깐깐한 심사역입니다. 
@@ -1206,7 +1332,7 @@ if check_password():
                 </html>
                 """
                 st.download_button(
-                    label=f"📥 사업계획서(별첨) HTML 파일로 다운로드" if st.session_state["kosme_result_type"] == "plan" else f"📥 융자신청서(공통) HTML 파일로 다운로드", 
+                    label=f"📥 {doc_title} HTML 파일로 다운로드", 
                     data=html_export, 
                     file_name=f"{safe_file_name}_{doc_title}.html", 
                     mime="text/html", 
@@ -1335,7 +1461,7 @@ if check_password():
                 <style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; max-width: 900px; margin: 0 auto; white-space: pre-wrap; }} table {{ width: 100%; border-collapse: collapse; }} td, th {{ border: 1px solid #333; padding: 15px; }} th {{ background-color: #f0f0f0; }}</style></head>
                 <body>{st.session_state["semas_result_html"]}</body></html>
                 """
-                st.download_button(label=f"📥 사업계획서(별첨) HTML 파일로 다운로드" if st.session_state["semas_result_type"] == "plan" else f"📥 융자신청서(공통) HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_{doc_title}.html", mime="text/html", type="primary")
+                st.download_button(label=f"📥 {doc_title} HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_{doc_title}.html", mime="text/html", type="primary")
 
         with tabs[2]:
             st.subheader("🏦 신용보증기금/재단 (준비 중)")
@@ -1347,7 +1473,7 @@ if check_password():
             st.subheader("📈 제안용 (IR / PSST) (준비 중)")
             
     # ---------------------------------------------------------
-    # [모드 D: 4. 정식 사업계획서 (마스터)] - 뼈대 추가
+    # [모드 D: 4. 정식 사업계획서 (마스터)]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "FULL_PLAN":
         if st.button("⬅️ 대시보드로 돌아가기"):
