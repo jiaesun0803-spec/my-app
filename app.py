@@ -13,14 +13,26 @@ from datetime import datetime
 # ==========================================
 st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
-# [UI 패치] 버튼 박스 크기(높이) 강제 통일 CSS
+# [UI 패치] 사이드바 및 메인 화면 버튼 폰트/높이 분리 적용 CSS
 st.markdown("""
 <style>
+/* 메인 대시보드 버튼 (기본) */
 div.stButton > button {
-    min-height: 70px;
-    white-space: pre-wrap;
-    line-height: 1.4;
-    font-size: 15px;
+    min-height: 55px !important;
+    white-space: nowrap !important;
+    line-height: 1.2 !important;
+    font-size: 16.5px !important;
+    font-weight: bold !important;
+    letter-spacing: -0.3px !important;
+}
+
+/* 사이드바 버튼 전용 (폰트 작게, 무조건 한줄로) */
+section[data-testid="stSidebar"] div.stButton > button {
+    min-height: 45px !important;
+    font-size: 12.5px !important;
+    white-space: nowrap !important;
+    letter-spacing: -0.5px !important;
+    padding: 0px 10px !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -1526,7 +1538,7 @@ if check_password():
             st.subheader("📈 제안용 (IR / PSST) (준비 중)")
             
     # ---------------------------------------------------------
-    # [모드 D: 4. 정식 사업계획서 (마스터)]
+    # [모드 D: 4. 정식 사업계획서 (마스터)] - 뼈대 추가
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "FULL_PLAN":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -1553,7 +1565,7 @@ if check_password():
                 st.session_state.pop("generated_matching", None)
                 st.rerun()
         with col_t3: 
-            if st.button("📝 융자·사업계획서 맞춤형 AI 생성", use_container_width=True, type="primary"):
+            if st.button("📝 융자·사업계획서\n맞춤형 AI 생성", use_container_width=True, type="primary"):
                 st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
                 st.session_state["view_mode"] = "PLAN"
                 st.session_state.pop("kosme_result_html", None)
