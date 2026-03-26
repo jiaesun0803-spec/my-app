@@ -97,10 +97,9 @@ def get_best_model_name():
         pass
     return 'gemini-pro'
 
-# --- 클린 텍스트 로직 (마크다운 코드 블록 제거) ---
+# --- 클린 텍스트 로직 (마크다운 코드 블록 제거 및 들여쓰기 억제) ---
 def clean_html_output(raw_text):
     clean_text = raw_text.replace("```html", "").replace("```", "").strip()
-    # 들여쓰기 제거 (표 렌더링 오류 방지)
     return "\n".join([line.lstrip() for line in clean_text.split("\n")])
 
 if check_password():
@@ -523,11 +522,13 @@ if check_password():
                     <title>{c_name} AI기업분석리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 1000px; margin: 0 auto; font-size: 16px; background-color: #fff; white-space: pre-wrap; }}
+                        body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; }}
+                        .document-container {{ max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; box-shadow: 0 0 15px rgba(0,0,0,0.1); border-radius: 8px; color: #333; line-height: 1.6; font-size: 16px; white-space: pre-wrap; }}
                         h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
                         @media print {{ 
                             @page {{ size: A4; margin: 15mm; }}
-                            body {{ padding: 0 !important; font-size: 14px !important; color: black !important; max-width: 100% !important; }} 
+                            body {{ background-color: #fff; padding: 0 !important; font-size: 14px !important; color: black !important; }} 
+                            .document-container {{ box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; }}
                             h1 {{ margin: 0 0 30px 0 !important; font-size: 28px !important; }}
                             h2.section-title {{ page-break-before: always !important; margin-top: 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
                             h2.section-title:first-of-type {{ page-break-before: avoid !important; margin-top: 20px !important; }}
@@ -537,9 +538,11 @@ if check_password():
                     </style>
                 </head>
                 <body>
-                    <h1>📋 AI기업분석리포트: {c_name}</h1>
-                    <hr style="margin-bottom: 30px;">
-                    {response_text.replace('[GRAPH_INSERT_POINT]', plotly_html)}
+                    <div class="document-container">
+                        <h1>📋 AI기업분석리포트: {c_name}</h1>
+                        <hr style="margin-bottom: 30px;">
+                        {response_text.replace('[GRAPH_INSERT_POINT]', plotly_html)}
+                    </div>
                 </body>
                 </html>
                 """
@@ -728,10 +731,12 @@ if check_password():
                     <title>{c_name} 정책자금 매칭 리포트</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 30px; line-height: 1.5; color: #333; max-width: 1000px; margin: 0 auto; background-color: #fff; white-space: pre-wrap; }}
+                        body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; }}
+                        .document-container {{ max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; box-shadow: 0 0 15px rgba(0,0,0,0.1); border-radius: 8px; color: #333; line-height: 1.5; white-space: pre-wrap; }}
                         @media print {{ 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ padding: 0 !important; font-size: 11.5px !important; color: black !important; max-width: 100% !important; zoom: 0.85; }} 
+                            body {{ background-color: #fff; padding: 0 !important; font-size: 11.5px !important; color: black !important; zoom: 0.85; }} 
+                            .document-container {{ box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; }}
                             h1 {{ margin: 0 0 10px 0 !important; font-size: 20px !important; }}
                             h2 {{ margin: 10px 0 5px 0 !important; font-size: 15px !important; padding-bottom: 2px !important; border-bottom: 2px solid #174EA6 !important; }}
                             div {{ padding: 10px !important; margin-bottom: 8px !important; border-radius: 8px !important; page-break-inside: avoid; line-height: 1.3 !important; }}
@@ -741,9 +746,11 @@ if check_password():
                     </style>
                 </head>
                 <body>
-                    <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
-                    <hr style="margin-bottom: 15px;">
-                    {response_text}
+                    <div class="document-container">
+                        <h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1>
+                        <hr style="margin-bottom: 15px;">
+                        {response_text}
+                    </div>
                 </body>
                 </html>
                 """
@@ -938,7 +945,7 @@ if check_password():
                     st.caption("💡 포커스: 창업자 역량(실행력), J커브 성장성, 스케일업")
                 elif kosme_fund_type == "개발기술사업화자금":
                     st.caption("💡 포커스: 양산 가능성, 시장성(매출), 기술의 사업화 구조")
-                elif kosme_fund_type == "수출기업 글로벌화 자금":
+                elif kosme_fund_type == "수출기업 글로벌화 자금" or kosme_fund_type == "수출지원자금":
                     st.caption("💡 포커스: 기존 수출 역량, 구체적 진출국 논리, 수출 매출 전환 시나리오")
                 else:
                     st.caption("💡 포커스: 기술성, 양산 및 매출 확대, 고용창출 중심")
@@ -969,59 +976,38 @@ if check_password():
                                 - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
                                 - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
 
-                                [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
-                                <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">청년전용창업자금 세부계획서</h2>
-                                
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:14px; margin-bottom:30px;">
-                                <tr>
-                                <td rowspan="2" style="background-color:#f0f0f0; border:1px solid #333; width:15%; font-weight:bold;">신청내용</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; width:20%;">신청자 유형</td>
-                                <td colspan="4" style="border:1px solid #333; text-align:left; padding-left:15px;">□ 예비창업자 <br>▣ 기창업자 (□ 3년 미만, □ 7년 미만)</td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333;">자금구분</td>
-                                <td colspan="4" style="border:1px solid #333; text-align:left; padding-left:15px;">▣ 청년전용창업자금 &nbsp;&nbsp;&nbsp;&nbsp; □ 청년전용창업자금(융복합)</td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; font-weight:bold;">참고항목</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333;">창업관련 수상실적 및<br>정부지원사업 참여현황</td>
-                                <td style="border:1px solid #333; background-color:#f0f0f0; padding:10px;">대회(사업)명</td>
-                                <td style="border:1px solid #333; background-color:#f0f0f0;">수상(지원)내역</td>
-                                <td style="border:1px solid #333; background-color:#f0f0f0;">일자(기간)</td>
-                                <td style="border:1px solid #333; background-color:#f0f0f0;">주관기관</td>
-                                </tr>
-                                <tr>
-                                <td style="border:1px solid #333;"></td><td style="border:1px solid #333;"></td><td style="border:1px solid #333; padding:15px;"></td><td style="border:1px solid #333;"></td><td style="border:1px solid #333;"></td><td style="border:1px solid #333;"></td>
-                                </tr>
-                                </table>
+                                [출력 HTML 뼈대 - 반드시 아래 구조를 100% 똑같이 유지할 것 (표 형태가 아닌 서술형 프리미엄 문서 형태)]
+                                <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">청년전용창업자금 사업계획서</h1>
+                                <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(주식회사 {c_name})</h2>
 
-                                <h3>□ 사업 계획서</h3>
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px;">
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; vertical-align:top;">창업 동기</td>
-                                <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:30px;">
+                                (기업의 핵심 아이템과 청년창업자금 신청 목적을 서론 형식으로 500자 이상 방대하게 작성)
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 창업 동기 및 기업 개요</h2>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 (대표자의 뼈저린 현장 경험, 시장의 거시적 문제점, 타겟 고객의 미충족 수요를 엮어서 최소 4~5개의 거대한 문단으로 나누어, 1000자 이상의 압도적인 분량으로 매우 깊이 있게 서술. 일반적인 AI 요약체를 버리고 전문가의 통찰력이 담긴 긴 호흡의 칼럼처럼 작성할 것)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; vertical-align:top;">창업아이템의 개요</td>
-                                <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
-                                (아이템의 핵심 내용, 타사 대비 차별성, 경쟁력, 기술 확장성을 외부 전문 데이터를 동원하여 최소 4~5개의 거대한 문단으로 나누어 1000자 이상 작성할 것)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; vertical-align:top;">사업추진 계획</td>
-                                <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
-                                (1. 제품개발/품질관리 목표 2. 시장상황 및 수요 3. 마케팅 전략 4. 자금조달 및 중진공 상환계획을 각각 나누어 매우 구체적으로 최소 4~5개의 거대한 문단으로 1000자 이상 방대하게 작성할 것)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; vertical-align:top;">기대 효과</td>
-                                <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 창업아이템의 개요 및 경쟁력</h2>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">2.1. 아이템 핵심 내용</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (아이템의 핵심 내용 및 기술 확장성을 외부 전문 데이터를 동원하여 최소 3개 문단으로 800자 이상 작성할 것)
+                                </p>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">2.2. 타사 대비 차별성</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (경쟁사 대비 비교우위를 최소 3개 문단으로 800자 이상 작성할 것)
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 사업추진 계획</h2>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (제품개발/품질관리 목표, 시장상황 및 수요, 마케팅 전략, 자금조달 및 중진공 상환계획을 각각 나누어 매우 구체적으로 최소 4~5개의 거대한 문단으로 1500자 이상 방대하게 작성할 것)
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">4. 기대 효과 및 성장 비전</h2>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 (고용 창출 효과 및 사회/경제적 파급 효과를 구체적 숫자를 섞어 설득력 있게 최소 4~5개의 거대한 문단으로 1000자 이상 방대하게 작성할 것)
-                                </td>
-                                </tr>
-                                </table>
+                                </p>
                                 """
                             elif kosme_fund_type == "개발기술사업화자금":
                                 prompt_plan = f"""
@@ -1047,111 +1033,94 @@ if check_password():
                                 - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
                                 - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 서술형 칸을 각 800~1000자 이상의 꽉 찬 내용으로 채우세요.
 
-                                [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
-                                <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">개발기술사업화자금 신청기업 사업계획서</h2>
-                                
-                                <h3 style="margin-top:20px;">□ 신청 개발기술의 제품(상품 및 서비스) 개요</h3>
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px; text-align:left;">
-                                <tr>
-                                <td rowspan="2" style="background-color:#f0f0f0; border:1px solid #333; width:20%; font-weight:bold; text-align:center;">사업화<br>제품·기술</td>
-                                <td style="border:1px solid #333; padding:10px;">(제품명) {item}</td>
-                                </tr>
-                                <tr>
-                                <td style="border:1px solid #333; padding:10px; line-height:1.6;">- R&D성공과제/특허기술 등: {pat_str}<br>- 관련기술 평가/인증 년월일: (가상 작성)</td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; text-align:center;">제품용도 및 특성<br><span style="font-size:0.9em; font-weight:normal;">(주요내용)</span></td>
-                                <td style="border:1px solid #333; padding:20px; line-height:1.8;">
+                                [출력 HTML 뼈대 - 반드시 아래 구조를 100% 똑같이 유지할 것 (표 형태가 아닌 서술형 프리미엄 문서 형태)]
+                                <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">개발기술사업화자금 사업계획서</h1>
+                                <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(주식회사 {c_name})</h2>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 신청 개발기술의 제품(상품 및 서비스) 개요</h2>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">1.1. 제품용도 및 특성</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 (고객의 Pain-point를 해결하는 제품/서비스의 핵심 용도와 특성을 최소 4~5개의 거대한 문단으로 1000자 이상 명확히 작성)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; text-align:center;">대체, 경쟁제품과의<br>차별성</td>
-                                <td style="border:1px solid #333; padding:20px; line-height:1.8;">
+                                </p>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">1.2. 대체, 경쟁제품과의 차별성</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 (경쟁사 대비 기술적 비교우위를 넘어, 수익성/원가/고객가치 측면의 사업적 차별성을 최소 4~5개의 거대한 문단으로 1000자 이상 작성)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; text-align:center;">사업화(양산) 및<br>납품계획</td>
-                                <td style="border:1px solid #333; padding:20px; line-height:1.8;">
-                                - 양산 시작 후 3년 경과 여부: ▣ No <br>
+                                </p>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">1.3. 사업화(양산) 및 납품계획</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 (현재 시제품/MVP 완료 및 향후 구체적인 양산 일정, 유통망/납품처 확보 계획을 상세히 최소 4~5개의 거대한 문단으로 1000자 이상 작성)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; text-align:center;">기대효과<br><span style="font-size:0.9em; font-weight:normal;">(기술의 파급효과)</span></td>
-                                <td style="border:1px solid #333; padding:20px; line-height:1.8;">
+                                </p>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">1.4. 기대효과</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 (매출 증대, 수입 대체, 고용 창출 등 경제적/산업적 파급효과를 수치를 포함하여 최소 4~5개의 거대한 문단으로 1000자 이상 작성)
-                                </td>
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 개발기술 제품(상품 또는 서비스) 영업계획</h2>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">2.1. 시장성 및 경쟁 현황</h3>
+                                <table style="width:100%; border-collapse: collapse; border: 1px solid #ccc; text-align:center; font-size:13px; margin-bottom:20px; table-layout: fixed;">
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #ccc; font-weight:bold; padding:8px; width:16.6%;">판매형태</td>
+                                <td colspan="5" style="border:1px solid #ccc; text-align:left; padding:8px;">주문판매( )%, 시장판매( )%, 임가공( )%, (내수( )%, 수출( )%) (합계 100%가 되도록 가상 분배)</td>
+                                </tr>
+                                <tr>
+                                <td rowspan="2" style="background-color:#f0f0f0; border:1px solid #ccc; font-weight:bold; padding:8px; width:16.6%;">경쟁<br>현황</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #ccc; padding:8px; width:16.6%;">제품명<br>(상품및서비스)</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #ccc; padding:8px; width:16.6%;">시장규모</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #ccc; padding:8px; width:16.6%;">주요기업체명<br>(1순위/2순위)</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #ccc; padding:8px; width:16.6%;">귀사의 동업계 지위</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #ccc; padding:8px; width:16.6%;">경쟁<br>상태</td>
+                                </tr>
+                                <tr>
+                                <td style="border:1px solid #ccc; padding:8px; line-height:1.4;">{item}</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(객관적 추산액)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(가상의 주요경쟁사명)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">시설능력: (상/중/하)<br>시장지위: (상/중/하)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(보통/과당/독점)</td>
                                 </tr>
                                 </table>
 
-                                <h3 style="margin-top:30px;">□ 신청 개발기술 제품(상품 또는 서비스) 영업계획</h3>
-                                <h4 style="margin-top:10px;">○ 시장성</h4>
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:13px; margin-bottom:20px; table-layout: fixed;">
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; font-weight:bold; padding:8px; width:16.6%;">판매형태</td>
-                                <td colspan="5" style="border:1px solid #333; text-align:left; padding:8px;">주문판매( )%, 시장판매( )%, 임가공( )%, (내수( )%, 수출( )%) (합계 100%가 되도록 가상 분배)</td>
-                                </tr>
-                                <tr>
-                                <td rowspan="2" style="background-color:#f0f0f0; border:1px solid #333; font-weight:bold; padding:8px; width:16.6%;">경쟁<br>현황</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px; width:16.6%;">제품명<br>(상품및서비스)</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px; width:16.6%;">시장규모</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px; width:16.6%;">주요기업체명<br>(1순위/2순위)</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px; width:16.6%;">귀사의 동업계 지위</td>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:8px; width:16.6%;">경쟁<br>상태</td>
-                                </tr>
-                                <tr>
-                                <td style="border:1px solid #333; padding:8px; line-height:1.4;">{item}</td>
-                                <td style="border:1px solid #333; padding:8px;">(객관적 추산액)</td>
-                                <td style="border:1px solid #333; padding:8px;">(가상의 주요경쟁사명)</td>
-                                <td style="border:1px solid #333; padding:8px;">시설능력: (상/중/하)<br>시장지위: (상/중/하)</td>
-                                <td style="border:1px solid #333; padding:8px;">(보통/과당/독점)</td>
-                                </tr>
-                                </table>
-
-                                <h4 style="margin-top:10px;">○ 판매계획</h4>
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:13px; margin-bottom:20px; table-layout: fixed;">
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">2.2. 판매계획</h3>
+                                <table style="width:100%; border-collapse: collapse; border: 1px solid #ccc; text-align:center; font-size:13px; margin-bottom:20px; table-layout: fixed;">
                                 <tr style="background-color:#f0f0f0;">
-                                <th rowspan="2" style="border:1px solid #333; padding:8px; width:18%;">품목명</th>
-                                <th rowspan="2" style="border:1px solid #333; padding:8px; width:18%;">생산능력<br>(수량/금액)</th>
-                                <th rowspan="2" style="border:1px solid #333; padding:8px; width:18%;">판매처<br>(업체명)</th>
-                                <th colspan="2" style="border:1px solid #333; padding:8px;">당해년도 판매액</th>
-                                <th colspan="2" style="border:1px solid #333; padding:8px;">차년도 판매액</th>
+                                <th rowspan="2" style="border:1px solid #ccc; padding:8px; width:18%;">품목명</th>
+                                <th rowspan="2" style="border:1px solid #ccc; padding:8px; width:18%;">생산능력<br>(수량/금액)</th>
+                                <th rowspan="2" style="border:1px solid #ccc; padding:8px; width:18%;">판매처<br>(업체명)</th>
+                                <th colspan="2" style="border:1px solid #ccc; padding:8px;">당해년도 판매액</th>
+                                <th colspan="2" style="border:1px solid #ccc; padding:8px;">차년도 판매액</th>
                                 </tr>
                                 <tr style="background-color:#f0f0f0;">
-                                <th style="border:1px solid #333; padding:8px; width:11.5%;">내수</th><th style="border:1px solid #333; padding:8px; width:11.5%;">수출</th>
-                                <th style="border:1px solid #333; padding:8px; width:11.5%;">내수</th><th style="border:1px solid #333; padding:8px; width:11.5%;">수출</th>
+                                <th style="border:1px solid #ccc; padding:8px; width:11.5%;">내수</th><th style="border:1px solid #ccc; padding:8px; width:11.5%;">수출</th>
+                                <th style="border:1px solid #ccc; padding:8px; width:11.5%;">내수</th><th style="border:1px solid #ccc; padding:8px; width:11.5%;">수출</th>
                                 </tr>
                                 <tr>
-                                <td style="border:1px solid #333; padding:8px; line-height:1.4;">(품목 1)</td>
-                                <td style="border:1px solid #333; padding:8px;">(수치)</td>
-                                <td style="border:1px solid #333; padding:8px;">(주요타겟처)</td>
-                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
-                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
+                                <td style="border:1px solid #ccc; padding:8px; line-height:1.4;">(품목 1)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(수치)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(주요타겟처)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(자동)</td><td style="border:1px solid #ccc; padding:8px;">(자동)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(자동)</td><td style="border:1px solid #ccc; padding:8px;">(자동)</td>
                                 </tr>
                                 <tr>
-                                <td style="border:1px solid #333; padding:8px; line-height:1.4;">(품목 2)</td>
-                                <td style="border:1px solid #333; padding:8px;">(수치)</td>
-                                <td style="border:1px solid #333; padding:8px;">(주요타겟처)</td>
-                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
-                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
+                                <td style="border:1px solid #ccc; padding:8px; line-height:1.4;">(품목 2)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(수치)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(주요타겟처)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(자동)</td><td style="border:1px solid #ccc; padding:8px;">(자동)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(자동)</td><td style="border:1px solid #ccc; padding:8px;">(자동)</td>
                                 </tr>
                                 <tr>
-                                <td style="border:1px solid #333; padding:8px; line-height:1.4;">(품목 3)</td>
-                                <td style="border:1px solid #333; padding:8px;">(수치)</td>
-                                <td style="border:1px solid #333; padding:8px;">(주요타겟처)</td>
-                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
-                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
+                                <td style="border:1px solid #ccc; padding:8px; line-height:1.4;">(품목 3)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(수치)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(주요타겟처)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(자동)</td><td style="border:1px solid #ccc; padding:8px;">(자동)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(자동)</td><td style="border:1px solid #ccc; padding:8px;">(자동)</td>
                                 </tr>
                                 <tr style="background-color:#f9f9f9; font-weight:bold;">
-                                <td colspan="3" style="border:1px solid #333; padding:8px;">합 계 (백만원)</td>
-                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
-                                <td style="border:1px solid #333; padding:8px;">(자동)</td><td style="border:1px solid #333; padding:8px;">(자동)</td>
+                                <td colspan="3" style="border:1px solid #ccc; padding:8px;">합 계 (백만원)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(자동)</td><td style="border:1px solid #ccc; padding:8px;">(자동)</td>
+                                <td style="border:1px solid #ccc; padding:8px;">(자동)</td><td style="border:1px solid #ccc; padding:8px;">(자동)</td>
                                 </tr>
                                 </table>
                                 """
-                            elif kosme_fund_type == "수출기업 글로벌화 자금":
+                            elif kosme_fund_type in ["수출기업 글로벌화 자금", "수출지원자금", "내수기업 수출기업화자금"]:
                                 prompt_plan = f"""
                                 당신은 중소기업진흥공단의 깐깐한 심사역입니다. 마크다운 기호 금지. 순수 HTML 태그만 사용하세요.
                                 절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
@@ -1162,7 +1131,7 @@ if check_password():
                                 - 특허/인증: {cert_status} / {pat_str}
                                 - 매출현황: 금년 {s_cur} / 수출여부: {export_info}
                                 
-                                [수출기업 글로벌화 자금 핵심 작성 룰]
+                                [수출지원자금(글로벌화) 핵심 작성 룰]
                                 1. 단순 "수출 예정"이 아니라 이미 수출 기반이 있는 기업이 해외시장 확장 단계로 들어갈 때 지원되는 성장형 자금임을 명심하세요.
                                 2. 수출 실행 능력 + 확장 전략의 현실성 + 매출 전환 구조를 가장 강하게 어필하세요.
                                 3. 아래 제시된 [필수 포함 숫자 6종 세트]를 각 항목에 적절히(가상으로라도 현실성 있게) 무조건 포함하세요.
@@ -1175,111 +1144,72 @@ if check_password():
                                 - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
                                 - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
 
-                                [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
-                                <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">수출기업 글로벌화 자금 사업계획서</h2>
-                                
-                                <h3>1. 기업 수출역량 및 글로벌 진출 필요성</h3>
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px;">
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">기업 수출역량<br>(설립,계약,생산능력)</td>
-                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
-                                당사는 기존 국내 시장 중심의 사업 구조에서 벗어나 글로벌 시장 진출을 통한 매출 구조 다변화를 추진하고 있으며, 해외 시장 진입을 위한 기술 경쟁력 및 생산 대응 역량을 확보하고 있음.<br><br>
-                                특히 해외 시장 요구 수준에 대응 가능한 품질 관리 체계를 기반으로 글로벌 거래처 확대 가능성을 확보하고 있음.<br><br>
-                                현재 해외 시장 진출을 위한 인증 확보, 유통 파트너 협의 및 제품 경쟁력 검증 단계를 단계적으로 추진 중임.<br><br>
+                                [출력 HTML 뼈대 - 반드시 아래 구조를 100% 똑같이 유지할 것 (표 형태가 아닌 서술형 프리미엄 문서 형태)]
+                                <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">수출지원자금 사업계획서</h1>
+                                <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(주식회사 {c_name})</h2>
+
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:30px;">
+                                (기업의 핵심 아이템과 수출지원자금 신청 목적을 서론 형식으로 500자 이상 방대하게 작성)
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 기업 수출역량 및 글로벌 진출 필요성</h2>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">1.1. 기업 수출역량 (설립, 계약, 생산능력)</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                당사는 기존 국내 시장 중심의 사업 구조에서 벗어나 글로벌 시장 진출을 통한 매출 구조 다변화를 추진하고 있으며, 해외 시장 진입을 위한 기술 경쟁력 및 생산 대응 역량을 확보하고 있음. 특히 해외 시장 요구 수준에 대응 가능한 품질 관리 체계를 기반으로 글로벌 거래처 확대 가능성을 확보하고 있음.<br><br>
                                 (이후 방대한 외부 데이터 및 필수 숫자 6종 세트를 응용하여 최소 4~5개 거대 문단, 1000자 이상 작성)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">글로벌 진출 필요성<br>(시장성장률,규모)</td>
-                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
-                                국내 시장 중심의 매출 구조는 중장기 성장 한계가 존재하기 때문에 지속적인 성장 기반 확보를 위해 해외 시장 진출이 필수적인 상황임.<br><br>
-                                글로벌 시장에서는 해당 산업 수요가 지속적으로 증가하고 있으며, 기술 경쟁력을 기반으로 시장 진입 가능성이 충분히 확보되어 있음.<br><br>
-                                특히 해외 시장 진출을 통해 매출 안정성 확보 및 사업 구조 고도화를 동시에 추진하고자 함.<br><br>
+                                </p>
+
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">1.2. 글로벌 진출 필요성 (시장성장률, 규모)</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                국내 시장 중심의 매출 구조는 중장기 성장 한계가 존재하기 때문에 지속적인 성장 기반 확보를 위해 해외 시장 진출이 필수적인 상황임. 글로벌 시장에서는 해당 산업 수요가 지속적으로 증가하고 있으며, 기술 경쟁력을 기반으로 시장 진입 가능성이 충분히 확보되어 있음.<br><br>
                                 (이후 외부 데이터 기반 상세 시장 분석을 통해 최소 4~5개 거대 문단, 1000자 이상 작성)
-                                </td>
-                                </tr>
-                                </table>
+                                </p>
 
-                                <h3>2. 목표 시장 선정 및 제품 경쟁력</h3>
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px;">
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">목표 시장 선정 근거<br>(국가수,거래처수)</td>
-                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 목표 시장 선정 및 제품 경쟁력</h2>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">2.1. 목표 시장 선정 근거 (국가수, 거래처수)</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 목표 진출 국가인 ○○지역은 관련 산업 수요가 지속적으로 증가하고 있으며, 기존 경쟁 제품 대비 가격 및 품질 경쟁력 확보가 가능한 시장으로 판단됨.<br><br>
-                                또한 해당 국가 내 관련 산업 인프라 확대 정책에 따라 향후 시장 성장성이 높은 것으로 분석됨.<br><br>
-                                현지 유통 파트너 협의 및 시장 조사 결과 초기 진입 가능성이 높은 전략 시장으로 판단하여 우선 진출 대상 국가로 선정함.<br><br>
                                 (이후 정책/시장/파트너 3요소 및 필수 숫자를 포함하여 최소 4~5개 거대 문단, 1000자 이상 작성)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">제품 글로벌 경쟁력<br>(리드타임,가격,납기)</td>
-                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                </p>
+                                
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">2.2. 제품 글로벌 경쟁력 (리드타임, 가격, 납기)</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 당사 제품은 기존 경쟁 제품 대비 유지관리 효율성 및 설치 편의성이 우수하며, 현장 적용성이 높은 구조로 설계되어 있음.<br><br>
-                                또한 가격 경쟁력 확보를 통해 초기 시장 진입 장벽을 낮출 수 있는 강점을 보유하고 있음.<br><br>
-                                품질 안정성 확보를 위한 생산 공정 관리 체계를 구축하여 글로벌 시장 요구 수준에 대응 가능한 제품 경쟁력을 확보하고 있음.<br><br>
                                 (이후 기술/가격/품질/납기 경쟁력을 상세 비교하여 최소 4~5개 거대 문단, 1000자 이상 작성)
-                                </td>
-                                </tr>
-                                </table>
+                                </p>
 
-                                <h3>3. 시장 진입 전략 및 매출 발생 계획</h3>
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px;">
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">시장 진입 전략<br>(인증,전시회,파트너)</td>
-                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 시장 진입 전략 및 매출 발생 계획</h2>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">3.1. 시장 진입 전략 (인증, 전시회, 파트너)</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 초기 시장 진입 단계에서는 현지 유통 파트너 협력을 기반으로 테스트 공급을 추진하고 이후 프로젝트 단위 납품 구조로 확대할 계획임.<br><br>
-                                동시에 해외 전시회 참가 및 현지 네트워크 구축을 통해 신규 거래처 확보를 단계적으로 추진할 예정임.<br><br>
-                                인증 확보 이후 본격적인 시장 확대 전략을 통해 안정적인 수출 매출 구조를 구축할 계획임.<br><br>
                                 (이후 단계적 진입 전략 및 필수 숫자를 상세히 최소 4~5개 거대 문단, 1000자 이상 작성)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">매출 발생 계획<br>(1~3차년도 수치)</td>
-                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                </p>
+
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">3.2. 매출 발생 계획 (1~3차년도 수치)</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 초기 단계에서는 샘플 공급 및 테스트 납품을 통해 시장 적합성을 검증하고 이후 프로젝트 단위 공급 계약으로 확대할 계획임.<br><br>
-                                중기적으로는 현지 유통망 확대를 통해 안정적인 반복 수출 구조를 구축할 예정임.<br><br>
-                                장기적으로는 전략 국가 중심의 수출 거점 확보를 통해 지속적인 매출 성장 기반을 마련할 계획임.<br><br>
                                 (이후 연도별 목표액(1~3차년도) 명시하여 최소 4~5개 거대 문단, 1000자 이상 작성)
-                                </td>
-                                </tr>
-                                </table>
+                                </p>
 
-                                <div style="page-break-before: always; padding-top: 20px;"></div>
-
-                                <h3>4. 자금 활용 계획 및 기대효과</h3>
-                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px;">
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">자금 활용 계획<br>(활용 비율 필수)</td>
-                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">4. 자금 활용 계획 및 기대효과</h2>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">4.1. 자금 활용 계획 (활용 비율 필수)</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 본 자금은 해외 인증 취득, 현지 시장 진입 마케팅, 수출 대응 생산 역량 확보 및 원부자재 선확보에 활용할 계획임.<br><br>
-                                특히 해외 시장 진입 초기 단계에서 요구되는 인증 확보 및 유통망 구축 비용에 집중 투입하여 조기 수출 성과 창출을 추진할 예정임.<br><br>
-                                (이후 반드시 "본 자금은 해외 인증 취득 비용 약 20%, 해외 마케팅 및 전시회 참가 비용 약 25%, 수출 대응 생산 준비 비용 약 35%, 원부자재 선확보 비용 약 20% 수준으로 배분하여 활용할 계획임." 이라는 비율 문장을 포함하여 상세 계획을 최소 4~5개 거대 문단, 1000자 이상 작성)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">기대 효과<br>(수출비중,매출성장률)</td>
-                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
+                                본 자금은 해외 인증 취득 비용 약 20%, 해외 마케팅 및 전시회 참가 비용 약 25%, 수출 대응 생산 준비 비용 약 35%, 원부자재 선확보 비용 약 20% 수준으로 배분하여 활용할 계획임.<br><br>
+                                (이후 상세 계획을 최소 4~5개 거대 문단, 1000자 이상 작성)
+                                </p>
+
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">4.2. 기대 효과 및 중장기 성장 전략</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 글로벌 시장 진출을 통해 수출 비중 확대 및 매출 구조 다변화를 동시에 실현할 것으로 기대됨.<br><br>
-                                또한 해외 거래처 확보를 통해 중장기적으로 안정적인 수출 기반을 구축할 수 있을 것으로 판단됨.<br><br>
-                                향후 글로벌 시장 내 브랜드 인지도 향상 및 추가 국가 진출 기반 확보 효과가 기대됨.<br><br>
-                                (이후 목표 수출 비중 및 연평균 성장률 수치를 명시하여 최소 4~5개 거대 문단, 1000자 이상 작성)
-                                </td>
-                                </tr>
-                                <tr>
-                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; text-align:center;">중장기 성장 전략<br>(마무리 코멘트)</td>
-                                <td style="border:1px solid #333; padding:20px; text-align:left; line-height:1.8;">
-                                단기적으로는 전략 국가 중심의 시장 진입을 통해 초기 수출 실적을 확보하고, 중기적으로는 유통 네트워크 확대를 통해 안정적인 반복 수출 구조를 구축할 계획임.<br><br>
-                                장기적으로는 글로벌 시장 내 전략 거점 국가 확대를 통해 수출 중심 기업으로 성장 기반을 강화할 예정임.<br><br>
-                                (중장기 전략을 방대하게 1000자 이상 작성 후, 마지막 문단은 무조건 "본 사업을 통해 글로벌 시장 진출 기반을 조기에 확보하고 수출 중심 성장 구조로 전환함으로써 지속 가능한 기업 성장 체계를 구축하고자 함." 으로 마무리할 것)
-                                </td>
-                                </tr>
-                                </table>
+                                (이후 목표 수출 비중 및 연평균 성장률 수치를 명시하여 최소 4~5개 거대 문단, 1000자 이상 작성 후, 마지막 문단은 무조건 "본 사업을 통해 글로벌 시장 진출 기반을 조기에 확보하고 수출 중심 성장 구조로 전환함으로써 지속 가능한 기업 성장 체계를 구축하고자 함." 으로 마무리할 것)
+                                </p>
                                 """
                             else:
                                 prompt_plan = f"""
                                 당신은 중소기업진흥공단의 깐깐한 심사역입니다. 
                                 [기업데이터] 기업명:{c_name} / 아이템:{item}
-                                현재 시스템 고도화 중입니다. '{kosme_fund_type}'의 사업계획서를 자유 양식(HTML)으로 상세히 서술하세요.
+                                현재 시스템 고도화 중입니다. '{kosme_fund_type}'의 사업계획서를 서술형 프리미엄 문서 양식(HTML)으로 상세히 서술하세요.
                                 절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
 
                                 [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
@@ -1287,9 +1217,38 @@ if check_password():
                                 - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                                 - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
                                 - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
+                                
+                                [출력 HTML 뼈대]
+                                <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">{kosme_fund_type} 사업계획서</h1>
+                                <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(주식회사 {c_name})</h2>
+
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:30px;">
+                                (기업 핵심 요약 및 본 자금 신청 목적을 서론 형식으로 500자 이상 방대하게 작성)
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 사업 개요 및 기업 현황</h2>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">1.1. 기업 핵심 역량</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (내용 최소 1000자 이상 방대하게 작성...)
+                                </p>
+                                <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">1.2. 시장 및 경쟁 환경</h3>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (내용 최소 1000자 이상 방대하게 작성...)
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 세부 사업추진 계획</h2>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (내용 최소 1500자 이상 방대하게 작성...)
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 자금 활용 계획 및 기대 효과</h2>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (내용 최소 1500자 이상 방대하게 작성...)
+                                </p>
                                 """
                             
                             response = model.generate_content(prompt_plan)
+                            
                             st.session_state["kosme_result_type"] = "plan"
                             st.session_state["kosme_result_html"] = clean_html_output(response.text)
                             status.update(label="✅ 사업계획서(별첨) 생성 완료!", state="complete")
@@ -1317,17 +1276,22 @@ if check_password():
                     <title>{c_name} {doc_title}</title>
                     <style>
                         * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
-                        body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; background-color: #fff; white-space: pre-wrap; }}
+                        body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; }}
+                        .document-container {{ max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; box-shadow: 0 0 15px rgba(0,0,0,0.1); border-radius: 8px; color: #333; line-height: 1.6; font-size: 15px; white-space: pre-wrap; }}
                         table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }}
-                        td, th {{ border: 1px solid #333; padding: 10px; }}
+                        td, th {{ border: 1px solid #ccc; padding: 10px; }}
                         th {{ background-color: #f0f0f0; }}
                         @media print {{ 
                             @page {{ size: A4; margin: 15mm; }}
+                            body {{ background-color: #fff; padding: 0 !important; color: black !important; zoom: 0.9; }} 
+                            .document-container {{ box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; }}
                         }}
                     </style>
                 </head>
                 <body>
-                    {st.session_state["kosme_result_html"]}
+                    <div class="document-container">
+                        {st.session_state["kosme_result_html"]}
+                    </div>
                 </body>
                 </html>
                 """
@@ -1430,7 +1394,7 @@ if check_password():
                             prompt_plan_semas = f"""
                             당신은 소상공인시장진흥공단의 깐깐한 심사역입니다. 
                             [기업데이터] 기업명:{c_name} / 아이템:{item}
-                            현재 '{main_semas_type} - {semas_fund_type}' 전용 공식 양식 업데이트 전입니다. 해당 자금의 성격(예: 수출, 스마트기술, 일시적 애로 등)에 맞춰 소상공인의 생존 전략과 자생력 강화, 상권 분석에 초점을 맞춘 자유 양식 사업계획서(HTML)를 작성해 주세요. 
+                            현재 '{main_semas_type} - {semas_fund_type}' 전용 공식 양식 업데이트 전입니다. 해당 자금의 성격(예: 수출, 스마트기술, 일시적 애로 등)에 맞춰 소상공인의 생존 전략과 자생력 강화, 상권 분석에 초점을 맞춘 프리미엄 서술형 사업계획서(HTML)를 작성해 주세요. 
                             절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
 
                             [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
@@ -1438,7 +1402,31 @@ if check_password():
                             - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                             - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
                             - 외부 지식베이스(상권 데이터, 트렌드 등)를 적극 끌어와 서술형 칸을 전문적으로 아주 방대하게 채우세요.
+                            
+                            [출력 HTML 뼈대]
+                            <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">{semas_fund_type} 사업계획서</h1>
+                            <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(기업명: {c_name})</h2>
+
+                            <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:30px;">
+                            (서론 500자 이상 방대하게 작성)
+                            </p>
+
+                            <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 사업 개요 및 지역 상권 분석</h2>
+                            <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                            (내용 최소 1500자 이상 방대하게 작성...)
+                            </p>
+
+                            <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 자생력 확보 및 영업 마케팅 전략</h2>
+                            <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                            (내용 최소 1500자 이상 방대하게 작성...)
+                            </p>
+
+                            <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 자금 활용 계획 및 기대 효과</h2>
+                            <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                            (내용 최소 1500자 이상 방대하게 작성...)
+                            </p>
                             """
+                            
                             response = model.generate_content(prompt_plan_semas)
                             st.session_state["semas_result_type"] = "plan"
                             st.session_state["semas_result_html"] = clean_html_output(response.text)
@@ -1458,8 +1446,24 @@ if check_password():
                 html_export = f"""
                 <!DOCTYPE html>
                 <html><head><meta charset="utf-8"><title>{c_name} {doc_title}</title>
-                <style>body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; line-height: 1.6; max-width: 900px; margin: 0 auto; white-space: pre-wrap; }} table {{ width: 100%; border-collapse: collapse; }} td, th {{ border: 1px solid #333; padding: 15px; }} th {{ background-color: #f0f0f0; }}</style></head>
-                <body>{st.session_state["semas_result_html"]}</body></html>
+                <style>
+                    * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
+                    body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; }}
+                    .document-container {{ max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; box-shadow: 0 0 15px rgba(0,0,0,0.1); border-radius: 8px; color: #333; line-height: 1.6; font-size: 15px; white-space: pre-wrap; }}
+                    table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }}
+                    td, th {{ border: 1px solid #ccc; padding: 10px; }}
+                    th {{ background-color: #f0f0f0; }}
+                    @media print {{ 
+                        @page {{ size: A4; margin: 15mm; }}
+                        body {{ background-color: #fff; padding: 0 !important; color: black !important; zoom: 0.9; }} 
+                        .document-container {{ box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; }}
+                    }}
+                </style></head>
+                <body>
+                    <div class="document-container">
+                        {st.session_state["semas_result_html"]}
+                    </div>
+                </body></html>
                 """
                 st.download_button(label=f"📥 {doc_title} HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_{doc_title}.html", mime="text/html", type="primary")
 
