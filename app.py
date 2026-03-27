@@ -37,6 +37,18 @@ section[data-testid="stSidebar"] div.stButton > button {
 </style>
 """, unsafe_allow_html=True)
 
+# --- 설정 파일(API 키 등) 영구 저장 로직 ---
+CONFIG_FILE = "config.json"
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f: return json.load(f)
+        except: return {}
+    return {}
+
+def save_config(data):
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False, indent=4)
+
 def check_password():
     if "password_correct" not in st.session_state:
         st.title("🔐 AI 컨설팅 시스템")
@@ -144,13 +156,18 @@ if check_password():
     # 1. 사이드바 (API 설정, 업체관리)
     # ==========================================
     st.sidebar.header("⚙️ AI 엔진 설정")
+    
+    # 설정 파일에서 API 키 불러오기
+    config = load_config()
     if "api_key" not in st.session_state: 
-        st.session_state["api_key"] = st.secrets.get("GEMINI_API_KEY", "")
+        st.session_state["api_key"] = config.get("GEMINI_API_KEY", st.secrets.get("GEMINI_API_KEY", ""))
         
     api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
     if st.sidebar.button("💾 API KEY 저장"):
         st.session_state["api_key"] = api_key_input
-        st.sidebar.success("✅ 이번 접속 동안 API 키가 유지됩니다.")
+        config["GEMINI_API_KEY"] = api_key_input
+        save_config(config)
+        st.sidebar.success("✅ API 키가 영구적으로 저장되었습니다.")
         time.sleep(1)
         st.rerun()
 
@@ -289,6 +306,38 @@ if check_password():
                 )
                 
                 plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+                
+                # 인증현황 취합
+                certs_names = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
+                certs_list = []
+                for i, cert in enumerate(certs_names):
+                    if d.get(f"in_chk_{i}", False):
+                        date = d.get(f"in_cert_date_{i}", "일자미상")
+                        certs_list.append(f"{cert}({date})")
+                cert_status = ", ".join(certs_list) if certs_list else "미보유"
+                
+                # 특허현황 취합
+                pat_str = ""
+                if d.get('in_has_patent') == '유':
+                    pat_types = ["특허출원", "특허등록", "상표등록", "디자인등록"]
+                    pat_parts = []
+                    for pt in pat_types:
+                        cnt = safe_int(d.get(f"in_{pt}_cnt", 0))
+                        if cnt > 0:
+                            nums = [d.get(f"in_{pt}_num_{i}", "") for i in range(cnt)]
+                            pat_parts.append(f"{pt} {cnt}건({', '.join(nums)})")
+                    if pat_parts:
+                        pat_str += " ".join(pat_parts)
+                if not pat_str: pat_str = "특허/지재권 미보유"
+                
+                # 정부지원사업 취합
+                gov_str = ""
+                if d.get('in_has_gov') == '유':
+                    gov_cnt = safe_int(d.get('in_gov_cnt', 0))
+                    if gov_cnt > 0:
+                        names = [d.get(f"in_gov_name_{i}", "") for i in range(gov_cnt)]
+                        gov_str = f"지원사업 {gov_cnt}건({', '.join(names)})"
+                if not gov_str: gov_str = "지원사업 이력 없음"
 
                 if "generated_report" not in st.session_state:
                     with st.status("🚀 제미나이(Gemini)가 가로형 레이아웃으로 완벽한 리포트를 생성 중입니다...", expanded=True) as status:
@@ -303,7 +352,7 @@ if check_password():
                             [작성 규칙 - 절대 엄수!!!]
                             1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 HTML 태그만 사용해야 합니다.
                             2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
-                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 마침표 뒤 줄바꿈 &lt;br&gt; 태그를 넣으세요.
+                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 문단 구분을 확실히 하고 핵심 포인트는 글머리 기호(&bull;)나 굵은 글씨(<b>)를 사용하여 가독성을 극대화하세요. 빽빽한 서술형을 피하고 문맥에 맞게 적절히 줄바꿈(<br>)을 수행하세요.
                             4. 자금 사용계획 작성 규칙: 5번의 좌측 항목명은 반드시 '및'을 기준으로 <br> 태그를 사용해 줄바꿈 하세요.
                             5. 경쟁사 비교 분석표 규칙: 헤더(주요 경쟁사 A, B) 작성 시, 미리 제공된 양식대로 괄호 부분은 반드시 <br> 태그 아래에 작성하여 줄바꿈을 강제하세요.
                             6. 절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
@@ -317,6 +366,9 @@ if check_password():
                             - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 사업자유형: {biz_type}
                             - 아이템: {item} / 시장현황: {market} / 차별화: {diff}
                             - 신청자금: {req_fund} ({fund_type})
+                            - 인증현황: {cert_status}
+                            - 지식재산권: {pat_str}
+                            - 정부지원사업: {gov_str}
 
                             [출력 양식]
                             <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업현황분석</h2>
@@ -326,10 +378,14 @@ if check_password():
                                 <td style="padding:15px; width:12%; background-color:#eceff1; font-size:0.95em; white-space:nowrap;"><b>사업자유형</b></td><td style="padding:15px; width:21%;">{biz_type}</td>
                                 <td style="padding:15px; width:12%; background-color:#eceff1; font-size:0.95em; white-space:nowrap;"><b>업종</b></td><td style="padding:15px; width:22%;">{c_ind}</td>
                               </tr>
-                              <tr>
+                              <tr style="border-bottom:1px solid #e0e0e0;">
                                 <td style="padding:15px; background-color:#eceff1; font-size:0.95em; white-space:nowrap;"><b>대표자명</b></td><td style="padding:15px;">{rep_name}</td>
                                 <td style="padding:15px; background-color:#eceff1; font-size:0.95em; white-space:nowrap;"><b>사업자번호</b></td><td style="padding:15px; line-height:1.4;">{biz_no}{corp_text}</td>
                                 <td style="padding:15px; background-color:#eceff1; font-size:0.95em; white-space:nowrap;"><b>사업장주소</b></td><td style="padding:15px;">{address}</td>
+                              </tr>
+                              <tr>
+                                <td style="padding:15px; background-color:#eceff1; font-size:0.95em; white-space:nowrap;"><b>인증현황</b></td><td colspan="2" style="padding:15px; text-align:left;">{cert_status}</td>
+                                <td style="padding:15px; background-color:#eceff1; font-size:0.95em; white-space:nowrap;"><b>지식재산/지원사업</b></td><td colspan="2" style="padding:15px; text-align:left; line-height:1.5;">{pat_str}<br>{gov_str}</td>
                               </tr>
                               {add_biz_row}
                             </table>
@@ -527,7 +583,7 @@ if check_password():
                         h1 {{ color: #111; text-align: center; margin-bottom: 40px; font-size: 32px; font-weight: bold; }}
                         @media print {{ 
                             @page {{ size: A4; margin: 15mm; }}
-                            body {{ background-color: #fff; padding: 0 !important; font-size: 14px !important; color: black !important; }} 
+                            body {{ background-color: #fff; padding: 0 !important; font-size: 14px !important; color: black !important; max-width: 100% !important; }} 
                             .document-container {{ box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; }}
                             h1 {{ margin: 0 0 30px 0 !important; font-size: 28px !important; }}
                             h2.section-title {{ page-break-before: always !important; margin-top: 0 !important; font-size: 20px !important; padding-bottom: 4px !important; border-bottom: 2px solid #174EA6 !important; }}
@@ -600,24 +656,37 @@ if check_password():
                             fund_type = d.get('in_fund_type', '운전자금')
                             req_fund = format_kr_currency(safe_int(d.get('in_req_amount', 0)))
                             
-                            certs = []
-                            if d.get('in_chk_1', False): certs.append("소상공인")
-                            if d.get('in_chk_2', False): certs.append("창업기업")
-                            if d.get('in_chk_3', False): certs.append("여성기업")
-                            if d.get('in_chk_4', False): certs.append("이노비즈")
-                            if d.get('in_chk_6', False): certs.append("벤처")
-                            if d.get('in_chk_7', False): certs.append("뿌리기업")
-                            if d.get('in_chk_10', False): certs.append("ISO")
-                            if d.get('in_chk_11', False): certs.append("HACCP")
-                            cert_status = ", ".join(certs) if certs else "미보유"
+                            # 인증현황 취합
+                            certs_names = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
+                            certs_list = []
+                            for i, cert in enumerate(certs_names):
+                                if d.get(f"in_chk_{i}", False):
+                                    date = d.get(f"in_cert_date_{i}", "일자미상")
+                                    certs_list.append(f"{cert}({date})")
+                            cert_status = ", ".join(certs_list) if certs_list else "미보유"
                             
+                            # 특허현황 취합
                             pat_str = ""
                             if d.get('in_has_patent') == '유':
-                                pat_str += f"[보유] 특허출원 {d.get('in_pat_apply','0')}건, 특허등록 {d.get('in_pat_reg','0')}건, 상표등록 {d.get('in_tm_reg','0')}건, 디자인등록 {d.get('in_design_reg','0')}건. "
-                            if d.get('in_buy_patent') == '유':
-                                pat_str += f"[매입예정] 희망특허: {d.get('in_buy_pat_desc','')}, 예상금액: {d.get('in_buy_pat_amount',0)}만원. "
-                            if not pat_str:
-                                pat_str = "특허/지재권 없음"
+                                pat_types = ["특허출원", "특허등록", "상표등록", "디자인등록"]
+                                pat_parts = []
+                                for pt in pat_types:
+                                    cnt = safe_int(d.get(f"in_{pt}_cnt", 0))
+                                    if cnt > 0:
+                                        nums = [d.get(f"in_{pt}_num_{i}", "") for i in range(cnt)]
+                                        pat_parts.append(f"{pt} {cnt}건({', '.join(nums)})")
+                                if pat_parts:
+                                    pat_str += " ".join(pat_parts)
+                            if not pat_str: pat_str = "특허/지재권 미보유"
+                            
+                            # 정부지원사업 취합
+                            gov_str = ""
+                            if d.get('in_has_gov') == '유':
+                                gov_cnt = safe_int(d.get('in_gov_cnt', 0))
+                                if gov_cnt > 0:
+                                    names = [d.get(f"in_gov_name_{i}", "") for i in range(gov_cnt)]
+                                    gov_str = f"지원사업 {gov_cnt}건({', '.join(names)})"
+                            if not gov_str: gov_str = "지원사업 이력 없음"
                             
                             biz_years = 0
                             start_date_str = d.get('in_start_date', '').strip()
@@ -632,7 +701,7 @@ if check_password():
                             ※ 모든 문장은 반드시 '~음', '~함', '~임', '~기대됨' 등의 명사형으로 끝내야 합니다. '~습니다', '~합니다', '~해요' 등의 서술어는 절대 사용 금지!!!
                             절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
 
-                            [입력] 기업명:{c_name} / 업종:{c_ind} / 상시근로자수:{employee_count}명 / 전년매출:{s_25} / 총기대출:{total_debt} / 인증현황:{cert_status} / 특허현황:{pat_str} / 희망 필요자금:{req_fund}
+                            [입력] 기업명:{c_name} / 업종:{c_ind} / 상시근로자수:{employee_count}명 / 전년매출:{s_25} / 총기대출:{total_debt} / 인증현황:{cert_status} / 특허현황:{pat_str} / 지원이력:{gov_str} / 희망 필요자금:{req_fund}
                             
                             [AI 작성 흔적 제거 및 전문가 톤 강제]
                             - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
@@ -659,7 +728,8 @@ if check_password():
                             <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
                             <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
                               <b>기업명:</b> {c_name} | <b>업종:</b> {c_ind} ({biz_type}) | <b>업력:</b> 약 {biz_years}년 | <b>상시근로자:</b> {employee_count}명 <br>
-                              <b>NICE 점수:</b> {nice_score}점 | <b>기술/벤처 인증:</b> {cert_status} | <b>특허정보:</b> {pat_str} <br>
+                              <b>NICE 점수:</b> {nice_score}점 | <b>기술/벤처/기타 인증:</b> {cert_status} <br>
+                              <b>특허정보:</b> {pat_str} | <b>정부지원:</b> {gov_str} <br>
                               <b>전년도매출:</b> <span style="color:#1565c0; font-weight:bold;">{s_25}</span> | <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> | <b style="font-size:1.15em;">희망 필요자금: {req_fund}</b>
                             </div>
                             <div style="margin-bottom:20px;">(1~2줄 아주 짧은 요약. &lt;br&gt;)</div>
@@ -692,7 +762,7 @@ if check_password():
 
                             <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 심사 전 필수 체크리스트 및 보완 가이드</h2>
                             <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:15px; border-radius:15px; margin-top:15px;">
-                              <b style="font-size:1.1em; color:#c62828;">🚨 보완 조언 (특허/인증 활용 방안 포함):</b><br><br>&bull; (외부 데이터를 활용한 구체적인 전략 1~2줄 &lt;br&gt;)<br>&bull; (외부 데이터를 활용한 구체적인 전략 1~2줄 &lt;br&gt;)
+                              <b style="font-size:1.1em; color:#c62828;">🚨 보완 조언 (특허/인증/지원사업 활용 방안 포함):</b><br><br>&bull; (외부 데이터를 활용한 구체적인 전략 1~2줄 &lt;br&gt;)<br>&bull; (외부 데이터를 활용한 구체적인 전략 1~2줄 &lt;br&gt;)
                             </div>
                             """
                             
@@ -735,7 +805,7 @@ if check_password():
                         .document-container {{ max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; box-shadow: 0 0 15px rgba(0,0,0,0.1); border-radius: 8px; color: #333; line-height: 1.5; white-space: pre-wrap; }}
                         @media print {{ 
                             @page {{ size: A4; margin: 10mm; }}
-                            body {{ background-color: #fff; padding: 0 !important; font-size: 11.5px !important; color: black !important; zoom: 0.85; }} 
+                            body {{ background-color: #fff; padding: 0 !important; font-size: 11.5px !important; color: black !important; max-width: 100% !important; zoom: 0.85; }} 
                             .document-container {{ box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; }}
                             h1 {{ margin: 0 0 10px 0 !important; font-size: 20px !important; }}
                             h2 {{ margin: 10px 0 5px 0 !important; font-size: 15px !important; padding-bottom: 2px !important; border-bottom: 2px solid #174EA6 !important; }}
@@ -795,22 +865,34 @@ if check_password():
             try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
             except: pass
             
-        certs = []
-        if d.get('in_chk_1', False): certs.append("소상공인")
-        if d.get('in_chk_2', False): certs.append("창업기업")
-        if d.get('in_chk_3', False): certs.append("여성기업")
-        if d.get('in_chk_4', False): certs.append("이노비즈")
-        if d.get('in_chk_6', False): certs.append("벤처")
-        if d.get('in_chk_7', False): certs.append("뿌리기업")
-        if d.get('in_chk_10', False): certs.append("ISO")
-        if d.get('in_chk_11', False): certs.append("HACCP")
-        cert_status = ", ".join(certs) if certs else "미보유"
+        certs_names = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
+        certs_list = []
+        for i, cert in enumerate(certs_names):
+            if d.get(f"in_chk_{i}", False):
+                date = d.get(f"in_cert_date_{i}", "일자미상")
+                certs_list.append(f"{cert}({date})")
+        cert_status = ", ".join(certs_list) if certs_list else "미보유"
 
         pat_str = ""
         if d.get('in_has_patent') == '유':
-            pat_str += f"출원 {d.get('in_pat_apply','0')}건, 등록 {d.get('in_pat_reg','0')}건, 상표 {d.get('in_tm_reg','0')}건, 디자인 {d.get('in_design_reg','0')}건."
-        else:
-            pat_str = "특허/지재권 미보유"
+            pat_types = ["특허출원", "특허등록", "상표등록", "디자인등록"]
+            pat_parts = []
+            for pt in pat_types:
+                cnt = safe_int(d.get(f"in_{pt}_cnt", 0))
+                if cnt > 0:
+                    nums = [d.get(f"in_{pt}_num_{i}", "") for i in range(cnt)]
+                    pat_parts.append(f"{pt} {cnt}건({', '.join(nums)})")
+            if pat_parts:
+                pat_str += " ".join(pat_parts)
+        if not pat_str: pat_str = "특허/지재권 미보유"
+        
+        gov_str = ""
+        if d.get('in_has_gov') == '유':
+            gov_cnt = safe_int(d.get('in_gov_cnt', 0))
+            if gov_cnt > 0:
+                names = [d.get(f"in_gov_name_{i}", "") for i in range(gov_cnt)]
+                gov_str = f"지원사업 {gov_cnt}건({', '.join(names)})"
+        if not gov_str: gov_str = "지원사업 이력 없음"
             
         # 수출 정보 세팅
         is_export = d.get('in_is_export', '무')
@@ -822,7 +904,7 @@ if check_password():
         st.title("📝 기관/서류별 맞춤형 융자·사업계획서 자동 생성기")
         st.info("💡 좌측은 '공통 융자신청서', 우측은 '자금별 사업계획서(별첨)'입니다. 버튼을 누르면 완벽한 HTML 양식으로 생성됩니다.")
 
-        tabs = st.tabs(["1. 중진공", "2. 소진공", "3. 신보/재단", "4. 기술보증기금", "5. 제안용(IR)"])
+        tabs = st.tabs(["1. 중진공", "2. 소진공"])
 
         # ==========================================
         # [1. 중진공 탭]
@@ -883,7 +965,7 @@ if check_password():
                             [AI 작성 흔적 제거 및 전문가 톤 강제]
                             - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                             - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
-                            - 출력 길이 제한을 무시하고, 각 서술 항목마다 당신이 생성할 수 있는 최대 길이의 텍스트(각 칸별로 800자 이상)를 쏟아내세요.
+                            - 출력 길이 제한을 무시하고, 각 서술 항목마다 당신이 생성할 수 있는 최대 길이의 텍스트(각 칸별로 800자 이상)를 쏟아내세요. 문단 구분을 확실히 하고 핵심 포인트는 <b>태그로 강조하세요.
                             - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 극도로 풍성하고 전문적으로 채우세요.
 
                             [출력 HTML 뼈대 - 반드시 아래 구조의 표를 사용할 것]
@@ -945,8 +1027,10 @@ if check_password():
                     st.caption("💡 포커스: 창업자 역량(실행력), J커브 성장성, 스케일업")
                 elif kosme_fund_type == "개발기술사업화자금":
                     st.caption("💡 포커스: 양산 가능성, 시장성(매출), 기술의 사업화 구조")
-                elif kosme_fund_type == "수출기업 글로벌화 자금" or kosme_fund_type == "수출지원자금":
+                elif kosme_fund_type in ["수출기업 글로벌화 자금", "수출지원자금", "내수기업 수출기업화자금"]:
                     st.caption("💡 포커스: 기존 수출 역량, 구체적 진출국 논리, 수출 매출 전환 시나리오")
+                elif kosme_fund_type == "혁신성장지원자금":
+                    st.caption("💡 포커스: 기술/공정 혁신성, 성장 확장성(TAM/SAM/SOM), 자금 투자의 타당성")
                 else:
                     st.caption("💡 포커스: 기술성, 양산 및 매출 확대, 고용창출 중심")
                 
@@ -970,10 +1054,11 @@ if check_password():
                                 2. 사업추진계획에는 작은 성과라도 테스트/피드백 결과를 반드시 포함시키고, 시장 성장 스토리(스케일업)를 엮으세요.
                                 3. 자금 조달 계획은 "돈을 쓰면 반드시 성과로 직결되는 구조"로 설득력 있게 작성하세요.
 
-                                [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                                [AI 작성 흔적 제거 및 분량/가독성 강제 (매우 중요!!!)]
                                 - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
                                 - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                                 - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
+                                - 문단 구분을 확실히 하고, 핵심 포인트는 글머리 기호(&bull;)나 굵은 글씨(<b>)를 사용하여 가독성을 극대화하세요. 빽빽한 서술형을 피하고 문맥에 맞게 적절히 줄바꿈(<br>)을 수행하세요.
                                 - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
 
                                 [출력 HTML 뼈대 - 반드시 아래 구조를 100% 똑같이 유지할 것 (표 형태가 아닌 서술형 프리미엄 문서 형태)]
@@ -1027,10 +1112,11 @@ if check_password():
                                 4. "이 자금이 투입되면 즉각 양산/마케팅이 진행되어 J커브 매출이 발생할 기업"임을 강조하세요.
                                 5. 판매계획 표의 3개 품목 줄을 모두 채우세요. 기업의 수출여부({export_info})를 반영하여, 수출이 없으면 수출액을 빈칸으로 두고 내수 위주로, 수출이 있으면 내수와 수출액을 현실적인 비율로 나누어 작성하세요.
 
-                                [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                                [AI 작성 흔적 제거 및 분량/가독성 강제 (매우 중요!!!)]
                                 - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
                                 - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                                 - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
+                                - 문단 구분을 확실히 하고, 핵심 포인트는 글머리 기호(&bull;)나 굵은 글씨(<b>)를 사용하여 가독성을 극대화하세요. 빽빽한 서술형을 피하고 문맥에 맞게 적절히 줄바꿈(<br>)을 수행하세요.
                                 - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 서술형 칸을 각 800~1000자 이상의 꽉 찬 내용으로 채우세요.
 
                                 [출력 HTML 뼈대 - 반드시 아래 구조를 100% 똑같이 유지할 것 (표 형태가 아닌 서술형 프리미엄 문서 형태)]
@@ -1090,7 +1176,7 @@ if check_password():
                                 </tr>
                                 <tr style="background-color:#f0f0f0;">
                                 <th style="border:1px solid #ccc; padding:8px; width:11.5%;">내수</th><th style="border:1px solid #ccc; padding:8px; width:11.5%;">수출</th>
-                                <th style="border:1px solid #ccc; padding:8px; width:11.5%;">내수</th><th style="border:1px solid #ccc; padding:8px; width:11.5%;">수출</th>
+                                <th style="border:1px solid #333; padding:8px; width:11.5%;">내수</th><th style="border:1px solid #ccc; padding:8px; width:11.5%;">수출</th>
                                 </tr>
                                 <tr>
                                 <td style="border:1px solid #ccc; padding:8px; line-height:1.4;">(품목 1)</td>
@@ -1138,10 +1224,11 @@ if check_password():
                                    ① 계약/LOI 규모 (예: 18억원) ② 설비 투자 규모 (예: 7.2억원) ③ 목표 수출 매출 (예: 12억원) ④ 목표 국가 수 (예: 2개국) ⑤ 인증 수 (예: 2건) ⑥ 수출 비중 목표 (예: 30%)
                                 4. 자금 활용 계획에는 반드시 "해외 인증 취득 비용 약 20%, 해외 마케팅 및 전시회 참가 비용 약 25%, 수출 대응 생산 준비 비용 약 35%, 원부자재 선확보 비용 약 20%"와 같은 비율(%)을 명시하세요.
 
-                                [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                                [AI 작성 흔적 제거 및 분량/가독성 강제 (매우 중요!!!)]
                                 - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
                                 - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                                 - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
+                                - 문단 구분을 확실히 하고, 핵심 포인트는 글머리 기호(&bull;)나 굵은 글씨(<b>)를 사용하여 가독성을 극대화하세요. 빽빽한 서술형을 피하고 문맥에 맞게 적절히 줄바꿈(<br>)을 수행하세요.
                                 - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
 
                                 [출력 HTML 뼈대 - 반드시 아래 구조를 100% 똑같이 유지할 것 (표 형태가 아닌 서술형 프리미엄 문서 형태)]
@@ -1178,6 +1265,8 @@ if check_password():
                                 (이후 기술/가격/품질/납기 경쟁력을 상세 비교하여 최소 4~5개 거대 문단, 1000자 이상 작성)
                                 </p>
 
+                                <div style="page-break-before: always; padding-top: 20px;"></div>
+
                                 <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 시장 진입 전략 및 매출 발생 계획</h2>
                                 <h3 style="font-size:18px; color:#333; margin-top:20px; margin-bottom:10px;">3.1. 시장 진입 전략 (인증, 전시회, 파트너)</h3>
                                 <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
@@ -1205,6 +1294,68 @@ if check_password():
                                 (이후 목표 수출 비중 및 연평균 성장률 수치를 명시하여 최소 4~5개 거대 문단, 1000자 이상 작성 후, 마지막 문단은 무조건 "본 사업을 통해 글로벌 시장 진출 기반을 조기에 확보하고 수출 중심 성장 구조로 전환함으로써 지속 가능한 기업 성장 체계를 구축하고자 함." 으로 마무리할 것)
                                 </p>
                                 """
+                            elif kosme_fund_type == "혁신성장지원자금":
+                                prompt_plan = f"""
+                                당신은 중소기업진흥공단의 깐깐한 심사역입니다. 마크다운 기호 금지. 순수 HTML 태그만 사용하세요.
+                                절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
+                                
+                                [기업데이터]
+                                - 기업명: {c_name} / 대표자: {rep_name} / 업력: {biz_years}년
+                                - 아이템: {item} / 시장현황: {market} / 경쟁우위: {diff}
+                                - 특허/인증: {cert_status} / {pat_str}
+                                - 매출현황: 금년 {s_cur} / 수출여부: {export_info}
+                                
+                                [혁신성장지원자금 핵심 작성 룰 및 감점 회피 지침]
+                                1. "착한 사업"이 아닌 "성장할 수밖에 없는 구조(기술 차별성 + 시장 성장성 + 실행 가능성 + 자금 타당성)"를 증명하세요.
+                                2. 기술성: 기존 방식 대비 차별화된 기술/공정을 통해 비용 감소, 생산성 향상, 품질 향상 등의 개선 효과를 수치로 명확히 제시하세요. (단순히 "좋다" 수준은 감점)
+                                3. 시장/성장성: 막연히 "시장이 크다"가 아니라 TAM/SAM/SOM 기반의 시장 크기 분석과 B2B/수출 등 확장 가능성을 수치화하세요.
+                                4. 실행력: "아이디어" 수준이 아니라, 이미 확보된 고객, 계약/수주 경험, 생산/공급 구조 등 즉시 돈이 되는 구조를 보여주세요.
+                                5. 자금 타당성: '단순 운영비' 확보 명목은 무조건 탈락입니다. 본 자금이 시설 확충, 원자재 확보 등 '성장 투자'에 어떻게 직접 연결되는지 구체적으로 쓰세요.
+                                6. 성장 전략: 1단계(안정화) -> 2단계(확장) -> 3단계(고도화)의 명확한 로드맵을 제시하세요.
+
+                                [AI 작성 흔적 제거 및 분량/가독성 강제 (매우 중요!!!)]
+                                - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
+                                - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                                - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                                - 문단 구분을 확실히 하고, 핵심 포인트는 글머리 기호(&bull;)나 굵은 글씨(<b>)를 사용하여 가독성을 극대화하세요. 빽빽한 서술형을 피하고 문맥에 맞게 적절히 줄바꿈(<br>)을 수행하세요.
+                                - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
+
+                                [출력 HTML 뼈대 - 반드시 아래 구조를 100% 똑같이 유지할 것 (서술형 프리미엄 문서 형태)]
+                                <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">혁신성장지원자금 사업계획서</h1>
+                                <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(주식회사 {c_name})</h2>
+
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:30px;">
+                                (기업 개요 및 사업 핵심 요약. 무엇을 하는 회사인지 1문장으로 명확히 정의하고, 어떤 문제를 어떤 혁신적 기술/방식으로 해결하여 생산성 향상 및 비용 절감을 이뤄낼 것인지 서론 형식으로 최소 500자 이상 방대하게 작성)
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 기술 혁신성 및 차별성</h2>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (기존 방식의 문제점과 당사 기술/공정/구조의 차별 요소 3가지 이상을 명확히 비교 분석. 비용 감소, 생산성 증가, 품질 향상 등의 효과를 구체적 수치와 함께 최소 4~5개 거대 문단, 1000자 이상 방대하게 작성)
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 시장 분석 및 확장성</h2>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (TAM/SAM/SOM 시장 규모 및 성장률, 타겟 고객군을 외부 객관적 통계 데이터를 활용하여 상세 분석. 신규 시장 진입 전략 및 B2B/수출 등 확장 가능성을 최소 4~5개 거대 문단, 1000자 이상 방대하게 작성)
+                                </p>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 사업화 체계 및 생산·운영 계획</h2>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (현재 고객 확보 현황, 계약/수주 경험, 판매 및 가격 전략. 그리고 이를 뒷받침할 생산 방식, 설비 구성, 월 생산 능력 및 수요 증가 시 증설 계획을 최소 4~5개 거대 문단, 1000자 이상 방대하게 작성)
+                                </p>
+
+                                <div style="page-break-before: always; padding-top: 20px;"></div>
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">4. 자금 사용 타당성 및 재무 계획</h2>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (본 자금이 단순 운영비가 아닌 '성장 투자'에 어떻게 직접 연결되는지 시설자금과 운전자금으로 구체적으로 분리하여 설명. 현실적인 3년 이상 매출 전망 및 손익 구조를 수치화하여 최소 4~5개 거대 문단, 1000자 이상 방대하게 작성)
+                                </p>
+                                [GRAPH_INSERT_POINT]
+
+                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">5. 단계별 성장 전략 및 기대 효과</h2>
+                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
+                                (1단계 안정화, 2단계 확장, 3단계 고도화의 구체적 로드맵 제시. 본 사업을 통한 매출 증가, 고용 창출, 산업 기여도를 명확히 서술하며 최소 4~5개 거대 문단, 1000자 이상 작성. 대표 및 조직 역량이 이를 충분히 수행 가능함도 어필할 것)
+                                </p>
+                                """
                             else:
                                 prompt_plan = f"""
                                 당신은 중소기업진흥공단의 깐깐한 심사역입니다. 
@@ -1212,10 +1363,11 @@ if check_password():
                                 현재 시스템 고도화 중입니다. '{kosme_fund_type}'의 사업계획서를 서술형 프리미엄 문서 양식(HTML)으로 상세히 서술하세요.
                                 절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
 
-                                [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                                [AI 작성 흔적 제거 및 분량/가독성 강제 (매우 중요!!!)]
                                 - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
                                 - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                                 - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                                - 문단 구분을 확실히 하고, 핵심 포인트는 글머리 기호(&bull;)나 굵은 글씨(<b>)를 사용하여 가독성을 극대화하세요. 빽빽한 서술형을 피하고 문맥에 맞게 적절히 줄바꿈(<br>)을 수행하세요.
                                 - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
                                 
                                 [출력 HTML 뼈대]
@@ -1245,12 +1397,58 @@ if check_password():
                                 <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                                 (내용 최소 1500자 이상 방대하게 작성...)
                                 </p>
+                                [GRAPH_INSERT_POINT]
                                 """
                             
+                            # 그래프 데이터 생성
+                            val_cur = safe_int(d.get('in_sales_current', 0))
+                            if val_cur <= 0: val_cur = 1000
+                            start_val = val_cur / 12
+                            end_val = start_val * 1.5
+                            
+                            monthly_vals = []
+                            for i in range(12):
+                                progress = i / 11.0
+                                linear_part = start_val + (end_val - start_val) * progress
+                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
+                                monthly_vals.append(int(linear_part + wave_part))
+                                
+                            monthly_labels = [f"{i}월" for i in range(1, 13)]
+
+                            fig = go.Figure()
+                            fig.add_trace(go.Scatter(
+                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
+                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
+                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
+                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
+                            ))
+                            fig.update_layout(
+                                title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
+                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+                            )
+                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+
                             response = model.generate_content(prompt_plan)
                             
+                            raw_text = response.text
+                            if "```html" in raw_text:
+                                cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
+                            elif "```" in raw_text:
+                                cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
+                            else:
+                                cleaned_html = raw_text.strip()
+                            
+                            # 들여쓰기(Indentation) 제거 로직 적용
+                            cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
+                            
+                            # 그래프 삽입
+                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
+                                parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
+                                cleaned_html = parts[0] + plotly_html + parts[2]
+                                
                             st.session_state["kosme_result_type"] = "plan"
-                            st.session_state["kosme_result_html"] = clean_html_output(response.text)
+                            st.session_state["kosme_result_html"] = cleaned_html
                             status.update(label="✅ 사업계획서(별첨) 생성 완료!", state="complete")
                         except Exception as e:
                             status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
@@ -1397,10 +1595,11 @@ if check_password():
                             현재 '{main_semas_type} - {semas_fund_type}' 전용 공식 양식 업데이트 전입니다. 해당 자금의 성격(예: 수출, 스마트기술, 일시적 애로 등)에 맞춰 소상공인의 생존 전략과 자생력 강화, 상권 분석에 초점을 맞춘 프리미엄 서술형 사업계획서(HTML)를 작성해 주세요. 
                             절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
 
-                            [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                            [AI 작성 흔적 제거 및 분량/가독성 강제 (매우 중요!!!)]
                             - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
                             - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
                             - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
+                            - 문단 구분을 확실히 하고, 핵심 포인트는 글머리 기호(&bull;)나 굵은 글씨(<b>)를 사용하여 가독성을 극대화하세요. 빽빽한 서술형을 피하고 문맥에 맞게 적절히 줄바꿈(<br>)을 수행하세요.
                             - 외부 지식베이스(상권 데이터, 트렌드 등)를 적극 끌어와 서술형 칸을 전문적으로 아주 방대하게 채우세요.
                             
                             [출력 HTML 뼈대]
@@ -1425,11 +1624,58 @@ if check_password():
                             <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
                             (내용 최소 1500자 이상 방대하게 작성...)
                             </p>
+                            [GRAPH_INSERT_POINT]
                             """
                             
+                            # 그래프 데이터 생성
+                            val_cur = safe_int(d.get('in_sales_current', 0))
+                            if val_cur <= 0: val_cur = 1000
+                            start_val = val_cur / 12
+                            end_val = start_val * 1.5
+                            
+                            monthly_vals = []
+                            for i in range(12):
+                                progress = i / 11.0
+                                linear_part = start_val + (end_val - start_val) * progress
+                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
+                                monthly_vals.append(int(linear_part + wave_part))
+                                
+                            monthly_labels = [f"{i}월" for i in range(1, 13)]
+
+                            fig = go.Figure()
+                            fig.add_trace(go.Scatter(
+                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
+                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
+                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
+                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
+                            ))
+                            fig.update_layout(
+                                title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
+                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+                            )
+                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+
                             response = model.generate_content(prompt_plan_semas)
+                            
+                            raw_text = response.text
+                            if "```html" in raw_text:
+                                cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
+                            elif "```" in raw_text:
+                                cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
+                            else:
+                                cleaned_html = raw_text.strip()
+                            
+                            cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
+                            # 그래프 삽입 (만약 AI가 그래프 포인트를 넣지 않았다면 수동으로 하단에 추가)
+                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
+                                parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
+                                cleaned_html = parts[0] + plotly_html + parts[2]
+                            else:
+                                cleaned_html += f"<br><br>{plotly_html}"
+                                
                             st.session_state["semas_result_type"] = "plan"
-                            st.session_state["semas_result_html"] = clean_html_output(response.text)
+                            st.session_state["semas_result_html"] = cleaned_html
                             status.update(label="✅ 사업계획서(별첨) 생성 완료!", state="complete")
                         except Exception as e:
                             status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
@@ -1467,15 +1713,6 @@ if check_password():
                 """
                 st.download_button(label=f"📥 {doc_title} HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_{doc_title}.html", mime="text/html", type="primary")
 
-        with tabs[2]:
-            st.subheader("🏦 신용보증기금/재단 (준비 중)")
-
-        with tabs[3]:
-            st.subheader("🔬 기술보증기금 (준비 중)")
-
-        with tabs[4]:
-            st.subheader("📈 제안용 (IR / PSST) (준비 중)")
-            
     # ---------------------------------------------------------
     # [모드 D: 4. 정식 사업계획서 (마스터)]
     # ---------------------------------------------------------
@@ -1484,8 +1721,12 @@ if check_password():
             st.session_state["view_mode"] = "INPUT"
             st.rerun()
             
-        st.title("📑 마스터 사업계획서 자동 생성 (IR / FSS 등)")
-        st.info("투자 유치 및 대형 자금 조달을 위한 '풀버전(Full-Version) 정식 사업계획서' 생성 메뉴입니다. (곧 업데이트 예정)")
+        st.title("📑 AI 사업계획서 자동 생성")
+        
+        plan_type = st.radio("💡 사업계획서 용도를 선택하세요", ["기관제출용", "투자용(IR)"], horizontal=True)
+        st.info(f"선택하신 **'{plan_type}'** 마스터 사업계획서 생성 메뉴입니다. (고도화 업데이트 예정)")
+        st.markdown("---")
+        st.caption("AI 엔진이 대시보드 데이터를 기반으로 완벽한 풀버전 사업계획서를 생성할 수 있도록 준비 중입니다.")
 
     # --- [입력 화면 (대시보드)] ---
     else:
@@ -1611,24 +1852,34 @@ if check_password():
 
         st.markdown("<br>", unsafe_allow_html=True)
         st.header("7. 인증현황")
-        ac1, ac2, ac3, ac4 = st.columns(4)
-        with ac1: st.checkbox("소상공인확인서", key="in_chk_1"); st.checkbox("창업확인서", key="in_chk_2")
-        with ac2: st.checkbox("여성기업확인서", key="in_chk_3"); st.checkbox("이노비즈", key="in_chk_4")
-        with ac3: st.checkbox("벤처인증", key="in_chk_6"); st.checkbox("뿌리기업확인서", key="in_chk_7")
-        with ac4: st.checkbox("ISO인증", key="in_chk_10"); st.checkbox("HACCP인증", key="in_chk_11")
+        certs = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
+        c_cols = st.columns(4)
+        for i, cert in enumerate(certs):
+            with c_cols[i % 4]:
+                is_checked = st.checkbox(cert, key=f"in_chk_{i}")
+                if is_checked:
+                    st.text_input(f"↪ {cert} 발급일자", placeholder="YYYY.MM.DD", key=f"in_cert_date_{i}")
 
-        # [신설] 8. 특허정보
         st.markdown("<br>", unsafe_allow_html=True)
-        st.header("8. 특허정보")
+        st.header("8. 특허 및 정부지원사업 정보")
         pat_col1, pat_col2 = st.columns(2)
         with pat_col1:
             has_patent = st.radio("특허/지식재산권 보유여부", ["무", "유"], horizontal=True, key="in_has_patent")
             if has_patent == "유":
-                st.text_input("특허출원 (건)", key="in_pat_apply")
-                st.text_input("특허등록 (건)", key="in_pat_reg")
-                st.text_input("상표등록 (건)", key="in_tm_reg")
-                st.text_input("디자인등록 (건)", key="in_design_reg")
+                pat_types = ["특허출원", "특허등록", "상표등록", "디자인등록"]
+                for pt in pat_types:
+                    cnt = st.number_input(f"➤ {pt} (건수)", min_value=0, step=1, key=f"in_{pt}_cnt")
+                    for i in range(int(cnt)):
+                        st.text_input(f" - {pt} {i+1}번 번호", key=f"in_{pt}_num_{i}")
+                        
         with pat_col2:
+            has_gov = st.radio("정부지원사업 진행이력", ["무", "유"], horizontal=True, key="in_has_gov")
+            if has_gov == "유":
+                gov_cnt = st.number_input("➤ 지원사업 (건수)", min_value=0, step=1, key="in_gov_cnt")
+                for i in range(int(gov_cnt)):
+                    st.text_input(f" - 지원사업 {i+1}번 사업명", key=f"in_gov_name_{i}")
+                    
+            st.markdown("---")
             buy_patent = st.radio("특허매입예정", ["무", "유"], horizontal=True, key="in_buy_patent")
             if buy_patent == "유":
                 st.text_input("희망특허 (분야/명칭)", key="in_buy_pat_desc")
