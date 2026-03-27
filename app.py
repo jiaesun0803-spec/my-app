@@ -460,3 +460,141 @@ if check_password():
     # ---------------------------------------------------------
     # [모드 B: 2. 정책자금 매칭 리포트]
     # ---------------------------------------------------------
+    elif st.session_state["view_mode"] == "MATCHING":
+        if st.button("⬅️ 대시보드로 돌아가기"):
+            for k, v in st.session_state["permanent_data"].items(): st.session_state[k] = v
+            st.session_state["view_mode"] = "INPUT"
+            st.rerun()
+        
+        d = st.session_state["permanent_data"]
+        c_name = d.get('in_company_name', '미입력').strip()
+        tax_status = d.get('in_tax_status', '무')
+        fin_status = d.get('in_fin_status', '무')
+        
+        st.title("🎯 AI 정책자금 최적화 매칭 리포트")
+        st.subheader(f"📌 분석 대상 기업: {c_name}")
+        
+        if tax_status == '유' or fin_status == '유':
+            st.error("🚨 세금체납 및 금융연체가 있을 시 자금 매칭이 진행되지 않습니다.")
+        elif not st.session_state["api_key"]:
+            st.error("⚠️ 좌측 사이드바에 API 키를 입력하세요.")
+        else:
+            try:
+                if "generated_matching" not in st.session_state:
+                    with st.status("🚀 매칭 심사 및 리포트 생성 중...", expanded=True) as status:
+                        st.write("⏳ 1/3: 기업 재무 데이터 및 기대출 내역 로딩 중...")
+                        time.sleep(1)
+                        st.write("⏳ 2/3: 중진공/보증기관 지원 가능 여부 필터링 중...")
+                        time.sleep(1)
+                        st.write("⏳ 3/3: 최적 자금 매칭 로직 적용 중...")
+                        try:
+                            model = genai.GenerativeModel(get_best_model_name())
+                            
+                            kibo_debt = safe_int(d.get('in_debt_kibo', 0))
+                            kodit_debt = safe_int(d.get('in_debt_kodit', 0))
+                            guarantee_status = "기보 이용중(신보 불가)" if kibo_debt > 0 else ("신보 이용중(기보 불가)" if kodit_debt > 0 else "신보/기보 자유선택 가능")
+                            total_debt_val = sum([safe_int(d.get(k, 0)) for k in ['in_debt_kosme', 'in_debt_semas', 'in_debt_koreg', 'in_debt_kodit', 'in_debt_kibo', 'in_debt_etc', 'in_debt_credit', 'in_debt_coll']])
+                            total_debt = format_kr_currency(total_debt_val)
+                            
+                            s_25 = format_kr_currency(d.get('in_sales_2025', 0))
+                            c_ind, biz_type = d.get('in_industry', '미입력'), d.get('in_biz_type', '개인')
+                            nice_score = safe_int(d.get('in_nice_score', 0))
+                            req_fund = format_kr_currency(d.get('in_req_amount', 0))
+                            
+                            certs_names = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
+                            certs_list = [f"{cert}({d.get(f'in_cert_date_{i}', '일자미상')})" for i, cert in enumerate(certs_names) if d.get(f"in_chk_{i}", False)]
+                            cert_status = ", ".join(certs_list) if certs_list else "미보유"
+                            
+                            pat_str = ""
+                            if d.get('in_has_patent') == '유':
+                                pat_types = ["특허출원", "특허등록", "상표등록", "디자인등록"]
+                                pat_parts = [f"{pt} {safe_int(d.get(f'in_{pt}_cnt', 0))}건" for pt in pat_types if safe_int(d.get(f"in_{pt}_cnt", 0)) > 0]
+                                if pat_parts: pat_str += " ".join(pat_parts)
+                            if not pat_str: pat_str = "특허/지재권 미보유"
+                            
+                            gov_str = f"지원사업 {safe_int(d.get('in_gov_cnt', 0))}건" if d.get('in_has_gov') == '유' and safe_int(d.get('in_gov_cnt', 0)) > 0 else "지원사업 이력 없음"
+                            
+                            biz_years = max(0, 2026 - int(d.get('in_start_date', '2026')[:4])) if d.get('in_start_date', '').strip() else 0
+                            employee_count = safe_int(d.get('in_employee_count', 0))
+                            
+                            prompt = f"""
+                            당신은 전문 경영컨설턴트입니다. 마크다운 기호 금지. 모든 문장은 명사형 종결. 
+                            [입력] 기업명:{c_name} / 업종:{c_ind} / 상시근로자:{employee_count}명 / 전년매출:{s_25} / 총기대출:{total_debt} / 인증현황:{cert_status} / 특허:{pat_str} / 희망필요자금:{req_fund}
+                            
+                            [자금 추천 룰]
+                            1. 보증기관 중복 금지: 현재 {guarantee_status}.
+                            2. 1페이지 출력 제한으로 내용은 핵심만 1~2줄 간결 작성.
+                            
+                            [출력 양식]
+                            <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">1. 기업 스펙 진단 요약</h2>
+                            <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px;">
+                              <b>기업명:</b> {c_name} | <b>업종:</b> {c_ind} | <b>업력:</b> 약 {biz_years}년 | <b>근로자:</b> {employee_count}명 <br>
+                              <b>인증:</b> {cert_status} | <b>특허:</b> {pat_str} | <b>정부지원:</b> {gov_str} <br>
+                              <b>전년도매출:</b> <span style="color:#1565c0; font-weight:bold;">{s_25}</span> | <b>총 기대출:</b> <span style="color:red;">{total_debt}</span> | <b style="font-size:1.15em;">희망 필요자금: {req_fund}</b>
+                            </div>
+                            <div style="margin-bottom:20px;">(1~2줄 짧은 요약)</div>
+
+                            <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. 우선순위 추천 정책자금 (1~2순위)</h2>
+                            <table style="width:100%; border-collapse: collapse; margin-bottom:15px; table-layout: fixed;">
+                              <tr><td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top; width:48.5%;"><b style="font-size:1.2em; color:#2e7d32;">🥇 1순위: [기관명] / [세부자금]<br>예상 한도</b><br><br>&bull; (사유 1줄)<br>&bull; (전략 1줄)</td><td style="width:3%;"></td><td style="background-color:#e8f5e9; padding:20px; border-radius:15px; border-left:5px solid #2e7d32; vertical-align:top; width:48.5%;"><b style="font-size:1.2em; color:#2e7d32;">🥈 2순위: [신보/기보 택1] / [상품명]<br>예상 한도</b><br><br>&bull; (사유 1줄)<br>&bull; (전략 1줄)</td></tr>
+                            </table>
+
+                            <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">3. 후순위 추천 (플랜 B)</h2>
+                            <table style="width:100%; border-collapse: collapse; margin-bottom:15px; table-layout: fixed;">
+                              <tr><td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top; width:48.5%;"><b style="font-size:1.2em; color:#ef6c00;">🥉 3순위: [지역신보]<br>예상 한도</b><br><br>&bull; (사유 1줄)<br>&bull; (전략 1줄)</td><td style="width:3%;"></td><td style="background-color:#fff3e0; padding:20px; border-radius:15px; border-left:5px solid #ef6c00; vertical-align:top; width:48.5%;"><b style="font-size:1.2em; color:#ef6c00;">🏅 4순위: [시중은행 등]<br>예상 한도</b><br><br>&bull; (사유 1줄)<br>&bull; (전략 1줄)</td></tr>
+                            </table>
+
+                            <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">4. 심사 전 필수 체크리스트 및 보완 가이드</h2>
+                            <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:15px; border-radius:15px; margin-top:15px;"><b style="font-size:1.1em; color:#c62828;">🚨 보완 조언:</b><br><br>&bull; (특허/인증 활용 전략 1줄)<br>&bull; (추가 전략 1줄)</div>
+                            """
+                            
+                            response = model.generate_content(prompt)
+                            st.session_state["generated_matching"] = response.text
+                            status.update(label="✅ 매칭 리포트 생성 완료!", state="complete")
+                            st.balloons()
+                        except Exception as e:
+                            status.update(label=f"❌ 오류 발생. (상세: {str(e)})", state="error")
+                            st.stop()
+                
+                response_text = clean_html_output(st.session_state.get("generated_matching", ""))
+                st.markdown(response_text, unsafe_allow_html=True)
+                
+                st.divider()
+                st.subheader("💾 리포트 저장")
+                safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
+                if not safe_file_name: safe_file_name = "업체"
+                html_export = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>{c_name} 매칭 리포트</title><style>* {{ box-sizing: border-box; }} body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; }} .document-container {{ max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; border-radius: 8px; line-height: 1.5; white-space: pre-wrap; }} table {{ width: 100%; border-collapse: collapse; }} td, th {{ padding: 8px !important; vertical-align: top; }}</style></head><body><div class="document-container"><h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1><hr>{response_text}</div></body></html>"""
+                st.download_button(label="📥 매칭 리포트 HTML 다운로드", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
+
+            except Exception as e:
+                st.error(f"❌ 분석 중 오류 발생: {str(e)}")
+
+    # ---------------------------------------------------------
+    # [모드 C: 3. 기관 맞춤형 융자/사업계획서 생성]
+    # ---------------------------------------------------------
+    elif st.session_state["view_mode"] == "PLAN":
+        if st.button("⬅️ 대시보드로 돌아가기"):
+            for k, v in st.session_state["permanent_data"].items(): st.session_state[k] = v
+            st.session_state["view_mode"] = "INPUT"
+            st.rerun()
+            
+        d = st.session_state["permanent_data"]
+        c_name = d.get('in_company_name', '미입력').strip()
+        rep_name = d.get('in_rep_name', '미입력')
+        biz_type = d.get('in_biz_type', '미입력')
+        c_ind = d.get('in_industry', '미입력')
+        address = d.get('in_biz_addr', '미입력')
+        career = d.get('in_career', '미입력')
+        edu_school = d.get('in_edu_school', '')
+        edu_major = d.get('in_edu_major', '')
+        home_addr = d.get('in_home_addr', '')
+        process_desc = d.get('in_process_desc', '미입력')
+        biz_no = str(d.get('in_raw_biz_no', '미입력'))
+        
+        s_25 = format_kr_currency(d.get('in_sales_2025', 0))
+        s_cur = format_kr_currency(d.get('in_sales_current', 0))
+        sales_24 = format_kr_currency(d.get('in_sales_2024', 0))
+        sales_23 = format_kr_currency(d.get('in_sales_2023', 0))
+        
+        req_fund = format_kr_currency(d.get('in_req_amount', 0))
+        fund_type, fund_purpose = d.get('in_fund_type', '운전자금'), d.get('in_fund_purpose
