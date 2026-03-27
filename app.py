@@ -370,7 +370,7 @@ if check_password():
                               <b>⚔️ 주요 경쟁사 비교 분석표</b><br>
                               <table style="width:100%; border-collapse: collapse; text-align:center; font-size:0.95em; margin-top:10px;">
                                 <tr style="background-color:#eceff1;"><th style="padding:12px; border:1px solid #ccc; width:20%;">비교 항목</th><th style="padding:12px; border:1px solid #ccc; width:26%;">{c_name} (자사)</th><th style="padding:12px; border:1px solid #ccc; width:27%;">주요 경쟁사 A<br><span style="font-size:0.85em; font-weight:normal; color:#555;">(경쟁사 특징 기재)</span></th><th style="padding:12px; border:1px solid #ccc; width:27%;">주요 경쟁사 B<br><span style="font-size:0.85em; font-weight:normal; color:#555;">(경쟁사 특징 기재)</span></th></tr>
-                                <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">핵심 타겟/<br>포지셔닝</td><td style="padding:12px; border:1px solid #ccc;">(자사 강점 요약)</td><td style="padding:12px; border:1px solid #ccc;">(경쟁사 A 특징)</td><td style="padding:12px; border:1px solid #ccc;">(경쟁사 B 특징)</td></tr>
+                                <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">핵 타겟/<br>포지셔닝</td><td style="padding:12px; border:1px solid #ccc;">(자사 강점 요약)</td><td style="padding:12px; border:1px solid #ccc;">(경쟁사 A 특징)</td><td style="padding:12px; border:1px solid #ccc;">(경쟁사 B 특징)</td></tr>
                                 <tr><td style="padding:12px; border:1px solid #ccc; font-weight:bold;">차별화 요소<br><span style="font-size:0.85em; font-weight:normal; color:#555;">(경쟁우위)</span></td><td style="padding:12px; border:1px solid #ccc;">(자사만의 기술/서비스)</td><td style="padding:12px; border:1px solid #ccc;">(경쟁사 A 비교점)</td><td style="padding:12px; border:1px solid #ccc;">(경쟁사 B 비교점)</td></tr>
                               </table>
                             </div>
@@ -566,7 +566,7 @@ if check_password():
                 st.subheader("💾 리포트 저장")
                 safe_file_name = "".join([c for c in c_name if c.isalnum() or c in (" ", "_")]).strip()
                 if not safe_file_name: safe_file_name = "업체"
-                html_export = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>{c_name} 매칭 리포트</title><style>* {{ box-sizing: border-box; }} body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; }} .document-container {{ max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; border-radius: 8px; line-height: 1.5; white-space: pre-wrap; }} table {{ width: 100%; border-collapse: collapse; }} td, th {{ padding: 8px !important; vertical-align: top; }}</style></head><body><div class="document-container"><h1>🎯 AI 정책자금 최적화 매칭 리포트: {c_name}</h1><hr>{response_text}</div></body></html>"""
+                html_export = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>{c_name} 매칭 리포트</title><style>* {{ box-sizing: border-box; }} body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; }} .document-container {{ max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; border-radius: 8px; line-height: 1.5; white-space: pre-wrap; }} table {{ width: 100%; border-collapse: collapse; }} td, th {{ padding: 8px !important; vertical-align: top; }}</style></head><body><div class="document-container"><h1>🎯 AI 정책자금 매칭 리포트: {c_name}</h1><hr>{response_text}</div></body></html>"""
                 st.download_button(label="📥 매칭 리포트 HTML 다운로드", data=html_export, file_name=f"{safe_file_name}_매칭리포트.html", mime="text/html", type="primary")
 
             except Exception as e:
@@ -612,8 +612,6 @@ if check_password():
         pat_parts = [f"{pt} {safe_int(d.get(f'in_{pt}_cnt', 0))}건" for pt in ["특허출원", "특허등록", "상표등록", "디자인등록"] if d.get('in_has_patent') == '유' and safe_int(d.get(f"in_{pt}_cnt", 0)) > 0]
         pat_str = " ".join(pat_parts) if pat_parts else "특허/지재권 미보유"
         
-        gov_str = f"지원사업 {safe_int(d.get('in_gov_cnt', 0))}건" if d.get('in_has_gov') == '유' and safe_int(d.get('in_gov_cnt', 0)) > 0 else "지원사업 이력 없음"
-            
         export_info = f"유 (24년 {format_kr_currency(d.get('in_exp_2024', 0))}, 25년 {format_kr_currency(d.get('in_exp_2025', 0))}, 금년 {format_kr_currency(d.get('in_exp_current', 0))})" if d.get('in_is_export') == '유' else "무 (전액 내수)"
 
         st.title("📝 기관별 맞춤형 융자·사업계획서 자동 생성기")
@@ -694,7 +692,6 @@ if check_password():
                         st.write("⏳ 3/3: 서술형 프리미엄 문서 렌더링 중...")
                         
                         try:
-                            # 🚨 [최적화 핵심] 긴 공통 프롬프트를 변수로 빼서 문자열 길이 축소
                             base_kosme_instruction = f"""
                             당신은 중소기업진흥공단의 깐깐한 심사역입니다. 마크다운 금지. 순수 HTML 사용. 들여쓰기 금지.
                             [기업데이터] 기업명:{c_name}/업력:{biz_years}년/아이템:{item}/시장현황:{market}/차별성:{diff}/매출:{s_cur}/수출:{export_info}
@@ -731,7 +728,7 @@ if check_password():
                                 <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px;">3. 시장 진입 전략 및 매출 발생 계획</h2><p style="font-size:15px; line-height:1.8; margin-bottom:20px;">(상세서술)</p>
                                 <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px;">4. 자금 활용 계획 및 중장기 성장 전략</h2><p style="font-size:15px; line-height:1.8; margin-bottom:20px;">(상세서술)</p>
                                 """
-                            else: # 혁신성장 및 일반
+                            else:
                                 prompt_plan = base_kosme_instruction + """
                                 [작성 룰] 기술/공정 개선 수치, 확장성(TAM/SAM/SOM), 성장 투자(설비) 타당성, 3단계 로드맵 제시.
                                 <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px;">1. 기술 혁신성 및 차별성</h2><p style="font-size:15px; line-height:1.8; margin-bottom:20px;">(상세서술)</p>
@@ -741,7 +738,6 @@ if check_password():
                                 [GRAPH_INSERT_POINT]
                                 """
                             
-                            # J커브 그래프
                             val_cur = safe_int(d.get('in_sales_current', 0)) or 1000
                             sv, ev = val_cur / 12, (val_cur / 12) * 1.5
                             m_vals = [int(sv + (ev - sv) * (i/11.0) + (ev - sv) * 0.15 * np.sin((i/11.0) * np.pi * 3.5)) for i in range(12)]
@@ -753,10 +749,8 @@ if check_password():
                             response = model.generate_content(prompt_plan)
                             
                             cleaned_html = clean_html_output(response.text)
-                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
-                                cleaned_html = cleaned_html.replace("[GRAPH_INSERT_POINT]", plotly_html)
-                            else:
-                                cleaned_html += f"<br><br>{plotly_html}"
+                            if "[GRAPH_INSERT_POINT]" in cleaned_html: cleaned_html = cleaned_html.replace("[GRAPH_INSERT_POINT]", plotly_html)
+                            else: cleaned_html += f"<br><br>{plotly_html}"
                                 
                             st.session_state["kosme_result_type"] = "plan"
                             st.session_state["kosme_result_html"] = cleaned_html
@@ -813,15 +807,10 @@ if check_password():
                             """
 
                         prompt_plan_semas = f"""
-                        당신은 소상공인시장진흥공단의 깐깐한 심사역입니다. 마크다운 금지. 순수 HTML 사용.
+                        당신은 소상공인시장진흥공단의 심사역입니다. 마크다운 금지. 순수 HTML 사용.
                         [기업데이터] 기업명:{c_name} / 아이템:{item} / 시장현황:{market} / 신청자금:{req_fund}
+                        [작성 룰] 에세이체 전면 금지. 개조식(Bullet point), 단문 위주, 짧은 문장 여러 개와 <br> 태그 사용.
                         
-                        [작성 룰] 
-                        - 에세이체 전면 금지. 개조식(Bullet point), 단문 위주, 핵심 팩트 위주.
-                        - 짧은 문장 여러 개와 <br> 태그를 사용하여 표 안의 여백을 시원하게 채울 것.
-                        - 자금명({semas_fund_type})의 특성(위기극복, 재창업, 투자연계, 기술도입 등)을 강력하게 반영.
-
-                        [출력 HTML 뼈대]
                         <h2 style="text-align:center; color:#002b5e; margin-bottom:30px;">기업현황 및 사업계획서 ({semas_fund_type})</h2>
 
                         <h3 style="color:#333; border-bottom:2px solid #000; padding-bottom:5px;">1. 개요 및 매출 현황</h3>
@@ -833,17 +822,17 @@ if check_password():
                         <h3 style="color:#333; border-bottom:2px solid #000; padding-bottom:5px;">2. 사업계획서</h3>
                         {past_close_html}
                         <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-size:13px; margin-bottom:20px;">
-                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:15px; width:25%; text-align:center;">사업내용 및<br>대출금 사용목적</th><td style="border:1px solid #000; padding:15px; line-height:1.6;">(자금별 성격에 맞춰 개조식 4줄 작성)</td></tr>
-                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:15px; text-align:center;">기술, 제품(상품),<br>점포의 경쟁력</th><td style="border:1px solid #000; padding:15px; line-height:1.6;">(경쟁력 개조식 4줄 작성)</td></tr>
-                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:15px; text-align:center;">시장상황 및<br>판매계획</th><td style="border:1px solid #000; padding:15px; line-height:1.6;">(수요 대응 전략 개조식 4줄 작성)</td></tr>
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:15px; width:25%; text-align:center;">사업내용/사용목적</th><td style="border:1px solid #000; padding:15px; line-height:1.6;">(개조식 4줄 작성)</td></tr>
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:15px; text-align:center;">경쟁력</th><td style="border:1px solid #000; padding:15px; line-height:1.6;">(개조식 4줄 작성)</td></tr>
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:15px; text-align:center;">시장상황/판매계획</th><td style="border:1px solid #000; padding:15px; line-height:1.6;">(개조식 4줄 작성)</td></tr>
                         </table>
 
                         {funding_plan_html}
                         <h4 style="color:#333;">□ 자금집행계획 (단위: 백만원)</h4>
                         <table style="width:100%; border-collapse:collapse; border:1px solid #000; text-align:center; font-size:13px; margin-bottom:20px;">
                           <tr style="background:#f0f0f0;"><th style="border:1px solid #000; padding:8px;">구분</th><th style="border:1px solid #000; padding:8px;">품목/내용</th><th style="border:1px solid #000; padding:8px;">소요금액</th></tr>
-                          <tr><td style="border:1px solid #000; padding:8px;" rowspan="2">자금 사용내역</td><td style="border:1px solid #000; padding:8px; text-align:left;">(원부자재, 마케팅비 등 구체적 기재)</td><td style="border:1px solid #000; padding:8px;">(자동산출)</td></tr>
-                          <tr><td style="border:1px solid #000; padding:8px; text-align:left;">(설비, 생산부대비용 등 구체적 기재)</td><td style="border:1px solid #000; padding:8px;">(자동산출)</td></tr>
+                          <tr><td style="border:1px solid #000; padding:8px;" rowspan="2">자금 사용내역</td><td style="border:1px solid #000; padding:8px; text-align:left;">(원부자재 등 구체적 기재)</td><td style="border:1px solid #000; padding:8px;">(자동산출)</td></tr>
+                          <tr><td style="border:1px solid #000; padding:8px; text-align:left;">(설비 등 구체적 기재)</td><td style="border:1px solid #000; padding:8px;">(자동산출)</td></tr>
                           <tr style="font-weight:bold; background:#fafafa;"><td style="border:1px solid #000; padding:8px;" colspan="2">총 소요금액</td><td style="border:1px solid #000; padding:8px; color:#c62828;">{req_fund}</td></tr>
                         </table>
                         """
@@ -918,12 +907,16 @@ if check_password():
         st.markdown("<br>", unsafe_allow_html=True)
 
         st.markdown("<p style='color:#c62828; font-weight:bold; font-size:1.1em;'>※ 필수정보를 입력해야 리포트가 생성됩니다.</p>", unsafe_allow_html=True)
-        st.header("1. 기업현황")
+        
+        st.header("* 1. 기업현황")
         r1c1, r1c2, r1c3 = st.columns(3)
         with r1c1:
-            biz_type = st.radio("사업자유형", ["개인", "법인"], horizontal=True, key="in_biz_type")
-            if biz_type == "법인": 
-                st.text_input("법인등록번호", placeholder="숫자만 입력", key="in_raw_corp_no", on_change=cb_format_corp_no)
+            biz_col1, biz_col2 = st.columns([1, 1])
+            with biz_col1:
+                biz_type = st.radio("사업자유형", ["개인", "법인"], horizontal=True, key="in_biz_type")
+            with biz_col2:
+                if biz_type == "법인": 
+                    st.text_input("법인등록번호", placeholder="숫자만 입력", key="in_raw_corp_no", on_change=cb_format_corp_no)
         with r1c2:
             st.text_input("기업명", key="in_company_name")
         with r1c3:
@@ -950,10 +943,12 @@ if check_password():
             has_add_biz = st.radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_additional_biz")
             if has_add_biz == "유": st.text_input("추가 사업장 정보 (예: 공장 주소 등)", key="in_additional_biz_addr")
 
-        st.number_input("상시근로자수(명)", value=None, step=1, format="%d", placeholder="예: 5", key="in_employee_count")
+        r4c1, r4c2, r4c3 = st.columns(3)
+        with r4c1:
+            st.number_input("상시근로자수(명)", value=None, step=1, format="%d", placeholder="예: 5", key="in_employee_count")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.header("2. 대표자 정보")
+        st.header("* 2. 대표자 정보")
         dob_val = str(st.session_state.get("in_rep_dob", "") or "").replace(".", "").strip()
         is_youth = False
         if len(dob_val) == 8:
@@ -978,10 +973,12 @@ if check_password():
         with r3_c2: st.text_input("이메일 주소", key="in_rep_email")
         with r3_c3: st.text_area("경력(최근기준)", key="in_career", height=68)
 
-        st.multiselect("부동산 현황", ["아파트", "빌라", "토지", "임야", "공장", "기타"], key="in_real_estate")
+        r4_c1, r4_c2, r4_c3 = st.columns(3)
+        with r4_c1:
+            st.multiselect("부동산 현황", ["아파트", "빌라", "토지", "임야", "공장", "기타"], key="in_real_estate")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.header("3. 신용 및 연체 정보")
+        st.header("* 3. 신용 및 연체 정보")
         cr1, cr2 = st.columns(2)
         with cr1:
             cc1, cc2 = st.columns(2)
@@ -994,7 +991,7 @@ if check_password():
             st.info(f"#### 🏆 등급 판정 결과\n\n* **KCB (올크레딧):** {get_credit_grade(kcb, 'KCB')}등급\n* **NICE (나이스):** {get_credit_grade(nice, 'NICE')}등급")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.header("4. 매출현황")
+        st.header("* 4. 매출현황")
         m1, m2, m3, m4 = st.columns(4)
         with m1: st.number_input("금년 당월 매출(만원)", value=None, step=1, format="%d", placeholder="예: 1억=10000", key="in_sales_current", help="단위: 만원 (예: 1억 원 = 10000 입력)")
         with m2: st.number_input("25년도 매출합계(만원)", value=None, step=1, format="%d", placeholder="예: 1억=10000", key="in_sales_2025", help="단위: 만원 (예: 1억 원 = 10000 입력)")
@@ -1012,7 +1009,7 @@ if check_password():
                 with e3: st.number_input("24년도 수출액(만원)", value=None, step=1, format="%d", placeholder="예: 1억=10000", key="in_exp_2024", help="단위: 만원")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.header("5. 부채현황")
+        st.header("* 5. 부채현황")
         d1, d2, d3, d4 = st.columns(4)
         with d1: st.number_input("중진공(만원)", value=None, step=1, format="%d", placeholder="예: 1억=10000", key="in_debt_kosme", help="단위: 만원")
         with d2: st.number_input("소진공(만원)", value=None, step=1, format="%d", placeholder="예: 1억=10000", key="in_debt_semas", help="단위: 만원")
@@ -1025,7 +1022,7 @@ if check_password():
         with d8: st.number_input("담보대출(만원)", value=None, step=1, format="%d", placeholder="예: 1억=10000", key="in_debt_coll", help="단위: 만원")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.header("6. 필요자금")
+        st.header("* 6. 필요자금")
         p1, p2, p3 = st.columns([1, 1, 2])
         with p1: st.selectbox("자금구분", ["운전자금", "시설자금"], key="in_fund_type")
         with p2: st.number_input("필요자금액(만원)", value=None, step=1, format="%d", placeholder="예: 1억=10000", key="in_req_amount", help="단위: 만원")
@@ -1060,7 +1057,7 @@ if check_password():
                 st.number_input("예상금액(만원)", value=None, step=1, format="%d", placeholder="예: 1억=10000", key="in_buy_pat_amount", help="단위: 만원")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        st.header("9. 비즈니스 정보")
+        st.header("* 9. 비즈니스 정보")
         st.text_area("[아이템]", key="in_item_desc")
         st.text_input("[제품생산공정도 (간략 기재)]", placeholder="예: 원물 입고 -> 세척 -> 조리 -> 포장 -> 출하", key="in_process_desc")
         st.markdown("**[주거래처 정보]**")
