@@ -16,7 +16,7 @@ st.markdown("""
 <style>
 div.stButton > button { min-height: 55px !important; white-space: nowrap !important; line-height: 1.2 !important; font-size: 16.5px !important; font-weight: bold !important; letter-spacing: -0.3px !important; }
 section[data-testid="stSidebar"] div.stButton > button { min-height: 45px !important; font-size: 12.5px !important; white-space: nowrap !important; letter-spacing: -0.5px !important; padding: 0px 10px !important; }
-.report-wrapper { background-color: #f8f9fa; padding: 40px 20px; border-radius: 10px; margin-top: 20px; display: flex; justify-content: center; }
+.report-wrapper { background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 10px; margin-bottom: 10px; display: flex; justify-content: center; }
 .report-container { width: 100%; max-width: 900px; background-color: #ffffff; padding: 60px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border-radius: 12px; color: #333; line-height: 1.6; }
 </style>
 """, unsafe_allow_html=True)
@@ -227,7 +227,7 @@ if check_password():
     st.markdown("<hr style='margin-top:5px; margin-bottom:20px;'>", unsafe_allow_html=True)
 
     # ==========================================
-    # 모드 A: 리포트
+    # 모드 A: 기업분석리포트
     # ==========================================
     if st.session_state["view_mode"] == "REPORT":
         if st.button("⬅️ 대시보드 (입력화면)로 돌아가기", key="back_btn1"):
@@ -240,36 +240,87 @@ if check_password():
         if not st.session_state["api_key"]: st.error("⚠️ API 키를 입력해주세요.")
         else:
             corp_text = f"<br><span style='font-size:0.9em; color:#555;'>({v.corp_no})</span>" if v.corp_no else ""
-            add_biz_row = f"<tr><td style='padding:15px; background-color:#eceff1;'><b>추가사업장</b></td><td colspan='5' style='padding:15px; text-align:left;'>{v.add_biz_addr}</td></tr>" if v.add_biz_status == '유' and v.add_biz_addr else ""
+            add_biz_row = f"<tr><th style='padding:15px; background-color:#e3f2fd; border:1px solid #ccc;'>추가사업장</th><td colspan='5' style='padding:15px; text-align:left; border:1px solid #ccc;'>{v.add_biz_addr}</td></tr>" if v.add_biz_status == '유' and v.add_biz_addr else ""
             
             val_cur = v.val_cur if v.val_cur > 0 else 1000
             sv, ev = val_cur / 12, (val_cur / 12) * 1.5
             m_vals = [int(sv + (ev - sv)*(i/11.0) + (ev - sv)*0.15*np.sin((i/11.0)*np.pi*3.5)) for i in range(12)]
-            fig = go.Figure(go.Scatter(x=[f"{i}월" for i in range(1, 13)], y=m_vals, mode='lines+markers+text', text=[format_kr_currency(x) for x in m_vals], textposition="top center", line=dict(color='#1E88E5', width=4, shape='spline')))
-            fig.update_layout(title="📈 향후 1년 예상 매출", template="plotly_white", margin=dict(l=20, r=20, t=40, b=20))
+            fig = go.Figure(go.Scatter(x=[f"{i}월" for i in range(1, 13)], y=m_vals, mode='lines+markers+text', text=[format_kr_currency(x) for x in m_vals], textposition="top center", textfont=dict(size=12, color='#111'), line=dict(color='#ab47bc', width=4, shape='spline'), marker=dict(size=10, color='#ff7043', line=dict(width=2, color='white'))))
+            fig.update_layout(title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액", xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'), template="plotly_white", margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
             
             if "generated_report" not in st.session_state:
-                with st.status("🚀 리포트 분석 중...", expanded=True) as status:
-                    st.write("⏳ 1/3 데이터 연동... \n⏳ 2/3 로직 분석... \n⏳ 3/3 렌더링...")
+                with st.status("🚀 외부 시장 데이터 분석 및 리포트 렌더링 중...", expanded=True) as status:
+                    st.write("⏳ 1/3: 기업 재무 및 아이템 분석 중...")
+                    time.sleep(1)
+                    st.write(f"⏳ 2/3: '{v.item}' 관련 외부 시장 트렌드 및 전망 조사 중...")
+                    time.sleep(1.5)
+                    st.write("⏳ 3/3: 파스텔톤 프리미엄 리포트 서식 생성 중... (최대 30초)")
                     try:
-                        prompt = f"""당신은 20년차 경영컨설턴트. 마크다운 금지. 명사형 종결. HTML 사용. [기업] 기업명:{v.c_name}/업종:{v.c_ind}/아이템:{v.item}/시장:{v.market}/차별화:{v.diff}/자금:{v.req_fund}/인증:{v.cert_status}/특허:{v.pat_str}
+                        prompt = f"""당신은 20년차 경영컨설턴트입니다. 마크다운 금지, 명사형 종결, 순수 HTML 사용.
+[기업] 기업명:{v.c_name}/업종:{v.c_ind}/아이템:{v.item}/시장:{v.market}/차별화:{v.diff}/자금:{v.req_fund}/인증:{v.cert_status}/특허:{v.pat_str}
+
+[작성 규칙] 
+1. 각 항목은 파스텔톤 색상(#e3f2fd, #e8f5e9, #fff3e0, #ffebee, #f3e5f5 등)을 적극 활용해 아름답고 고급스러운 표와 박스로 꾸며주세요.
+2. '2. 시장 동향 및 아이템 분석' 파트에서는 당신의 외부 지식을 총동원하여 해당 아이템({v.item})의 최신 시장 트렌드, 규모, 향후 전망을 아주 방대하게 서술하세요.
+
+[출력 뼈대]
 <h1 style="text-align:center; color:#111; margin-bottom:40px; font-size:32px;">📋 AI기업분석리포트</h1>
+
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px; font-size:20px;">1. 기업현황분석</h2>
 <table style="width:100%; border-collapse:collapse; text-align:center; border:1px solid #ccc; font-size:14px; margin-bottom:15px;">
-<tr><th style="background:#eceff1; border:1px solid #ccc; padding:10px; width:15%;">기업명</th><td style="border:1px solid #ccc; padding:10px; width:18%;">{v.c_name}</td><th style="background:#eceff1; border:1px solid #ccc; width:15%;">사업자유형</th><td style="border:1px solid #ccc; width:18%;">{v.biz_type}</td><th style="background:#eceff1; border:1px solid #ccc; width:15%;">업종</th><td style="border:1px solid #ccc; width:19%;">{v.c_ind}</td></tr>
-<tr><th style="background:#eceff1; border:1px solid #ccc; padding:10px;">대표자</th><td style="border:1px solid #ccc;">{v.rep_name}</td><th style="background:#eceff1; border:1px solid #ccc;">사업자번호</th><td style="border:1px solid #ccc; line-height:1.4;">{v.biz_no}{corp_text}</td><th style="background:#eceff1; border:1px solid #ccc;">주소</th><td style="border:1px solid #ccc;">{v.address}</td></tr>
-<tr><th style="background:#eceff1; border:1px solid #ccc; padding:10px;">인증/특허</th><td colspan="5" style="text-align:left; border:1px solid #ccc; padding:10px;">{v.cert_status} / {v.pat_str}</td></tr>
-{add_biz_row}
+  <tr><th style="background:#e3f2fd; border:1px solid #ccc; padding:10px; width:15%;">기업명</th><td style="border:1px solid #ccc; padding:10px; width:18%;">{v.c_name}</td><th style="background:#e3f2fd; border:1px solid #ccc; width:15%;">사업자유형</th><td style="border:1px solid #ccc; width:18%;">{v.biz_type}</td><th style="background:#e3f2fd; border:1px solid #ccc; width:15%;">업종</th><td style="border:1px solid #ccc; width:19%;">{v.c_ind}</td></tr>
+  <tr><th style="background:#e3f2fd; border:1px solid #ccc; padding:10px;">대표자</th><td style="border:1px solid #ccc;">{v.rep_name}</td><th style="background:#e3f2fd; border:1px solid #ccc;">사업자번호</th><td style="border:1px solid #ccc; line-height:1.4;">{v.biz_no}{corp_text}</td><th style="background:#e3f2fd; border:1px solid #ccc;">주소</th><td style="border:1px solid #ccc;">{v.address}</td></tr>
+  <tr><th style="background:#e3f2fd; border:1px solid #ccc; padding:10px;">인증/특허</th><td colspan="5" style="text-align:left; border:1px solid #ccc; padding:10px;">{v.cert_status} / {v.pat_str}</td></tr>
+  {add_biz_row}
 </table>
-<div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 3~4문장 이상 상세히 작성. 마침표 뒤 줄바꿈 &lt;br&gt;)</div>
-<h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px; font-size:20px;">2. SWOT 분석</h2>
-<p>(강점, 약점, 기회, 위협을 HTML 2x2 표 형태로 방대하고 상세하게 작성)</p>
-<h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px; font-size:20px;">3. 핵심 경쟁력 및 자금사용계획 ({v.req_fund})</h2>
-<p>(경쟁사 비교표 및 자금 세부 사용계획 표 작성)</p>
+<div style="margin-bottom:15px; line-height:1.6; font-size:15px;">(해당 업종과 아이템의 잠재력을 외부 지식을 바탕으로 방대하게 3~4줄 서술)</div>
+
+<h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px; font-size:20px;">2. 시장 동향 및 아이템 분석 🌟</h2>
+<div style="background-color:#f3e5f5; padding:20px; border-radius:15px; margin-bottom:15px; line-height:1.8; border-left:5px solid #ab47bc;">
+  <b style="font-size:16px; color:#6a1b9a;">📈 시장 최신 트렌드 및 전망 (외부 데이터 기반)</b><br><br>
+  (여기에 {v.item} 및 {v.c_ind}와 관련된 최신 시장 규모, 성장률, 주요 트렌드를 외부 객관적 지식을 활용해 최소 3~4문단으로 아주 상세하고 방대하게 서술하세요.)
+</div>
+<div style="background-color:#fff3e0; padding:20px; border-radius:15px; margin-bottom:15px; line-height:1.8; border-left:5px solid #ff9800;">
+  <b style="font-size:16px; color:#e65100;">🎯 당사 아이템 포지셔닝 및 경쟁력</b><br><br>
+  (당사의 차별화 요소를 바탕으로 이 시장에서 어떻게 폭발적으로 성장할 것인지 상세히 서술하세요.)
+</div>
+
+<h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px; font-size:20px;">3. SWOT 분석</h2>
+<table style="width:100%; border-collapse: collapse; margin-bottom:15px; table-layout: fixed;">
+  <tr>
+    <td style="background-color:#e3f2fd; padding:20px; border-radius:15px; vertical-align:top; width:48.5%;"><b>💪 S (강점)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(상세 분석 3줄 이상)</div></td><td style="width:3%;"></td>
+    <td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top; width:48.5%;"><b>⚠️ W (약점)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(상세 분석 3줄 이상)</div></td>
+  </tr>
+</table>
+<table style="width:100%; border-collapse: collapse; margin-bottom:15px; table-layout: fixed;">
+  <tr>
+    <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; vertical-align:top; width:48.5%;"><b>🚀 O (기회)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(상세 분석 3줄 이상)</div></td><td style="width:3%;"></td>
+    <td style="background-color:#fff3e0; padding:20px; border-radius:15px; vertical-align:top; width:48.5%;"><b>⚡ T (위협)</b><br><div style="text-align:left; margin-top:10px; line-height:1.6;">(상세 분석 3줄 이상)</div></td>
+  </tr>
+</table>
+
+<h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px; font-size:20px;">4. 핵심 경쟁력 및 자금사용계획 (신청자금: {v.req_fund})</h2>
+<table style="width:100%; border-collapse: collapse; text-align:left; margin-bottom:15px;">
+  <tr style="background-color:#e3f2fd;"><th style="padding:15px; border:1px solid #90caf9; width:20%; text-align:center;">자금 종류</th><th style="padding:15px; border:1px solid #90caf9; width:60%; text-align:center;">상세 사용계획 (투자에 따른 생산성/매출 증대 효과)</th><th style="padding:15px; border:1px solid #90caf9; width:20%; text-align:center;">예정금액</th></tr>
+  <tr><td style="padding:15px; border:1px solid #90caf9; font-weight:bold; text-align:center;">(운전/시설)<br>및 용도</td><td style="padding:15px; border:1px solid #90caf9; line-height:1.6;">&bull; (상세 내용)</td><td style="padding:15px; border:1px solid #90caf9; font-weight:bold; color:#1565c0; text-align:center;">(금액)</td></tr>
+  <tr><td style="padding:15px; border:1px solid #90caf9; font-weight:bold; text-align:center;">(운전/시설)<br>및 용도</td><td style="padding:15px; border:1px solid #90caf9; line-height:1.6;">&bull; (상세 내용)</td><td style="padding:15px; border:1px solid #90caf9; font-weight:bold; color:#1565c0; text-align:center;">(금액)</td></tr>
+</table>
+
 [GRAPH_INSERT_POINT]
-<h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px; font-size:20px;">4. 성장 비전 코멘트</h2>
-<p>(단기/중기/장기 비전 방대한 서술 및 지식재산권 확보 전략 코멘트)</p>"""
+
+<h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px; font-size:20px;">5. 성장 비전 코멘트</h2>
+<table style="width:100%; border-collapse: collapse; margin-bottom:20px; text-align:center; table-layout: fixed;">
+  <tr>
+    <td style="background-color:#e8f5e9; padding:20px; border-radius:15px; vertical-align:top; width:31.3%;"><b style="font-size:1.1em; color:#2e7d32;">🌱 단기 비전</b><br><br><div style="text-align:left; line-height:1.6;">(핵심 비전 3줄)</div></td><td style="width:3%;"></td>
+    <td style="background-color:#fff3e0; padding:20px; border-radius:15px; vertical-align:top; width:31.3%;"><b style="font-size:1.1em; color:#e65100;">🚀 중기 비전</b><br><br><div style="text-align:left; line-height:1.6;">(핵심 비전 3줄)</div></td><td style="width:3%;"></td>
+    <td style="background-color:#ffebee; padding:20px; border-radius:15px; vertical-align:top; width:31.3%;"><b style="font-size:1.1em; color:#c62828;">👑 장기 비전</b><br><br><div style="text-align:left; line-height:1.6;">(핵심 비전 3줄)</div></td>
+  </tr>
+</table>
+<div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:20px; border-radius:15px; margin-top:15px; line-height:1.6;">
+  <b>💡 핵심 인증 및 특허 확보 조언:</b><br><br>&bull; (해당 업종 필수 인증 전략)<br>&bull; (지식재산권 확보 전략)
+</div>
+"""
                         model = genai.GenerativeModel(get_best_model_name())
                         st.session_state["generated_report"] = model.generate_content(prompt).text
                         status.update(label="✅ 리포트 완료!", state="complete")
@@ -278,11 +329,27 @@ if check_password():
                         status.update(label=f"❌ 오류: {str(e)}", state="error")
                         st.stop()
 
-            res = clean_html(st.session_state.get("generated_report", "")).replace('[GRAPH_INSERT_POINT]', plotly_html)
-            st.markdown(wrap_in_document(res), unsafe_allow_html=True)
+            res = clean_html(st.session_state.get("generated_report", ""))
+            
+            # --- 그래프를 문서 박스 사이에 안전하게 분리 렌더링 ---
+            if "[GRAPH_INSERT_POINT]" in res:
+                parts = res.split("[GRAPH_INSERT_POINT]")
+                st.markdown(wrap_in_document(parts[0]), unsafe_allow_html=True)
+                
+                # 그래프 출력
+                c1, c2, c3 = st.columns([1, 8, 1])
+                with c2: st.plotly_chart(fig, use_container_width=True)
+                
+                st.markdown(wrap_in_document(parts[1]), unsafe_allow_html=True)
+                
+                html_export_content = res.replace('[GRAPH_INSERT_POINT]', plotly_html)
+            else:
+                st.markdown(wrap_in_document(res), unsafe_allow_html=True)
+                st.plotly_chart(fig, use_container_width=True)
+                html_export_content = res + f"<br><br>{plotly_html}"
             
             st.divider()
-            html_export = f"""<!DOCTYPE html><html><head><meta charset='utf-8'></head><body style='font-family:Malgun Gothic; background-color:#f4f4f4; padding:40px;'><div style='max-width:900px; margin:0 auto; background:#fff; padding:60px; border-radius:8px;'>{res}</div></body></html>"""
+            html_export = f"""<!DOCTYPE html><html><head><meta charset='utf-8'></head><body style='font-family:Malgun Gothic; background-color:#f4f4f4; padding:40px;'><div style='max-width:900px; margin:0 auto; background:#fff; padding:60px; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.1);'>{html_export_content}</div></body></html>"""
             st.download_button("📥 리포트 HTML 다운로드", data=html_export, file_name=f"{v.c_name}_기업분석리포트.html", mime="text/html", type="primary")
 
     # ==========================================
@@ -314,8 +381,8 @@ if check_password():
   <b>인증:</b> {v.cert_status} | <b>특허:</b> {v.pat_str} | <b>정부지원:</b> {v.gov_str} <br>
   <b>전년도매출:</b> <span style="color:#1565c0; font-weight:bold;">{v.s_25}</span> | <b>총 기대출:</b> <span style="color:red;">{v.tot_debt}</span> | <b style="font-size:1.15em;">희망 필요자금: {v.req_fund}</b>
 </div>
-<div style="margin-bottom:20px; padding:20px; background-color:#e3f2fd; border-radius:10px; font-size:14px; line-height:1.6;">
-  <b style="color:#1565c0;">💡 종합 진단 코멘트:</b><br><br>
+<div style="margin-bottom:20px; padding:20px; background-color:#e3f2fd; border-radius:10px; font-size:14px; line-height:1.6; border-left:5px solid #1565c0;">
+  <b style="color:#1565c0; font-size:16px;">💡 종합 진단 코멘트:</b><br><br>
   (기업의 현재 재무상황, 부채비율, 인증/특허 현황을 종합적으로 분석하여 자금 조달 가능성과 핵심 포인트를 3~4문장으로 아주 상세하고 방대하게 서술하세요)
 </div>
 
@@ -328,25 +395,25 @@ if check_password():
     <th style="padding:15px; border:1px solid #ccc; width:45%;">추천사유 및 진행전략</th>
   </tr>
   <tr>
-    <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#2e7d32;">1순위</td>
+    <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#2e7d32; font-size:16px;">1순위</td>
     <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(추천 기관명 / 세부자금명)</td>
     <td style="padding:15px; border:1px solid #ccc; color:#d32f2f; font-weight:bold;">(예: 3억 원)</td>
     <td style="padding:15px; border:1px solid #ccc; text-align:left; line-height:1.6;">(사유 및 전략을 상세하게 3~4줄 서술)</td>
   </tr>
   <tr>
-    <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#2e7d32;">2순위</td>
+    <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#2e7d32; font-size:16px;">2순위</td>
     <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(신용보증기금 또는 기술보증기금 / 상품명)</td>
     <td style="padding:15px; border:1px solid #ccc; color:#d32f2f; font-weight:bold;">(예: 2억 원)</td>
     <td style="padding:15px; border:1px solid #ccc; text-align:left; line-height:1.6;">(사유 및 전략을 상세하게 3~4줄 서술)</td>
   </tr>
   <tr>
-    <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#ef6c00;">3순위</td>
+    <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#ef6c00; font-size:16px;">3순위</td>
     <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(지역 신용보증재단 등 / 세부자금명)</td>
     <td style="padding:15px; border:1px solid #ccc; color:#d32f2f; font-weight:bold;">(예: 5천만 원)</td>
     <td style="padding:15px; border:1px solid #ccc; text-align:left; line-height:1.6;">(사유 및 전략을 상세하게 3~4줄 서술)</td>
   </tr>
   <tr>
-    <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#ef6c00;">4순위</td>
+    <td style="padding:15px; border:1px solid #ccc; font-weight:bold; color:#ef6c00; font-size:16px;">4순위</td>
     <td style="padding:15px; border:1px solid #ccc; font-weight:bold;">(시중은행 특별자금 등 / 세부자금명)</td>
     <td style="padding:15px; border:1px solid #ccc; color:#d32f2f; font-weight:bold;">(예: 1억 원)</td>
     <td style="padding:15px; border:1px solid #ccc; text-align:left; line-height:1.6;">(사유 및 전략을 상세하게 3~4줄 서술)</td>
@@ -364,13 +431,12 @@ if check_password():
                     except Exception as e:
                         status.update(label=f"❌ 오류: {str(e)}", state="error")
                         st.stop()
-            
             res = clean_html(st.session_state.get("generated_matching", ""))
             st.markdown(wrap_in_document(res), unsafe_allow_html=True)
             
             st.divider()
-            html_export = f"""<!DOCTYPE html><html><head><meta charset='utf-8'></head><body style='font-family:Malgun Gothic; background-color:#f4f4f4; padding:40px;'><div style='max-width:900px; margin:0 auto; background:#fff; padding:60px; border-radius:8px;'>{res}</div></body></html>"""
-            st.download_button("📥 리포트 HTML 다운로드", data=html_export, file_name=f"{v.c_name}_매칭리포트.html", mime="text/html", type="primary")
+            html_export = f"""<!DOCTYPE html><html><head><meta charset='utf-8'></head><body style='font-family:Malgun Gothic; background-color:#f4f4f4; padding:40px;'><div style='max-width:900px; margin:0 auto; background:#fff; padding:60px; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.1);'>{res}</div></body></html>"""
+            st.download_button("📥 매칭 리포트 HTML 다운로드", data=html_export, file_name=f"{v.c_name}_매칭리포트.html", mime="text/html", type="primary")
 
     # ==========================================
     # 모드 C: PLAN
@@ -440,6 +506,13 @@ if check_password():
                 st.subheader("📄 미리보기: 기업현황 및 사업계획서(통합)")
                 st.markdown(wrap_in_document(st.session_state["semas_result_html"]), unsafe_allow_html=True)
                 st.download_button("📥 다운로드", f"<!DOCTYPE html><html><body style='font-family:Malgun Gothic; background-color:#f4f4f4; padding:40px;'><div style='max-width:900px; margin:0 auto; background:#fff; padding:60px; border-radius:8px;'>{st.session_state['semas_result_html']}</div></body></html>", f"{v.c_name}_소진공.html", "text/html")
+
+    elif st.session_state["view_mode"] == "FULL_PLAN":
+        if st.button("⬅️ 대시보드 (입력화면)로 돌아가기"):
+            st.session_state["view_mode"] = "INPUT"
+            st.rerun()
+        st.title("📑 AI 사업계획서 자동 생성")
+        st.radio("💡 용도 선택", ["기관제출용", "투자용(IR)"], horizontal=True)
 
     # ==========================================
     # 메인 대시보드 (입력폼)
