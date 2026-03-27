@@ -339,7 +339,12 @@ if check_password():
                 if not gov_str: gov_str = "지원사업 이력 없음"
 
                 if "generated_report" not in st.session_state:
-                    with st.status("🚀 제미나이(Gemini)가 가로형 레이아웃으로 완벽한 리포트를 생성 중입니다...", expanded=True) as status:
+                    with st.status("🚀 리포트 분석 및 렌더링 중...", expanded=True) as status:
+                        st.write("⏳ 1/3: 기업 재무 데이터 및 인증 정보 연동 중...")
+                        time.sleep(1)
+                        st.write("⏳ 2/3: 경영컨설턴트 모델 로직 분석 중...")
+                        time.sleep(1)
+                        st.write("⏳ 3/3: 리포트 서식 생성 중... (약 15~30초 소요)")
                         try:
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
@@ -627,7 +632,12 @@ if check_password():
         else:
             try:
                 if "generated_matching" not in st.session_state:
-                    with st.status("🚀 제미나이(Gemini)가 전년도 매출 기준으로 심사를 진행 중입니다...", expanded=True) as status:
+                    with st.status("🚀 매칭 심사 및 리포트 생성 중...", expanded=True) as status:
+                        st.write("⏳ 1/3: 기업 재무 데이터 및 기대출 내역 로딩 중...")
+                        time.sleep(1)
+                        st.write("⏳ 2/3: 중진공/보증기관 지원 가능 여부 필터링 중...")
+                        time.sleep(1)
+                        st.write("⏳ 3/3: 최적 자금 매칭 로직 적용 중... (약 15~30초 소요)")
                         try:
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
@@ -849,6 +859,7 @@ if check_password():
         edu_major = d.get('in_edu_major', '')
         home_addr = d.get('in_home_addr', '')
         process_desc = d.get('in_process_desc', '미입력')
+        biz_no = format_biz_no(d.get('in_raw_biz_no', '미입력'))
         
         s_25 = format_kr_currency(d.get('in_sales_2025', 0))
         s_cur = format_kr_currency(d.get('in_sales_current', 0))
@@ -858,10 +869,12 @@ if check_password():
         req_fund = format_kr_currency(d.get('in_req_amount', 0))
         fund_type, fund_purpose = d.get('in_fund_type', '운전자금'), d.get('in_fund_purpose', '미입력')
         item, market, diff, route = d.get('in_item_desc', '미입력'), d.get('in_market_status', '미입력'), d.get('in_diff_point', '미입력'), d.get('in_sales_route', '')
+        lease_status = d.get('in_lease_status', '자가')
+        start_date_str = d.get('in_start_date', '미입력').strip()
         
         biz_years = 0
-        if d.get('in_start_date', '').strip():
-            try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
+        if start_date_str and start_date_str != '미입력':
+            try: biz_years = max(0, 2026 - int(start_date_str[:4]))
             except: pass
             
         certs_names = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
@@ -934,7 +947,12 @@ if check_password():
                 st.caption("💡 포커스: 자금소요 내역, 상환계획, 27/28년 예상매출 및 공정도")
                 
                 if st.button("🚀 중진공 융자신청서(공통) 바로보기", use_container_width=True):
-                    with st.status("🚀 융자신청서(공통양식) 빈칸을 완벽하게 채우는 중입니다...", expanded=True) as status:
+                    with st.status("🚀 분석 및 생성 작업 시작...", expanded=True) as status:
+                        st.write("⏳ 1/3: 기업 기본 데이터 및 재무 정보 연동 중...")
+                        time.sleep(1.2)
+                        st.write("⏳ 2/3: 해당 자금의 심사역 평가 기준 매칭 중...")
+                        time.sleep(1.2)
+                        st.write("⏳ 3/3: 맞춤형 서식으로 AI 렌더링 중... (최대 20초 소요)")
                         try:
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
@@ -1035,7 +1053,12 @@ if check_password():
                     st.caption("💡 포커스: 기술성, 양산 및 매출 확대, 고용창출 중심")
                 
                 if st.button(f"🚀 중진공 {kosme_fund_type} 바로보기", use_container_width=True):
-                    with st.status(f"🚀 '{kosme_fund_type}' 전용 1타 심사역 로직으로 작성 중입니다...", expanded=True) as status:
+                    with st.status(f"🚀 분석 및 생성 작업 시작...", expanded=True) as status:
+                        st.write("⏳ 1/3: 기업 기본 데이터 및 재무 정보 연동 중...")
+                        time.sleep(1.2)
+                        st.write(f"⏳ 2/3: '{kosme_fund_type}' 1타 심사역 로직 주입 중...")
+                        time.sleep(1.2)
+                        st.write("⏳ 3/3: 프리미엄 서술형 문서 렌더링 중... (최대 30초 소요)")
                         try:
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
@@ -1509,311 +1532,153 @@ if check_password():
         with tabs[1]:
             st.subheader("🏪 소상공인시장진흥공단 (소진공)")
             
-            # 🚀 소진공 카테고리 100% 최신 반영 (중진공 찌꺼기 완벽 제거)
-            semas_categories = {
-                "혁신성장촉진자금": ["혁신성장촉진자금"],
-                "상생성장지원자금": ["상생성장지원자금"],
-                "신용취약소상공인자금": ["신용취약소상공인자금"],
-                "일시적경영애로자금": ["일시적경영애로자금"],
-                "재도전특별자금": ["재도전특별자금"],
-                "민간투자연계형매칭융자": ["민간투자연계형매칭융자"]
-            }
+            # 🚀 소진공 카테고리 100% 최신 반영 (중진공 찌꺼기 완벽 제거 및 단일 선택)
+            semas_fund_list = [
+                "혁신성장촉진자금",
+                "상생성장지원자금",
+                "신용취약소상공인자금",
+                "일시적경영애로자금",
+                "재도전특별자금",
+                "민간투자연계형매칭융자"
+            ]
             
-            col_s_dd1, col_s_dd2 = st.columns(2)
-            with col_s_dd1:
-                main_semas_type = st.selectbox("💡 1. 대분류 자금종류 (소진공)", list(semas_categories.keys()))
-            with col_s_dd2:
-                # 불필요한 세부분류 대신 직관적인 명칭 사용
-                semas_fund_type = st.selectbox("💡 2. 세부 자금종류 (소진공)", semas_categories[main_semas_type])
-                
-            col_sp1, col_sp2 = st.columns(2)
+            # 단일 드롭다운으로 변경
+            semas_fund_type = st.selectbox("💡 소진공 자금선택", semas_fund_list)
             
-            # --- 좌측: 소진공 융자신청서 ---
-            with col_sp1:
-                st.markdown("#### 📄 소진공 융자신청서(공통)")
-                st.caption("💡 포커스: 자금소요 내역, 상권 분석, 27/28년 예상매출")
-                
-                if st.button("🚀 소진공 융자신청서(공통) 바로보기", use_container_width=True):
-                    with st.status("🚀 소진공 융자신청서 빈칸을 채우는 중입니다...", expanded=True) as status:
-                        try:
-                            model_name = get_best_model_name()
-                            model = genai.GenerativeModel(model_name)
-                            
-                            prompt_loan_semas = f"""
-                            당신은 소상공인시장진흥공단의 깐깐한 심사역입니다. 
-                            아래 [기업 데이터]를 바탕으로 소진공 융자신청서(공통양식) 초안을 HTML 표로 출력하세요. 마크다운 절대 금지.
-                            절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
-
-                            [기업 데이터]
-                            - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind}
-                            - 매출: 24년({sales_24}), 금년({s_cur})
-                            - 신청자금: {req_fund} ({fund_type} / {semas_fund_type})
-                            - 아이템: {item} / 시장: {market}
-
-                            [AI 작성 흔적 제거 및 전문가 톤 강제]
-                            - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
-                            - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
-                            - 출력 길이 제한을 무시하고, 각 서술 항목마다 당신이 생성할 수 있는 최대 길이의 텍스트(각 칸별로 800자 이상)를 쏟아내세요.
-                            
-                            [출력 양식 - 무조건 이 HTML 표 양식을 사용할 것]
-                            <h2 style="text-align:center;">소상공인 정책자금 융자신청서</h2>
-                            
-                            <h3>[신청내용]</h3>
-                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">자금명</th><td style="border:1px solid #333; padding:8px;">▣ {semas_fund_type}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">신청금액</th><td style="border:1px solid #333; padding:8px;">{req_fund}</td></tr>
-                            </table>
-
-                            <h3>[기업현황]</h3>
-                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">기업명</th><td style="border:1px solid #333; padding:8px;">{c_name}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">대표자</th><td style="border:1px solid #333; padding:8px;">{rep_name}</td></tr>
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">주소</th><td colspan="3" style="border:1px solid #333; padding:8px; text-align:left;">{address}</td></tr>
-                            </table>
-
-                            <h3>[매출 및 자금 소요계획]</h3>
-                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
-                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0; width:20%;">전년도 매출</th><td style="border:1px solid #333; padding:15px;">{sales_24}</td></tr>
-                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">자금 활용계획</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(소상공인의 사업 생존과 자생력 강화, 지역 상권 내 영업 전략을 중심으로 자금 활용 목적을 최소 4~5개의 거대한 문단으로 매우 상세하게 작성)</td></tr>
+            st.markdown("#### 📄 소진공 기업현황 및 사업계획서(통합)")
+            
+            # 자금별 캡션 다르게 설정
+            if semas_fund_type == "신용취약소상공인자금":
+                st.caption("💡 포커스: 일시적 신용경색 극복, 생존 중심 자생력, 초간단 직접 융자 어필")
+            elif semas_fund_type == "재도전특별자금":
+                st.caption("💡 포커스: 과거 폐업 사유 분석, 극복 방안, 재창업 성공 시나리오")
+            elif semas_fund_type == "일시적경영애로자금":
+                st.caption("💡 포커스: 외부 위기 요인 소명, 자구 노력, 자금 수혈을 통한 즉각 회복")
+            elif semas_fund_type == "민간투자연계형매칭융자":
+                st.caption("💡 포커스: 민간 투자 매칭 레버리지, 시장 검증 완료, 기업형 소상공인 J커브 성장")
+            else: # 혁신성장, 상생성장 등
+                st.caption("💡 포커스: 스마트 혁신, B2B/판로 확대, 고용창출 및 스케일업(Scale-up)")
+            
+            # 🚀 소진공은 좌우 구분 없이 '통합' 1버튼 체제로 변경
+            if st.button(f"🚀 소진공 {semas_fund_type} 기업현황 및 사업계획서 생성", use_container_width=True):
+                with st.status(f"🚀 분석 및 생성 작업 시작...", expanded=True) as status:
+                    st.write("⏳ 1/3: 기업 기본 데이터 및 재무 정보 연동 중...")
+                    time.sleep(1.2)
+                    st.write(f"⏳ 2/3: '{semas_fund_type}' 소진공 맞춤 로직 매칭 중...")
+                    time.sleep(1.2)
+                    st.write("⏳ 3/3: 소상공인 관점의 개조식 공식 표 양식 렌더링 중... (약 15~20초 소요)")
+                    try:
+                        model_name = get_best_model_name()
+                        model = genai.GenerativeModel(model_name)
+                        
+                        # 과거 폐업 HTML 조건부 추가
+                        past_close_html = ""
+                        if semas_fund_type == "재도전특별자금":
+                            past_close_html = """
+                            <h4 style="color:#333;">■ 과거 폐업 기업 현황 (재도전특별자금 전용)</h4>
+                            <table style="width:100%; border-collapse:collapse; border:1px solid #000; text-align:center; font-size:13px; margin-bottom:20px;">
+                              <tr><th style="background:#f0f0f0; border:1px solid #000; padding:8px; width:15%;">과거 업체명</th><td style="border:1px solid #000; padding:8px; width:35%;">(과거 기업명 기재)</td><th style="background:#f0f0f0; border:1px solid #000; padding:8px; width:15%;">창업/폐업일</th><td style="border:1px solid #000; padding:8px; width:35%;">(YYYY.MM.DD ~ YYYY.MM.DD)</td></tr>
+                              <tr><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">업종/제품</th><td colspan="3" style="border:1px solid #000; padding:8px; text-align:left;">(과거 영위했던 업종 및 제품명 기재)</td></tr>
+                              <tr><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">폐업 사유</th><td colspan="3" style="border:1px solid #000; padding:8px; text-align:left;">(뼈아픈 실패 원인과 냉철한 분석을 개조식으로 2~3줄 명확히 기재)</td></tr>
                             </table>
                             """
-                            response = model.generate_content(prompt_loan_semas)
-                            st.session_state["semas_result_type"] = "loan"
-                            st.session_state["semas_result_html"] = clean_html_output(response.text)
-                            status.update(label="✅ 소진공 융자신청서 생성 완료!", state="complete")
-                        except Exception as e:
-                            status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
-            
-            # --- 우측: 소진공 사업계획서 ---
-            with col_sp2:
-                st.markdown(f"#### 📝 소진공 사업계획서 ({semas_fund_type})")
-                
-                # 자금별 캡션 다르게 설정
-                if main_semas_type == "신용취약소상공인자금":
-                    st.caption("💡 포커스: 일시적 신용경색 극복, 생존 중심 자생력, 초간단 직접 융자 어필")
-                elif main_semas_type == "재도전특별자금":
-                    st.caption("💡 포커스: 과거 폐업 사유 분석, 극복 방안, 재창업 성공 시나리오")
-                elif main_semas_type == "일시적경영애로자금":
-                    st.caption("💡 포커스: 외부 위기 요인 소명, 자구 노력, 자금 수혈을 통한 즉각 회복")
-                elif main_semas_type == "민간투자연계형매칭융자":
-                    st.caption("💡 포커스: 민간 투자 매칭 레버리지, 시장 검증 완료, 기업형 소상공인 J커브 성장")
-                else: # 혁신성장, 상생성장 등
-                    st.caption("💡 포커스: 스마트 혁신, B2B/판로 확대, 고용창출 및 스케일업(Scale-up)")
-                
-                if st.button(f"🚀 소진공 {semas_fund_type} 바로보기", use_container_width=True):
-                    with st.status(f"🚀 '{semas_fund_type}' 전용 1타 심사역 로직으로 작성 중입니다...", expanded=True) as status:
-                        try:
-                            model_name = get_best_model_name()
-                            model = genai.GenerativeModel(model_name)
                             
-                            # 자금별 맞춤 프롬프트 생성 로직
-                            prompt_plan_semas = f"""
-                            당신은 소상공인시장진흥공단의 깐깐한 심사역입니다. 
-                            [기업데이터] 기업명:{c_name} / 아이템:{item} / 시장현황:{market} / 경쟁우위:{diff}
-                            
-                            현재 '{semas_fund_type}' 사업계획서를 서술형 프리미엄 문서 양식(HTML)으로 작성해야 합니다.
-                            절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
-
-                            [AI 작성 흔적 제거 및 분량/가독성 강제 (매우 중요!!!)]
-                            - 전체 출력 결과물이 A4 용지 4~5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
-                            - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
-                            - 실제 1타 경영컨설턴트가 며칠간 분석하여 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어와 자연스러운 문장 흐름을 유지하세요.
-                            - 문단 구분을 확실히 하고, 핵심 포인트는 글머리 기호(&bull;)나 굵은 글씨(<b>)를 사용하여 가독성을 극대화하세요. 빽빽한 서술형을 피하고 문맥에 맞게 적절히 줄바꿈(<br>)을 수행하세요.
-                            - 외부 지식베이스(상권 데이터, 트렌드 등)를 적극 끌어와 서술형 칸을 전문적으로 아주 방대하게 채우세요.
+                        # 신용취약 자금조달계획 조건부 추가
+                        funding_plan_html = ""
+                        if semas_fund_type == "신용취약소상공인자금":
+                            funding_plan_html = """
+                            <h4 style="color:#333;">■ 자금조달 계획 (단위: 백만원)</h4>
+                            <table style="width:100%; border-collapse:collapse; border:1px solid #000; text-align:center; font-size:13px; margin-bottom:20px;">
+                              <tr style="background:#f0f0f0;"><th style="border:1px solid #000; padding:8px;">본인 자체자금</th><th style="border:1px solid #000; padding:8px;">본건 대출금</th><th style="border:1px solid #000; padding:8px;">타기관 대출금 등</th><th style="border:1px solid #000; padding:8px;">합계</th></tr>
+                              <tr><td style="border:1px solid #000; padding:8px;">(수치)</td><td style="border:1px solid #000; padding:8px;">(수치)</td><td style="border:1px solid #000; padding:8px;">(수치)</td><td style="border:1px solid #000; padding:8px; font-weight:bold;">(합계)</td></tr>
+                            </table>
                             """
 
-                            if main_semas_type == "신용취약소상공인자금":
-                                prompt_plan_semas += f"""
-                                [신용취약소상공인자금 핵심 작성 룰]
-                                1. 거창한 3년 후 비전보다는 '생존'과 '안정적인 현금흐름' 창출을 강조하세요.
-                                2. 신용 경색의 원인이 사업 구조적 결함이 아니라 일시적 현상임을 소명하고, 본 자금이 원부자재/마케팅에 투입되면 즉각 숨통이 트임을 수치로 증명하세요.
-                                3. 자체 자금 조달 노력과 대출금 상환 의지를 강력하게 어필하세요.
+                        prompt_plan_semas = f"""
+                        당신은 소상공인시장진흥공단의 깐깐한 심사역입니다. 
+                        [기업데이터] 기업명:{c_name} / 아이템:{item} / 시장현황:{market} / 경쟁우위:{diff} / 대표자:{rep_name} / 설립일:{start_date_str} / 사업자번호:{biz_no} / 주소:{address} / 소유:{lease_status} / 경력:{career} / 매출(23/24/당기):{sales_23}/{sales_24}/{s_cur} / 신청자금:{req_fund}
+                        
+                        현재 '{semas_fund_type}' 융자를 위한 통합 [기업현황 및 사업계획서]를 작성해야 합니다.
+                        절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
 
-                                [출력 HTML 뼈대]
-                                <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">신용취약소상공인자금 사업계획서</h1>
-                                <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(기업명: {c_name})</h2>
+                        [AI 작성 흔적 제거 및 양식 강제 (매우 중요!!!)]
+                        - 소상공인 대표가 직접 쓴 것처럼 장황한 AI식 에세이체("결론적으로", "이처럼", "도움이 될 것입니다")를 전면 금지합니다.
+                        - "개조식(Bullet point style)", "단문 위주", "핵심 팩트 위주"로 아주 간결하고 명확하게 표 안의 내용을 채우세요.
+                        - 길고 지루한 문장 대신, 짧은 문장 여러 개와 <br> 태그를 사용하여 표 안의 여백을 시원하고 가독성 좋게 채우세요.
+                        - 당신이 지어낸 가상의 내용(거래처명 등)도 그럴듯한 소상공인 수준의 현실적인 텍스트로 채우세요.
 
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 주 서비스·생산품목의 용도 및 특성</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (주요 플랫폼 활용 현황 및 서비스의 특징, 고객 반응을 1000자 이상 방대하게 작성...)
-                                </p>
+                        [자금별 작성 룰]
+                        - 혁신성장/상생성장: 스마트 기술 도입, B2B 거래, 고용 증가 위주의 간결한 개조식 서술.
+                        - 일시적경영애로: 매출 하락의 외부적 요인(시장침체 등)과 자구책, 자금 수혈 시 즉각 회복을 강조.
+                        - 재도전특별: 실패 원인 분석과 차별화된 극복 전략 강조.
+                        - 신용취약: 생존, 원부자재 확보, 자체 상환 의지를 강조.
+                        - 민간투자연계: 투자 유치 포인트와 레버리지 성장성 강조.
+                        
+                        [출력 HTML 뼈대 - 반드시 아래 표 구조를 100% 똑같이 유지할 것]
+                        <h2 style="text-align:center; color:#002b5e; margin-bottom:30px;">기업현황 및 사업계획서 ({semas_fund_type})</h2>
 
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 자금용도 및 사업계획 (자생력 회복 중심)</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (현재의 일시적 어려움과 이를 타개하기 위한 마케팅/영업 전략, 자금 투입 시 즉각적 회복 시나리오를 1500자 이상 방대하게 작성...)
-                                </p>
+                        <h3 style="color:#333; border-bottom:2px solid #000; padding-bottom:5px;">1. 개요 및 회사연혁</h3>
+                        <table style="width:100%; border-collapse:collapse; border:1px solid #000; text-align:center; font-size:13px; margin-bottom:20px;">
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">업체명</th><td style="border:1px solid #000; padding:8px;">{c_name}</td><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">대표자</th><td style="border:1px solid #000; padding:8px;">{rep_name}</td><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">설립일자</th><td style="border:1px solid #000; padding:8px;">{start_date_str}</td></tr>
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">사업자번호</th><td colspan="5" style="border:1px solid #000; padding:8px; text-align:left;">{biz_no}</td></tr>
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">본사주소</th><td colspan="5" style="border:1px solid #000; padding:8px; text-align:left;">{address}</td></tr>
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">소유구분</th><td colspan="5" style="border:1px solid #000; padding:8px; text-align:left;">{lease_status}</td></tr>
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">주요 연혁</th><td colspan="5" style="border:1px solid #000; padding:8px; text-align:left; line-height:1.6;">(창업, 확장 등 핵심 연혁 개조식으로 2~3줄 기재)</td></tr>
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">대표자 경력</th><td colspan="5" style="border:1px solid #000; padding:8px; text-align:left; line-height:1.6;">{career}</td></tr>
+                        </table>
 
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 자금조달 및 상환 계획</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (본건 대출금과 자체 자금의 배분, 현실적인 월별 상환 재원 마련 구조를 1000자 이상 방대하게 작성...)
-                                </p>
-                                [GRAPH_INSERT_POINT]
-                                """
-                            elif main_semas_type == "재도전특별자금":
-                                prompt_plan_semas += f"""
-                                [재도전특별자금 핵심 작성 룰]
-                                1. 과거 폐업 사유에 대한 냉철한 원인 분석을 반드시 포함하세요.
-                                2. 이번 재창업에서는 그 실패 요인을 어떻게 극복했는지(차별화된 비즈니스 모델, 보완책)를 강력하게 서술하세요.
-                                3. 재창업 성공을 통한 자생력 확보 및 일자리 창출 의지를 어필하세요.
+                        <h3 style="color:#333; border-bottom:2px solid #000; padding-bottom:5px;">2. 매출 및 거래처 현황</h3>
+                        <table style="width:100%; border-collapse:collapse; border:1px solid #000; text-align:center; font-size:13px; margin-bottom:20px;">
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">23년 매출</th><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">24년 매출</th><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">금년 매출</th><th style="background:#f0f0f0; border:1px solid #000; padding:8px;">주요 거래처</th></tr>
+                          <tr><td style="border:1px solid #000; padding:8px;">{sales_23}</td><td style="border:1px solid #000; padding:8px;">{sales_24}</td><td style="border:1px solid #000; padding:8px;">{s_cur}</td><td style="border:1px solid #000; padding:8px;">(입력된 거래처 기반 개조식 작성)</td></tr>
+                        </table>
 
-                                [출력 HTML 뼈대]
-                                <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">재도전특별자금 사업계획서</h1>
-                                <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(기업명: {c_name})</h2>
+                        <div style="page-break-before: always; padding-top: 20px;"></div>
 
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 과거 폐업 원인 분석 및 극복 전략</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (과거 실패 원인의 냉철한 분석과 현재 모델이 이를 어떻게 원천 차단했는지 1000자 이상 방대하게 작성...)
-                                </p>
+                        <h3 style="color:#333; border-left:4px solid #002b5e; padding-left:8px; border-bottom:2px solid #000; padding-bottom:5px;">■ 사업계획서</h3>
+                        
+                        {past_close_html}
 
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 현재 사업 개요 및 경쟁력</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (재창업 아이템의 특성, 차별화 요소, 시장 내 포지셔닝을 1500자 이상 방대하게 작성...)
-                                </p>
+                        <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-size:13px; margin-bottom:20px;">
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:15px; width:25%; text-align:center;">사업내용 및<br>대출금 사용목적</th><td style="border:1px solid #000; padding:15px; line-height:1.6;">(자금별 성격에 맞춰 소상공인이 필요한 자금 용도와 사업 내용을 간결한 개조식으로 명확히 4~5줄 작성)</td></tr>
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:15px; text-align:center;">기술, 제품(상품),<br>점포의 경쟁력</th><td style="border:1px solid #000; padding:15px; line-height:1.6;">(핵심 기술, 상권 내 경쟁력, 품질, 차별성을 개조식 단문으로 명확히 4~5줄 작성)</td></tr>
+                          <tr><th style="background:#f0f0f0; border:1px solid #000; padding:15px; text-align:center;">시장상황 및<br>판매계획</th><td style="border:1px solid #000; padding:15px; line-height:1.6;">(주요 고객층, 마케팅 방법, 수요 대응 전략을 개조식 단문으로 명확히 4~5줄 작성)</td></tr>
+                        </table>
 
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 마케팅 전략 및 자금 활용 계획</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (목표 매출 달성을 위한 구체적 판로 확보 방안과 자금 투입 효과를 1500자 이상 방대하게 작성...)
-                                </p>
-                                [GRAPH_INSERT_POINT]
-                                """
-                            elif main_semas_type == "일시적경영애로자금":
-                                prompt_plan_semas += f"""
-                                [일시적경영애로자금 핵심 작성 룰]
-                                1. 위기 요인 명확화: 현재의 매출 감소가 내부 결함이 아닌 '외부 환경(시장 침체, 재해 등)'에 의한 일시적 현상임을 소명하세요.
-                                2. 자구 노력 어필: 자체적인 비용 절감, 판로 개척 등 뼈를 깎는 노력을 하고 있음을 어필하세요.
-                                3. 자금 투입 = 즉각적 회복: 본 자금이 투입되었을 때 어떻게 즉각적으로 정상화될 수 있는지 시나리오를 제시하세요.
+                        {funding_plan_html}
 
-                                [출력 HTML 뼈대]
-                                <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">일시적경영애로자금 사업계획서</h1>
-                                <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(기업명: {c_name})</h2>
+                        <h4 style="color:#333;">□ 자금집행계획 (단위: 백만원)</h4>
+                        <table style="width:100%; border-collapse:collapse; border:1px solid #000; text-align:center; font-size:13px; margin-bottom:20px;">
+                          <tr style="background:#f0f0f0;"><th style="border:1px solid #000; padding:8px;">구분</th><th style="border:1px solid #000; padding:8px;">품목/내용</th><th style="border:1px solid #000; padding:8px;">소요금액</th></tr>
+                          <tr><td style="border:1px solid #000; padding:8px;" rowspan="3">운전자금 /<br>시설자금</td><td style="border:1px solid #000; padding:8px; text-align:left;">(원부자재, 마케팅비 등 구체적 기재)</td><td style="border:1px solid #000; padding:8px;">(자동산출)</td></tr>
+                          <tr><td style="border:1px solid #000; padding:8px; text-align:left;">(인건비, 생산부대비용 등 구체적 기재)</td><td style="border:1px solid #000; padding:8px;">(자동산출)</td></tr>
+                          <tr><td style="border:1px solid #000; padding:8px; text-align:left;">(기계/설비/인테리어 등 구체적 기재)</td><td style="border:1px solid #000; padding:8px;">(자동산출)</td></tr>
+                          <tr style="font-weight:bold; background:#fafafa;"><td style="border:1px solid #000; padding:8px;" colspan="2">총 소요금액</td><td style="border:1px solid #000; padding:8px; color:#c62828;">{req_fund}</td></tr>
+                        </table>
+                        """
 
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 경영애로 발생 원인 및 자구 노력</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (외부적 위기 요인 소명 및 이를 극복하기 위해 현재 진행 중인 자구책을 1000자 이상 방대하게 작성...)
-                                </p>
-
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 핵심 사업 역량 및 시장 경쟁력</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (위기만 넘기면 충분히 성장할 수 있는 본원적 경쟁력과 아이템 특성을 1500자 이상 방대하게 작성...)
-                                </p>
-
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 자금 투입에 따른 정상화 및 회복 시나리오</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (자금 활용 계획과 투입 직후 발생하는 V자 반등의 구체적 근거를 1500자 이상 방대하게 작성...)
-                                </p>
-                                [GRAPH_INSERT_POINT]
-                                """
-                            elif main_semas_type == "민간투자연계형매칭융자":
-                                prompt_plan_semas += f"""
-                                [민간투자연계형매칭융자 핵심 작성 룰]
-                                1. 투자 유치 포인트 강조: 왜 민간 투자자들이 우리 아이템에 돈을 넣었는지(시장성, 차별성, 팀 역량)를 전면에 내세우세요.
-                                2. 스케일업(매칭) 효과 증명: "투자금 + 정부 매칭 융자"가 결합되었을 때 폭발적으로 일어나는 레버리지 효과를 증명하세요.
-                                3. 기업형 소상공인 어필: 라이프스타일 혁신, 온라인 확장, 스마트 기술 도입 등을 통해 스케일업 하겠다는 비전을 제시하세요.
-
-                                [출력 HTML 뼈대]
-                                <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">민간투자연계형매칭융자 사업계획서</h1>
-                                <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(기업명: {c_name})</h2>
-
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 민간 투자 유치 배경 및 핵심 경쟁력</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (시장에서 검증받은 사업성, 투자 유치 포인트, 당사만의 독보적 차별성을 1500자 이상 방대하게 작성...)
-                                </p>
-
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 스케일업 전략 및 시장 확장성</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (단순 소상공인을 넘어 기업형 소상공인으로 성장하기 위한 마케팅, 시스템 고도화 전략을 1500자 이상 방대하게 작성...)
-                                </p>
-
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 매칭 융자 활용 계획 및 레버리지 효과</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (투자금과 매칭 융자의 시너지 효과, 구체적 자금 집행 내역, J커브 성장 및 고용창출 비전을 1500자 이상 방대하게 작성...)
-                                </p>
-                                [GRAPH_INSERT_POINT]
-                                """
-                            else:
-                                prompt_plan_semas += f"""
-                                [상생성장 / 혁신성장 등 일반 소진공 자금 핵심 작성 룰]
-                                1. 개인 고객(B2C)뿐만 아니라, 확실한 거래처(B2B)나 플랫폼 등과의 '상생/협력' 모델이 구축되어 있음을 강조하세요.
-                                2. 자금이 투입되어 설비/마케팅이 확충되면 필연적으로 신규 고용이 창출되고 지역 상권에 기여한다는 '스케일업 스토리'를 작성하세요.
-                                3. 수요는 넘치는데 자금이 부족해 성장이 지연된 상태며, 이 자금이 도약의 변곡점이 될 것임을 증명하세요.
-
-                                [출력 HTML 뼈대]
-                                <h1 style="text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:10px;">{semas_fund_type} 사업계획서</h1>
-                                <h2 style="text-align:center; font-size:24px; color:#333; margin-top:0; margin-bottom:40px;">(기업명: {c_name})</h2>
-
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">1. 사업 개요 및 지역 상권(시장) 분석</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (기업 핵심 역량과 타겟 상권/시장의 기회 요인을 1500자 이상 방대하게 작성...)
-                                </p>
-
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">2. 스케일업(도약) 및 영업 마케팅 전략</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (B2B 판로, 온라인 플랫폼 확장 등 정체를 깨고 도약할 핵심 마케팅 전략을 1500자 이상 방대하게 작성...)
-                                </p>
-
-                                <h2 style="font-size:22px; color:#002b5e; border-bottom:2px solid #002b5e; padding-bottom:5px; margin-top:40px; margin-bottom:20px;">3. 자금 활용 계획 및 일자리 창출(상생) 효과</h2>
-                                <p style="font-size:15px; line-height:1.8; color:#444; margin-bottom:20px;">
-                                (자금 투입을 통한 설비/운전 역량 강화와 이에 따른 고용창출, 지역경제 기여도를 1500자 이상 방대하게 작성...)
-                                </p>
-                                [GRAPH_INSERT_POINT]
-                                """
+                        response = model.generate_content(prompt_plan_semas)
+                        
+                        raw_text = response.text
+                        if "```html" in raw_text:
+                            cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
+                        elif "```" in raw_text:
+                            cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
+                        else:
+                            cleaned_html = raw_text.strip()
+                        
+                        cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
                             
-                            # 그래프 데이터 생성 (J커브)
-                            val_cur = safe_int(d.get('in_sales_current', 0))
-                            if val_cur <= 0: val_cur = 1000
-                            start_val = val_cur / 12
-                            end_val = start_val * 1.8 # 성장률 조정
-                            
-                            monthly_vals = []
-                            for i in range(12):
-                                progress = i / 11.0
-                                linear_part = start_val + (end_val - start_val) * progress
-                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
-                                monthly_vals.append(int(linear_part + wave_part))
-                                
-                            monthly_labels = [f"{i}월" for i in range(1, 13)]
-
-                            fig = go.Figure()
-                            fig.add_trace(go.Scatter(
-                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
-                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
-                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
-                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
-                            ))
-                            fig.update_layout(
-                                title="📈 자금 투입 후 향후 1년 월별 기대 매출 (성장 시뮬레이션)", xaxis_title="진행 월", yaxis_title="예상 매출액",
-                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
-                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
-                            )
-                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
-
-                            response = model.generate_content(prompt_plan_semas)
-                            
-                            raw_text = response.text
-                            if "```html" in raw_text:
-                                cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
-                            elif "```" in raw_text:
-                                cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
-                            else:
-                                cleaned_html = raw_text.strip()
-                            
-                            cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
-                            
-                            # 그래프 삽입
-                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
-                                parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
-                                cleaned_html = parts[0] + plotly_html + parts[2]
-                            else:
-                                cleaned_html += f"<br><br>{plotly_html}"
-                                
-                            st.session_state["semas_result_type"] = "plan"
-                            st.session_state["semas_result_html"] = cleaned_html
-                            status.update(label="✅ 소진공 맞춤 사업계획서(별첨) 생성 완료!", state="complete")
-                        except Exception as e:
-                            status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
-                            
+                        st.session_state["semas_result_type"] = "plan"
+                        st.session_state["semas_result_html"] = cleaned_html
+                        status.update(label="✅ 소진공 맞춤 통합 사업계획서 생성 완료!", state="complete")
+                    except Exception as e:
+                        status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
+                        
             # 결과 화면 출력 (소진공 하단)
             if "semas_result_html" in st.session_state:
                 st.divider()
-                doc_title = "소진공 사업계획서(별첨)" if st.session_state["semas_result_type"] == "plan" else "소진공 융자신청서(공통)"
+                doc_title = "기업현황 및 사업계획서(통합)"
                 st.subheader(f"📄 생성된 문서 확인: {doc_title}")
                 st.markdown(st.session_state["semas_result_html"], unsafe_allow_html=True)
                 
@@ -1821,13 +1686,13 @@ if check_password():
                 if not safe_file_name: safe_file_name = "업체"
                 html_export = f"""
                 <!DOCTYPE html>
-                <html><head><meta charset="utf-8"><title>{c_name} {doc_title}</title>
+                <html><head><meta charset="utf-8"><title>{c_name} 소진공 {doc_title}</title>
                 <style>
                     * {{ box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }}
                     body {{ font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; }}
                     .document-container {{ max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; box-shadow: 0 0 15px rgba(0,0,0,0.1); border-radius: 8px; color: #333; line-height: 1.6; font-size: 15px; white-space: pre-wrap; }}
                     table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }}
-                    td, th {{ border: 1px solid #ccc; padding: 10px; }}
+                    td, th {{ border: 1px solid #000; padding: 10px; }}
                     th {{ background-color: #f0f0f0; }}
                     @media print {{ 
                         @page {{ size: A4; margin: 15mm; }}
@@ -1841,7 +1706,7 @@ if check_password():
                     </div>
                 </body></html>
                 """
-                st.download_button(label=f"📥 {doc_title} HTML 파일로 다운로드", data=html_export, file_name=f"{safe_file_name}_{doc_title}.html", mime="text/html", type="primary")
+                st.download_button(label=f"📥 소진공 {doc_title} HTML 다운로드", data=html_export, file_name=f"{safe_file_name}_소진공_{doc_title}.html", mime="text/html", type="primary")
 
     # ---------------------------------------------------------
     # [모드 D: 4. 정식 사업계획서 (마스터)]
