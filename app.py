@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import json
 import os
 import time
@@ -133,6 +134,26 @@ def get_common_vars(d):
     v.val_cur = safe_int(g('in_sales_current', 0))
     return v
 
+# --- PDF 다운로드를 위한 공통 CSS 템플릿 ---
+PDF_BASE_CSS = """
+<style>
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Malgun Gothic', sans-serif; background-color: #525659; padding: 40px 0; margin: 0; }
+    .document-container { max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); color: #333; line-height: 1.6; font-size: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+    td, th { border: 1px solid #ccc; padding: 12px; }
+    th { background-color: #f0f0f0; }
+    .page-break-before { page-break-before: always; clear: both; }
+    .page-break-avoid { page-break-inside: avoid; }
+    @media print { 
+        @page { size: A4; margin: 15mm; }
+        body { background-color: #fff; padding: 0 !important; color: black !important; zoom: 0.85; } 
+        .document-container { box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; }
+        .page-break-before { page-break-before: always !important; }
+    }
+</style>
+"""
+
 if check_password():
     # ==========================================
     # 1. 사이드바 (API 설정, 업체관리)
@@ -236,19 +257,19 @@ if check_password():
             corp_text = f"<br><span style='font-size:0.9em; color:#555;'>({v.corp_no})</span>" if v.corp_no else ""
             add_biz_row = f"<tr><th style='padding:15px; background-color:#e3f2fd; border:1px solid #ccc;'>추가사업장</th><td colspan='5' style='padding:15px; text-align:left; border:1px solid #ccc;'>{v.add_biz_addr}</td></tr>" if v.add_biz_status == '유' and v.add_biz_addr else ""
             
-            # 그래프 생성 (너비 780px 고정으로 오버플로우 방지)
+            # 그래프 생성 (너비 760px 고정으로 오버플로우 원천 차단)
             val_cur = v.val_cur if v.val_cur > 0 else 1000
             sv, ev = val_cur / 12, (val_cur / 12) * 1.5
             m_vals = [int(sv + (ev - sv)*(i/11.0) + (ev - sv)*0.15*np.sin((i/11.0)*np.pi*3.5)) for i in range(12)]
             fig = go.Figure(go.Scatter(x=[f"{i}월" for i in range(1, 13)], y=m_vals, mode='lines+markers+text', text=[format_kr_currency(x) for x in m_vals], textposition="top center", textfont=dict(size=12, color='#111'), line=dict(color='#ab47bc', width=4, shape='spline'), marker=dict(size=10, color='#ff7043', line=dict(width=2, color='white'))))
-            fig.update_layout(width=780, height=450, title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액", xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'), template="plotly_white", margin=dict(l=0, r=0, t=50, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig.update_layout(width=760, height=400, title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액", xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'), template="plotly_white", margin=dict(l=10, r=10, t=50, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
             
             if "generated_report" not in st.session_state:
                 with st.status("🚀 외부 시장 데이터 분석 및 리포트 렌더링 중...", expanded=True) as status:
                     st.write("⏳ 1/3: 기업 재무 및 아이템 분석 중...")
                     time.sleep(1)
-                    st.write(f"⏳ 2/3: '{v.item}' 관련 외부 시장 트렌드 및 전망 조사 중...")
+                    st.write(f"⏳ 2/3: '{v.item}' 관련 외부 시장 트렌드 및 전망 집중 조사 중...")
                     time.sleep(1.5)
                     st.write("⏳ 3/3: 파스텔톤 프리미엄 리포트 서식 생성 중... (최대 30초)")
                     try:
@@ -256,14 +277,14 @@ if check_password():
 [기업] 기업명:{v.c_name}/업종:{v.c_ind}/아이템:{v.item}/시장:{v.market}/차별화:{v.diff}/자금:{v.req_fund}/인증:{v.cert_status}/특허:{v.pat_str}
 
 [작성 규칙 - PDF 출력을 위한 스마트 페이지 분할 강제 적용] 
-1. 각 항목은 파스텔톤 색상(#e3f2fd, #e8f5e9, #fff3e0, #ffebee, #f3e5f5 등)을 적극 활용해 아름답고 고급스러운 표와 박스로 꾸며주세요.
-2. 각 대분류 항목(div, table 등)은 PDF 인쇄 시 중간에 반으로 잘리지 않도록 반드시 <div style="page-break-inside: avoid; margin-bottom:30px;"> 로 감싸주세요.
-3. '2. 시장 동향 및 아이템 분석' 파트에서는 외부 객관적 지식을 동원하여 {v.item}의 최신 트렌드, 시장 규모, 전망을 아주 방대하게 서술하세요.
+1. 각 항목은 파스텔톤 색상을 적극 활용해 아름답고 고급스러운 표와 박스로 꾸며주세요.
+2. 각 대분류 카테고리가 시작될 때마다 반드시 `<div class="page-break-before"></div>`를 삽입하여 PDF 인쇄 시 새 페이지에서 깔끔하게 넘어가도록 하세요.
+3. 🌟 가장 중요: '2. 시장 동향 및 아이템 분석' 파트에서는 인터넷 검색 수준의 당신의 방대한 외부 지식을 총동원하여, 해당 아이템({v.item}) 및 업종({v.c_ind})의 최신 시장 규모, 성장 트렌드, 향후 전망을 무조건 1000자 이상 아주 상세하게 서술하세요! (이 내용이 부실하면 안 됩니다.)
 
 [출력 뼈대]
 <h1 style="text-align:center; color:#111; margin-bottom:40px; font-size:32px;">📋 AI기업분석리포트</h1>
 
-<div style="page-break-inside: avoid; margin-bottom:30px;">
+<div class="page-break-inside-avoid">
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; font-size:20px;">1. 기업현황분석</h2>
 <table style="width:100%; border-collapse:collapse; text-align:center; border:1px solid #ccc; font-size:14px; margin-bottom:15px;">
   <tr><th style="background:#e3f2fd; border:1px solid #ccc; padding:10px; width:15%;">기업명</th><td style="border:1px solid #ccc; padding:10px; width:18%;">{v.c_name}</td><th style="background:#e3f2fd; border:1px solid #ccc; width:15%;">사업자유형</th><td style="border:1px solid #ccc; width:18%;">{v.biz_type}</td><th style="background:#e3f2fd; border:1px solid #ccc; width:15%;">업종</th><td style="border:1px solid #ccc; width:19%;">{v.c_ind}</td></tr>
@@ -271,14 +292,15 @@ if check_password():
   <tr><th style="background:#e3f2fd; border:1px solid #ccc; padding:10px;">인증/특허</th><td colspan="5" style="text-align:left; border:1px solid #ccc; padding:10px;">{v.cert_status} / {v.pat_str}</td></tr>
   {add_biz_row}
 </table>
-<div style="line-height:1.6; font-size:15px;">(해당 업종과 아이템의 잠재력을 외부 지식을 바탕으로 방대하게 3~4줄 서술)</div>
+<div style="margin-bottom:15px; line-height:1.6; font-size:15px;">(해당 업종과 아이템의 잠재력을 외부 지식을 바탕으로 방대하게 3~4줄 서술)</div>
 </div>
 
-<div style="page-break-inside: avoid; margin-bottom:30px;">
+<div class="page-break-before"></div>
+<div class="page-break-inside-avoid">
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; font-size:20px;">2. 시장 동향 및 아이템 분석 🌟</h2>
 <div style="background-color:#f3e5f5; padding:20px; border-radius:15px; margin-bottom:15px; line-height:1.8; border-left:5px solid #ab47bc;">
   <b style="font-size:16px; color:#6a1b9a;">📈 시장 최신 트렌드 및 전망 (외부 데이터 기반)</b><br><br>
-  (여기에 {v.item} 및 {v.c_ind}와 관련된 최신 시장 규모, 성장률, 트렌드를 외부 지식을 활용해 최소 3문단으로 아주 상세하고 방대하게 서술하세요.)
+  (여기에 {v.item} 및 {v.c_ind}와 관련된 최신 시장 규모, 성장률, 트렌드를 외부 지식을 활용해 최소 3~4문단으로 아주 상세하고 방대하게 서술하세요.)
 </div>
 <div style="background-color:#fff3e0; padding:20px; border-radius:15px; line-height:1.8; border-left:5px solid #ff9800;">
   <b style="font-size:16px; color:#e65100;">🎯 당사 아이템 포지셔닝 및 경쟁력</b><br><br>
@@ -286,7 +308,8 @@ if check_password():
 </div>
 </div>
 
-<div style="page-break-inside: avoid; margin-bottom:30px;">
+<div class="page-break-before"></div>
+<div class="page-break-inside-avoid">
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; font-size:20px;">3. SWOT 분석</h2>
 <table style="width:100%; border-collapse: collapse; margin-bottom:15px; table-layout: fixed;">
   <tr>
@@ -302,7 +325,8 @@ if check_password():
 </table>
 </div>
 
-<div style="page-break-inside: avoid; margin-bottom:30px;">
+<div class="page-break-before"></div>
+<div class="page-break-inside-avoid">
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; font-size:20px;">4. 핵심 경쟁력 및 자금사용계획 (신청자금: {v.req_fund})</h2>
 <table style="width:100%; border-collapse: collapse; text-align:left;">
   <tr style="background-color:#e3f2fd;"><th style="padding:15px; border:1px solid #90caf9; width:20%; text-align:center;">자금 종류</th><th style="padding:15px; border:1px solid #90caf9; width:60%; text-align:center;">상세 사용계획 (투자에 따른 생산성/매출 증대 효과)</th><th style="padding:15px; border:1px solid #90caf9; width:20%; text-align:center;">예정금액</th></tr>
@@ -313,7 +337,8 @@ if check_password():
 
 [GRAPH_INSERT_POINT]
 
-<div style="page-break-inside: avoid; margin-bottom:30px;">
+<div class="page-break-before"></div>
+<div class="page-break-inside-avoid">
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; font-size:20px;">5. 성장 비전 코멘트</h2>
 <table style="width:100%; border-collapse: collapse; margin-bottom:20px; text-align:center; table-layout: fixed;">
   <tr>
@@ -336,43 +361,15 @@ if check_password():
                         st.stop()
 
             res = clean_html(st.session_state.get("generated_report", ""))
+            html_export_content = res.replace('[GRAPH_INSERT_POINT]', f"<div class='page-break-inside-avoid' style='text-align:center; margin:30px 0;'>{plotly_html}</div>")
             
-            # --- 그래프를 문서 박스 사이에 안전하게 분리 렌더링 (튀어나옴 방지) ---
-            if "[GRAPH_INSERT_POINT]" in res:
-                parts = res.split("[GRAPH_INSERT_POINT]")
-                st.markdown(f"<div style='display:flex; justify-content:center;'><div style='width:100%; max-width:900px; background:#fff; padding:60px 60px 0 60px; border-radius:12px 12px 0 0; box-shadow:0 4px 15px rgba(0,0,0,0.08);'>{parts[0]}</div></div>", unsafe_allow_html=True)
-                
-                # Streamlit 컬럼을 활용해 강제 중앙 정렬 및 너비 고정
-                c1, c2, c3 = st.columns([1, 10, 1]) 
-                with c2: st.plotly_chart(fig, use_container_width=False) # use_container_width=False 로 오버플로우 원천차단
-                
-                st.markdown(f"<div style='display:flex; justify-content:center; margin-bottom:40px;'><div style='width:100%; max-width:900px; background:#fff; padding:0 60px 60px 60px; border-radius:0 0 12px 12px; box-shadow:0 4px 15px rgba(0,0,0,0.08);'>{parts[1]}</div></div>", unsafe_allow_html=True)
-                
-                # 다운로드용 병합 HTML
-                html_export_content = res.replace('[GRAPH_INSERT_POINT]', f"<div style='page-break-inside:avoid; text-align:center; margin:20px 0;'>{plotly_html}</div>")
-            else:
-                st.markdown(f"<div style='display:flex; justify-content:center; margin-bottom:40px;'><div style='width:100%; max-width:900px; background:#fff; padding:60px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.08);'>{res}</div></div>", unsafe_allow_html=True)
-                html_export_content = res + f"<br><br><div style='page-break-inside:avoid; text-align:center;'>{plotly_html}</div>"
+            html_export = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{v.c_name} AI기업분석리포트</title>{PDF_BASE_CSS}</head><body><div class='document-container'>{html_export_content}</div></body></html>"
+            
+            # --- 통짜 iframe으로 렌더링 (그래프 튀어나옴 완벽 방지) ---
+            components.html(html_export, height=1200, scrolling=True)
             
             st.divider()
-            
-            # PDF 출력을 위한 전용 CSS (page-break-inside: avoid 적용)
-            pdf_css = """
-            <style>
-                * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; }
-                .document-container { max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; border-radius: 8px; color: #333; line-height: 1.6; font-size: 15px; white-space: pre-wrap; box-shadow:0 4px 15px rgba(0,0,0,0.1); }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
-                td, th { padding: 10px; }
-                @media print { 
-                    @page { size: A4; margin: 15mm; }
-                    body { background-color: #fff; padding: 0 !important; color: black !important; zoom: 0.9; } 
-                    .document-container { box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; }
-                }
-            </style>
-            """
-            html_export = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{v.c_name} AI기업분석리포트</title>{pdf_css}</head><body><div class='document-container'>{html_export_content}</div></body></html>"
-            st.download_button("📥 리포트 HTML 다운로드", data=html_export, file_name=f"{v.c_name}_기업분석리포트.html", mime="text/html", type="primary")
+            st.download_button("📥 리포트 HTML 다운로드 (PDF 인쇄용)", data=html_export, file_name=f"{v.c_name}_기업분석리포트.html", mime="text/html", type="primary")
 
     # ==========================================
     # 모드 B: 매칭
@@ -397,20 +394,21 @@ if check_password():
 
 <h1 style="text-align:center; color:#111; margin-bottom:40px; font-size:32px;">🎯 AI 정책자금 최적화 매칭 리포트</h1>
 
-<div style="page-break-inside: avoid; margin-bottom:30px;">
+<div class="page-break-inside-avoid">
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; font-size:20px;">1. 기업 스펙 진단 요약</h2>
 <div style="background-color:#f8f9fa; padding:20px; border-radius:15px; border:1px solid #e0e0e0; margin-bottom:15px; line-height:1.8; font-size:14px;">
   <b>기업명:</b> {v.c_name} | <b>업종:</b> {v.c_ind} | <b>업력:</b> 약 {v.biz_years}년 | <b>근로자:</b> {v.emp_cnt}명 <br>
   <b>인증:</b> {v.cert_status} | <b>특허:</b> {v.pat_str} | <b>정부지원:</b> {v.gov_str} <br>
   <b>전년도매출:</b> <span style="color:#1565c0; font-weight:bold;">{v.s_25}</span> | <b>총 기대출:</b> <span style="color:red;">{v.tot_debt}</span> | <b style="font-size:1.15em;">희망 필요자금: {v.req_fund}</b>
 </div>
-<div style="padding:20px; background-color:#e3f2fd; border-radius:10px; font-size:14px; line-height:1.6; border-left:5px solid #1565c0;">
+<div style="margin-bottom:20px; padding:20px; background-color:#e3f2fd; border-radius:10px; font-size:14px; line-height:1.6; border-left:5px solid #1565c0;">
   <b style="color:#1565c0; font-size:16px;">💡 종합 진단 코멘트:</b><br><br>
   (기업의 현재 재무상황, 부채비율, 인증/특허 현황을 종합적으로 분석하여 자금 조달 가능성과 핵심 포인트를 3~4문장으로 아주 상세하고 방대하게 서술하세요)
 </div>
 </div>
 
-<div style="page-break-inside: avoid; margin-bottom:30px;">
+<div class="page-break-before"></div>
+<div class="page-break-inside-avoid">
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; font-size:20px;">2. 추천 자금 (1~4순위)</h2>
 <table style="width:100%; border-collapse: collapse; text-align:center; font-size:14px;">
   <tr style="background-color:#eceff1;">
@@ -446,7 +444,8 @@ if check_password():
 </table>
 </div>
 
-<div style="page-break-inside: avoid; margin-bottom:30px;">
+<div class="page-break-before"></div>
+<div class="page-break-inside-avoid">
 <h2 style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; font-size:20px;">3. 심사 전 필수 체크리스트 및 보완 가이드</h2>
 <div style="background-color:#ffebee; border-left:5px solid #d32f2f; padding:20px; border-radius:15px; font-size:14px; line-height:1.6;">
   <b style="font-size:1.1em; color:#c62828;">🚨 필수 보완 조언:</b><br><br>&bull; (특허/인증 확보 및 활용 조언 2줄)<br>&bull; (재무/고용 등 약점 보완 조언 2줄)
@@ -461,13 +460,12 @@ if check_password():
                         st.stop()
             
             res = clean_html(st.session_state.get("generated_matching", ""))
-            st.markdown(f"<div style='display:flex; justify-content:center; margin-bottom:40px;'><div style='width:100%; max-width:900px; background:#fff; padding:60px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.08);'>{res}</div></div>", unsafe_allow_html=True)
+            html_export = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{v.c_name} 매칭 리포트</title>{PDF_BASE_CSS}</head><body><div class='document-container'>{res}</div></body></html>"
+            
+            components.html(html_export, height=1000, scrolling=True)
             
             st.divider()
-            
-            pdf_css = """<style> * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; } .document-container { max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; border-radius: 8px; line-height: 1.5; white-space: pre-wrap; box-shadow:0 4px 15px rgba(0,0,0,0.1); } table { width: 100%; border-collapse: collapse; } td, th { padding: 8px !important; vertical-align: top; } @media print { @page { size: A4; margin: 10mm; } body { background-color: #fff; padding: 0 !important; color: black !important; zoom: 0.85; } .document-container { box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; } } </style>"""
-            html_export = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{v.c_name} 매칭 리포트</title>{pdf_css}</head><body><div class='document-container'>{res}</div></body></html>"
-            st.download_button("📥 매칭 리포트 HTML 다운로드", data=html_export, file_name=f"{v.c_name}_매칭리포트.html", mime="text/html", type="primary")
+            st.download_button("📥 매칭 리포트 HTML 다운로드 (PDF 인쇄용)", data=html_export, file_name=f"{v.c_name}_매칭리포트.html", mime="text/html", type="primary")
 
     # ==========================================
     # 모드 C: PLAN
@@ -495,7 +493,7 @@ if check_password():
                 if st.button("🚀 중진공 융자신청서 생성", use_container_width=True):
                     with st.status("🚀 융자신청서 생성 중..."):
                         try:
-                            pr = f"컨설턴트. 마크다운 금지. HTML 표.\n[기업]{v.c_name}/매출:{v.sales_24}/{v.s_cur}/자금:{v.req_fund}/아이템:{v.item}\n<div style='page-break-inside:avoid;'><h1 style='text-align:center; font-size:32px; margin-bottom:40px;'>중소기업 정책자금 융자신청서</h1><table style='width:100%; border-collapse:collapse; border:1px solid #333; font-size:14px; text-align:center;'><tr><th style='border:1px solid #333; padding:10px; background:#f0f0f0;'>신청자금</th><td style='border:1px solid #333;'>▣ {sf}</td><th style='border:1px solid #333; background:#f0f0f0;'>금액</th><td style='border:1px solid #333;'>{v.req_fund}</td></tr></table></div><br><p>(공정도, 시장상황 매우 상세히 표 형태로 추가, page-break-inside:avoid 적용)</p>"
+                            pr = f"컨설턴트. 마크다운 금지. HTML 표.\n[기업]{v.c_name}/매출:{v.sales_24}/{v.s_cur}/자금:{v.req_fund}/아이템:{v.item}\n<div class='page-break-inside-avoid'><h1 style='text-align:center; font-size:32px; margin-bottom:40px;'>중소기업 정책자금 융자신청서</h1><table style='width:100%; border-collapse:collapse; border:1px solid #333; font-size:14px; text-align:center;'><tr><th style='border:1px solid #333; padding:10px; background:#f0f0f0;'>신청자금</th><td style='border:1px solid #333;'>▣ {sf}</td><th style='border:1px solid #333; background:#f0f0f0;'>금액</th><td style='border:1px solid #333;'>{v.req_fund}</td></tr></table></div><br><p>(공정도, 시장상황 매우 상세히 표 형태로 추가, page-break-inside-avoid 적용)</p>"
                             st.session_state["kosme_result_type"] = "loan"
                             st.session_state["kosme_result_html"] = clean_html(genai.GenerativeModel(get_best_model_name()).generate_content(pr).text)
                         except Exception as e: st.error(str(e))
@@ -508,10 +506,10 @@ if check_password():
                             sv, ev = val_cur / 12, (val_cur / 12) * 1.5
                             m_vals = [int(sv + (ev - sv)*(i/11.0) + (ev - sv)*0.15*np.sin((i/11.0)*np.pi*3.5)) for i in range(12)]
                             fig = go.Figure(go.Scatter(x=[f"{i}월" for i in range(1, 13)], y=m_vals, mode='lines+markers+text', text=[format_kr_currency(x) for x in m_vals], textposition="top center", line=dict(color='#1E88E5', width=4, shape='spline')))
-                            fig.update_layout(width=780, height=450, title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", margin=dict(l=0, r=0, t=50, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                            fig.update_layout(width=760, height=400, title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", margin=dict(l=10, r=10, t=50, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
                             plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
 
-                            pr = f"심사역. 마크다운 금지. HTML.\n[기업]{v.c_name}/업력:{v.biz_years}년/아이템:{v.item}/매출:{v.s_cur}\n<h1 style='text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:40px;'>{sf} 사업계획서</h1><p style='font-size:15px; line-height:1.8;'>(서론 500자)</p><div style='page-break-inside:avoid;'><h2 style='font-size:20px; color:#002b5e; border-bottom:2px solid #002b5e;'>1. 사업개요</h2><p style='font-size:14px; line-height:1.8;'>(상세)</p></div><div style='page-break-inside:avoid;'><h2 style='font-size:20px; color:#002b5e; border-bottom:2px solid #002b5e;'>2. 시장성</h2><p style='font-size:14px; line-height:1.8;'>(상세)</p></div><div style='page-break-inside:avoid;'><h2 style='font-size:20px; color:#002b5e; border-bottom:2px solid #002b5e;'>3. 추진계획</h2><p style='font-size:14px; line-height:1.8;'>(상세)</p></div>[GRAPH_INSERT_POINT]"
+                            pr = f"심사역. 마크다운 금지. HTML. 각 h2 앞에 <div class='page-break-before'></div> 넣기.\n[기업]{v.c_name}/업력:{v.biz_years}년/아이템:{v.item}/매출:{v.s_cur}\n<h1 style='text-align:center; font-size:32px; color:#002b5e; border-bottom:3px solid #002b5e; padding-bottom:10px; margin-bottom:40px;'>{sf} 사업계획서</h1><p style='font-size:15px; line-height:1.8;'>(서론 500자)</p>\n<div class='page-break-before'></div><div class='page-break-inside-avoid'><h2 style='font-size:20px; color:#002b5e; border-bottom:2px solid #002b5e;'>1. 사업개요</h2><p style='font-size:14px; line-height:1.8;'>(상세)</p></div>\n<div class='page-break-before'></div><div class='page-break-inside-avoid'><h2 style='font-size:20px; color:#002b5e; border-bottom:2px solid #002b5e;'>2. 시장 현황 및 경쟁력 분석 🌟</h2><p style='font-size:14px; line-height:1.8;'>(당신의 외부 데이터를 총동원하여 해당 아이템의 시장 현황, 규모, 트렌드를 반드시 1000자 이상 방대하게 서술할 것.)</p></div>\n<div class='page-break-before'></div><div class='page-break-inside-avoid'><h2 style='font-size:20px; color:#002b5e; border-bottom:2px solid #002b5e;'>3. 추진계획</h2><p style='font-size:14px; line-height:1.8;'>(상세)</p></div>[GRAPH_INSERT_POINT]"
                             res = clean_html(genai.GenerativeModel(get_best_model_name()).generate_content(pr).text)
                             st.session_state["kosme_result_type"] = "plan"
                             st.session_state["kosme_result_html"] = res
@@ -523,19 +521,15 @@ if check_password():
                 
                 res = st.session_state["kosme_result_html"]
                 if "[GRAPH_INSERT_POINT]" in res:
-                    parts = res.split("[GRAPH_INSERT_POINT]")
-                    st.markdown(f"<div style='display:flex; justify-content:center;'><div style='width:100%; max-width:900px; background:#fff; padding:60px 60px 0 60px; border-radius:12px 12px 0 0; box-shadow:0 4px 15px rgba(0,0,0,0.08);'>{parts[0]}</div></div>", unsafe_allow_html=True)
-                    c1, c2, c3 = st.columns([1, 10, 1]) 
-                    with c2: st.plotly_chart(fig, use_container_width=False)
-                    st.markdown(f"<div style='display:flex; justify-content:center; margin-bottom:40px;'><div style='width:100%; max-width:900px; background:#fff; padding:0 60px 60px 60px; border-radius:0 0 12px 12px; box-shadow:0 4px 15px rgba(0,0,0,0.08);'>{parts[1]}</div></div>", unsafe_allow_html=True)
-                    html_export_content = res.replace('[GRAPH_INSERT_POINT]', f"<div style='page-break-inside:avoid; text-align:center; margin:20px 0;'>{plotly_html}</div>")
+                    html_export_content = res.replace('[GRAPH_INSERT_POINT]', f"<div class='page-break-inside-avoid' style='text-align:center; margin:30px 0;'>{plotly_html}</div>")
                 else:
-                    st.markdown(f"<div style='display:flex; justify-content:center; margin-bottom:40px;'><div style='width:100%; max-width:900px; background:#fff; padding:60px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.08);'>{res}</div></div>", unsafe_allow_html=True)
                     html_export_content = res
 
-                pdf_css = """<style> * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; } .document-container { max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; box-shadow: 0 0 15px rgba(0,0,0,0.1); border-radius: 8px; color: #333; line-height: 1.6; font-size: 15px; white-space: pre-wrap; } table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; } td, th { border: 1px solid #ccc; padding: 10px; } th { background-color: #f0f0f0; } @media print { @page { size: A4; margin: 15mm; } body { background-color: #fff; padding: 0 !important; color: black !important; zoom: 0.9; } .document-container { box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; } } </style>"""
-                html_export = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{v.c_name} {dt}</title>{pdf_css}</head><body><div class='document-container'>{html_export_content}</div></body></html>"
-                st.download_button(f"📥 {dt} HTML 다운로드", data=html_export, file_name=f"{v.c_name}_{dt}.html", mime="text/html", type="primary")
+                html_export = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{v.c_name} {dt}</title>{PDF_BASE_CSS}</head><body><div class='document-container'>{html_export_content}</div></body></html>"
+                
+                components.html(html_export, height=1000, scrolling=True)
+                
+                st.download_button(f"📥 {dt} HTML 다운로드 (PDF 인쇄용)", data=html_export, file_name=f"{v.c_name}_{dt}.html", mime="text/html", type="primary")
 
         with tabs[1]:
             st.markdown("#### 🏪 소상공인시장진흥공단 (소진공)")
@@ -543,16 +537,14 @@ if check_password():
             if st.button(f"🚀 소진공 {s_fund} 생성", use_container_width=True):
                 with st.status("🚀 통합 서식 생성 중..."):
                     try:
-                        pr = f"심사역. 마크다운 금지. HTML 표.\n[기업]{v.c_name}/아이템:{v.item}/매출:{v.s_cur}/자금:{v.req_fund}\n[규칙]개조식 단문 작성.\n<div style='page-break-inside:avoid;'><h1 style='text-align:center; font-size:32px; color:#002b5e; margin-bottom:40px;'>기업현황 및 사업계획서 ({s_fund})</h1><table style='width:100%; border-collapse:collapse; border:1px solid #000; font-size:14px; text-align:center; margin-bottom:20px;'><tr><th style='background:#f0f0f0; border:1px solid #000; padding:10px;'>업체명</th><td style='border:1px solid #000;'>{v.c_name}</td><th style='background:#f0f0f0; border:1px solid #000;'>대표</th><td style='border:1px solid #000;'>{v.rep_name}</td></tr><tr><th style='background:#f0f0f0; border:1px solid #000; padding:10px;'>매출</th><td colspan='3' style='border:1px solid #000;'>{v.sales_24} / {v.s_cur}</td></tr></table></div><div style='page-break-inside:avoid;'><h3 style='border-bottom:2px solid #000;'>사업계획</h3><table style='width:100%; border-collapse:collapse; border:1px solid #000; font-size:14px; margin-bottom:20px;'><tr><th style='background:#f0f0f0; border:1px solid #000; padding:15px; width:25%;'>내용/목적</th><td style='border:1px solid #000; padding:15px;'>(상세)</td></tr><tr><th style='background:#f0f0f0; border:1px solid #000; padding:15px;'>경쟁력</th><td style='border:1px solid #000; padding:15px;'>(상세)</td></tr></table></div><div style='page-break-inside:avoid;'><h3 style='border-bottom:2px solid #000;'>자금집행계획</h3><table style='width:100%; border-collapse:collapse; border:1px solid #000; font-size:14px; margin-bottom:20px;'><tr><th style='background:#f0f0f0; border:1px solid #000; padding:10px;'>총소요</th><td style='border:1px solid #000; font-weight:bold; color:red; text-align:center;'>{v.req_fund}</td></tr></table></div>"
+                        pr = f"심사역. 마크다운 금지. HTML 표.\n[기업]{v.c_name}/아이템:{v.item}/매출:{v.s_cur}/자금:{v.req_fund}\n[규칙]개조식 단문 작성.\n<div class='page-break-inside-avoid'><h1 style='text-align:center; font-size:32px; color:#002b5e; margin-bottom:40px;'>기업현황 및 사업계획서 ({s_fund})</h1><table style='width:100%; border-collapse:collapse; border:1px solid #000; font-size:14px; text-align:center; margin-bottom:20px;'><tr><th style='background:#f0f0f0; border:1px solid #000; padding:10px;'>업체명</th><td style='border:1px solid #000;'>{v.c_name}</td><th style='background:#f0f0f0; border:1px solid #000;'>대표</th><td style='border:1px solid #000;'>{v.rep_name}</td></tr><tr><th style='background:#f0f0f0; border:1px solid #000; padding:10px;'>매출</th><td colspan='3' style='border:1px solid #000;'>{v.sales_24} / {v.s_cur}</td></tr></table></div><div class='page-break-before'></div><div class='page-break-inside-avoid'><h3 style='border-bottom:2px solid #000;'>사업계획</h3><table style='width:100%; border-collapse:collapse; border:1px solid #000; font-size:14px; margin-bottom:20px;'><tr><th style='background:#f0f0f0; border:1px solid #000; padding:15px; width:25%;'>내용/목적</th><td style='border:1px solid #000; padding:15px;'>(상세)</td></tr><tr><th style='background:#f0f0f0; border:1px solid #000; padding:15px;'>시장상황/경쟁력 🌟</th><td style='border:1px solid #000; padding:15px;'>(외부 지식을 동원해 시장 현황을 500자 이상 방대하게 서술)</td></tr></table></div><div class='page-break-before'></div><div class='page-break-inside-avoid'><h3 style='border-bottom:2px solid #000;'>자금집행계획</h3><table style='width:100%; border-collapse:collapse; border:1px solid #000; font-size:14px; margin-bottom:20px;'><tr><th style='background:#f0f0f0; border:1px solid #000; padding:10px;'>총소요</th><td style='border:1px solid #000; font-weight:bold; color:red; text-align:center;'>{v.req_fund}</td></tr></table></div>"
                         st.session_state["semas_result_html"] = clean_html(genai.GenerativeModel(get_best_model_name()).generate_content(pr).text)
                     except Exception as e: st.error(str(e))
             if "semas_result_html" in st.session_state:
                 st.divider()
-                st.markdown(f"<div style='display:flex; justify-content:center; margin-bottom:40px;'><div style='width:100%; max-width:900px; background:#fff; padding:60px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.08);'>{st.session_state['semas_result_html']}</div></div>", unsafe_allow_html=True)
-                
-                pdf_css = """<style> * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; padding: 40px 0; margin: 0; } .document-container { max-width: 900px; margin: 0 auto; background-color: #fff; padding: 60px; box-shadow: 0 0 15px rgba(0,0,0,0.1); border-radius: 8px; color: #333; line-height: 1.6; font-size: 15px; white-space: pre-wrap; } table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; } td, th { border: 1px solid #000; padding: 10px; } th { background-color: #f0f0f0; } @media print { @page { size: A4; margin: 15mm; } body { background-color: #fff; padding: 0 !important; color: black !important; zoom: 0.9; } .document-container { box-shadow: none; padding: 0; max-width: 100%; border-radius: 0; } } </style>"""
-                html_export = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{v.c_name} 소진공</title>{pdf_css}</head><body><div class='document-container'>{st.session_state['semas_result_html']}</div></body></html>"
-                st.download_button("📥 소진공 HTML 다운로드", data=html_export, file_name=f"{v.c_name}_소진공.html", mime="text/html", type="primary")
+                html_export = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{v.c_name} 소진공</title>{PDF_BASE_CSS}</head><body><div class='document-container'>{st.session_state['semas_result_html']}</div></body></html>"
+                components.html(html_export, height=1000, scrolling=True)
+                st.download_button("📥 소진공 HTML 다운로드 (PDF 인쇄용)", data=html_export, file_name=f"{v.c_name}_소진공.html", mime="text/html", type="primary")
 
     elif st.session_state["view_mode"] == "FULL_PLAN":
         if st.button("⬅️ 대시보드 (입력화면)로 돌아가기"):
