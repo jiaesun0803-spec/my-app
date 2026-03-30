@@ -13,6 +13,11 @@ from datetime import datetime
 # ==========================================
 st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
+# === [긴급 패치] 과거 multiselect 사용으로 인한 세션 충돌(TypeError) 강제 해결 ===
+if "in_real_estate" in st.session_state:
+    if isinstance(st.session_state["in_real_estate"], list):
+        st.session_state["in_real_estate"] = ", ".join(st.session_state["in_real_estate"])
+
 def check_password():
     if "password_correct" not in st.session_state:
         st.title("🔐 AI 컨설팅 시스템")
@@ -61,6 +66,7 @@ def format_corp_no(raw_no):
     if len(no) == 13: return f"{no[:6]}-{no[6:]}"
     return raw_no
 
+# 대표님 원본: 404 에러를 막기 위한 모델 자동 검색 로직
 def get_best_model_name():
     try:
         available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -71,7 +77,7 @@ def get_best_model_name():
         if available: return available[0].replace('models/', '')
     except:
         pass
-    return 'gemini-pro'
+    return 'gemini-1.5-flash'
 
 if check_password():
     DB_FILE = "company_db.json"
@@ -88,6 +94,7 @@ if check_password():
 
     def get_credit_grade(score, type="NICE"):
         score = safe_int(score)
+        if score == 0: return "-"
         if type == "NICE":
             if score >= 900: return 1
             elif score >= 870: return 2
@@ -152,36 +159,47 @@ if check_password():
                 if k.startswith("in_"): del st.session_state[k]
             st.rerun()
 
+    # 필수값(기업명) 방어 로직
+    def is_valid_to_generate():
+        if not st.session_state.get("in_company_name", "").strip():
+            st.sidebar.error("🚨 최소한 기업명은 입력해야 분석이 가능합니다.")
+            return False
+        return True
+
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
     
-    if st.sidebar.button("📊 1. 기업분석리포트 생성", use_container_width=True):
-        if st.session_state.get("view_mode", "INPUT") == "INPUT":
-            st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        st.session_state["view_mode"] = "REPORT"
-        st.session_state.pop("generated_report", None)
-        st.rerun()
+    if st.sidebar.button("📊 1. AI기업분석리포트", use_container_width=True):
+        if is_valid_to_generate():
+            if st.session_state.get("view_mode", "INPUT") == "INPUT":
+                st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            st.session_state["view_mode"] = "REPORT"
+            st.session_state.pop("generated_report", None)
+            st.rerun()
         
-    if st.sidebar.button("💡 2. 정책자금 매칭 리포트", use_container_width=True):
-        if st.session_state.get("view_mode", "INPUT") == "INPUT":
-            st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        st.session_state["view_mode"] = "MATCHING"
-        st.session_state.pop("generated_matching", None)
-        st.rerun()
+    if st.sidebar.button("💡 2. AI 정책자금 매칭리포트", use_container_width=True):
+        if is_valid_to_generate():
+            if st.session_state.get("view_mode", "INPUT") == "INPUT":
+                st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            st.session_state["view_mode"] = "MATCHING"
+            st.session_state.pop("generated_matching", None)
+            st.rerun()
         
-    if st.sidebar.button("📝 3. 기관 맞춤형 융자/사업계획서 AI자동 생성기", use_container_width=True):
-        if st.session_state.get("view_mode", "INPUT") == "INPUT":
-            st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        st.session_state["view_mode"] = "PLAN"
-        st.session_state.pop("kosme_result_html", None)
-        st.session_state.pop("semas_result_html", None)
-        st.rerun()
+    if st.sidebar.button("📝 3. 기관별 융자/사업계획서", use_container_width=True):
+        if is_valid_to_generate():
+            if st.session_state.get("view_mode", "INPUT") == "INPUT":
+                st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            st.session_state["view_mode"] = "PLAN"
+            st.session_state.pop("kosme_result_html", None)
+            st.session_state.pop("semas_result_html", None)
+            st.rerun()
         
-    if st.sidebar.button("📑 4. 정식 사업계획서 (마스터) 생성", use_container_width=True):
-        if st.session_state.get("view_mode", "INPUT") == "INPUT":
-            st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        st.session_state["view_mode"] = "FULL_PLAN"
-        st.rerun()
+    if st.sidebar.button("📑 4. AI 사업계획서", use_container_width=True):
+        if is_valid_to_generate():
+            if st.session_state.get("view_mode", "INPUT") == "INPUT":
+                st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            st.session_state["view_mode"] = "FULL_PLAN"
+            st.rerun()
 
     # ==========================================
     # 2. 화면 모드 제어 (리포트 vs 대시보드)
@@ -190,7 +208,7 @@ if check_password():
     if "permanent_data" not in st.session_state: st.session_state["permanent_data"] = {}
 
     # ---------------------------------------------------------
-    # [모드 A: 1. 기업분석리포트]
+    # [모드 A: 1. AI기업분석리포트]
     # ---------------------------------------------------------
     if st.session_state["view_mode"] == "REPORT":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -262,7 +280,7 @@ if check_password():
                 plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
 
                 if "generated_report" not in st.session_state:
-                    with st.status("🚀 제미나이(Gemini)가 가로형 레이아웃으로 완벽한 리포트를 생성 중입니다...", expanded=True) as status:
+                    with st.status("🚀기업분석리포트는 생성중입니다...", expanded=True) as status:
                         try:
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
@@ -274,9 +292,10 @@ if check_password():
                             [작성 규칙 - 절대 엄수!!!]
                             1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 HTML 태그만 사용해야 합니다.
                             2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
-                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 마침표 뒤 줄바꿈 &lt;br&gt; 태그를 넣으세요.
+                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 마침표 뒤 줄바꿈 <br> 태그를 넣으세요.
                             4. 자금 사용계획 작성 규칙: 5번의 좌측 항목명은 반드시 '및'을 기준으로 <br> 태그를 사용해 줄바꿈 하세요.
                             5. 경쟁사 비교 분석표 규칙: 헤더(주요 경쟁사 A, B) 작성 시, 미리 제공된 양식대로 괄호 부분은 반드시 <br> 태그 아래에 작성하여 줄바꿈을 강제하세요.
+
                             [기업 정보]
                             - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 사업자유형: {biz_type}
                             - 아이템: {item} / 시장현황: {market} / 차별화: {diff}
@@ -297,7 +316,7 @@ if check_password():
                               </tr>
                               {add_biz_row}
                             </table>
-                            <div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 3~4문장 이상 상세히 작성. 마침표 뒤 줄바꿈 &lt;br&gt;)</div>
+                            <div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 3~4문장 이상 상세히 작성. 마침표 뒤 줄바꿈 <br>)</div>
 
                             <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. SWOT 분석</h2>
                             <table style="width:100%; border-collapse: collapse; margin-bottom:15px; table-layout: fixed;">
@@ -438,8 +457,8 @@ if check_password():
                             
                             <div style="background-color:#eeeeee; border-left:5px solid #1565c0; padding:20px; border-radius:15px; margin-top:15px; line-height:1.6;">
                               <b>💡 핵심 인증 및 특허 확보 조언:</b><br><br>
-                              &bull; (기업 업종에 맞는 필수 인증 혜택 및 전략을 1~2줄로 핵심만 간결히 요약. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)<br>
-                              &bull; (아이템 보호를 위한 지식재산권 전략을 1~2줄로 핵심만 간결히 요약. 마침표 뒤 줄바꿈 &lt;br&gt; 필수)
+                              &bull; (기업 업종에 맞는 필수 인증 혜택 및 전략을 1~2줄로 핵심만 간결히 요약. 마침표 뒤 줄바꿈 <br> 필수)<br>
+                              &bull; (아이템 보호를 위한 지식재산권 전략을 1~2줄로 핵심만 간결히 요약. 마침표 뒤 줄바꿈 <br> 필수)
                             </div>
                             """
                             
@@ -521,7 +540,7 @@ if check_password():
                 st.error(f"❌ 시스템 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 2. 정책자금 매칭 리포트]
+    # [모드 B: 2. AI 정책자금 매칭 리포트]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -541,7 +560,7 @@ if check_password():
         else:
             try:
                 if "generated_matching" not in st.session_state:
-                    with st.status("🚀 제미나이(Gemini)가 전년도 매출 기준으로 심사를 진행 중입니다...", expanded=True) as status:
+                    with st.status("🚀전년도 매출 기준으로 심사를 진행 중입니다...", expanded=True) as status:
                         try:
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
@@ -738,7 +757,7 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 C: 3. 기관 맞춤형 융자/사업계획서 생성]
+    # [모드 C: 3. 기관별 융자/사업계획서 생성]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "PLAN":
         if st.button("⬅️ 대시보드로 돌아가기"):
@@ -797,10 +816,10 @@ if check_password():
         exp_cur = format_kr_currency(d.get('in_exp_current', 0))
         export_info = f"유 (24년 {exp_24}, 25년 {exp_25}, 금년 {exp_cur})" if is_export == '유' else "무 (전액 내수)"
 
-        st.title("📝 기관/서류별 맞춤형 융자·사업계획서 자동 생성기")
+        st.title("📝 기관별 융자/사업계획서 자동 생성기")
         st.info("💡 좌측은 '공통 융자신청서', 우측은 '자금별 사업계획서(별첨)'입니다. 버튼을 누르면 완벽한 HTML 양식으로 생성됩니다.")
 
-        tabs = st.tabs(["1. 중진공", "2. 소진공", "3. 신보/재단", "4. 기술보증기금", "5. 제안용(IR)"])
+        tabs = st.tabs(["1. 중소벤처기업진흥공단", "2. 소상공인시장진흥공단"])
 
         # ==========================================
         # [1. 중진공 탭]
@@ -818,9 +837,9 @@ if check_password():
             
             col_dd1, col_dd2 = st.columns(2)
             with col_dd1:
-                main_fund_type = st.selectbox("💡 1. 대분류 자금종류", list(fund_categories.keys()))
+                main_fund_type = st.selectbox("💡 1. 대분류 자금종류 (중진공)", list(fund_categories.keys()))
             with col_dd2:
-                kosme_fund_type = st.selectbox("💡 2. 세부 자금종류", fund_categories[main_fund_type])
+                kosme_fund_type = st.selectbox("💡 2. 세부 자금종류 (중진공)", fund_categories[main_fund_type])
             
             col_p1, col_p2 = st.columns(2)
             
@@ -886,4 +905,156 @@ if check_password():
                             <h3>[매출 현황]</h3>
                             <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
                             <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">구분</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">23년</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">24년</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">금년(당월)</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">27년(예상)</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">28년(예상)</th></tr>
-                            <tr><td style="border:1px solid #333; padding:8px;">총매출액</td><td style
+                            <tr><td style="border:1px solid #333; padding:8px;">총매출액</td><td style="border:1px solid #333; padding:8px;">{sales_23}</td><td style="border:1px solid #333; padding:8px;">{sales_24}</td><td style="border:1px solid #333; padding:8px;">{s_cur}</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td><td style="border:1px solid #333; padding:8px; color:blue; font-weight:bold;">(자동계산)</td></tr>
+                            <tr><td style="border:1px solid #333; padding:8px;">수출액</td><td style="border:1px solid #333; padding:8px;"> </td><td style="border:1px solid #333; padding:8px;">{exp_24}</td><td style="border:1px solid #333; padding:8px;">{exp_cur}</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td><td style="border:1px solid #333; padding:8px;">(자동계산)</td></tr>
+                            </table>
+                            [GRAPH_INSERT_POINT]
+
+                            <h3>[주요 생산제품 개요]</h3>
+                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0; width:20%;">제품용도 및 특성</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(최소 3~4개의 거대한 문단으로 매우 깊이 있고 방대하게 작성할 것)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">제품생산공정도</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(대시보드 공정도를 바탕으로 전문 용어를 사용하여 최소 3~4개 문단으로 방대하게 작성할 것)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">시장상황</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(외부 데이터를 기반으로 시장규모, 경쟁업체 등 최소 3~4개 문단으로 방대하게 작성할 것)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">기술품질경쟁력</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(경쟁사 대비 차별성을 최소 3~4개 문단으로 방대하게 작성할 것)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">판매계획</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(타겟 고객 및 판매 시나리오를 최소 3~4개 문단으로 방대하게 작성할 것)</td></tr>
+                            </table>
+
+                            <div style="page-break-before: always; padding-top: 20px;"></div>
+
+                            <h3>[사업계획서 (자금활용 계획)]</h3>
+                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0; width:20%;">사업내용 및 목적/효과</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(자금 활용 시 예상되는 원가절감, 매출상승, 생산성 향상 효과를 최소 3~4개의 거대한 문단으로 방대하게 작성할 것)</td></tr>
+                            <tr><th style="border:1px solid #333; padding:15px; background:#f0f0f0;">자금 소요내역</th><td style="border:1px solid #333; padding:15px; line-height:1.6;">(시설/운전 자금을 구분하여, 인건비/마케팅/기계 등 세부 용도와 예상 금액을 표나 리스트 형태로 최소 3~4개 문단으로 방대하게 쪼개서 작성할 것)</td></tr>
+                            </table>
+                            """
+                            # 그래프 데이터 생성
+                            val_cur = safe_int(d.get('in_sales_current', 0))
+                            if val_cur <= 0: val_cur = 1000
+                            start_val = val_cur / 12
+                            end_val = start_val * 1.5
+                            
+                            monthly_vals = []
+                            for i in range(12):
+                                progress = i / 11.0
+                                linear_part = start_val + (end_val - start_val) * progress
+                                wave_part = (end_val - start_val) * 0.15 * np.sin(progress * np.pi * 3.5)
+                                monthly_vals.append(int(linear_part + wave_part))
+                                
+                            monthly_labels = [f"{i}월" for i in range(1, 13)]
+
+                            fig = go.Figure()
+                            fig.add_trace(go.Scatter(
+                                x=monthly_labels, y=monthly_vals, mode='lines+markers+text',
+                                text=[format_kr_currency(v) for v in monthly_vals], textposition="top center",
+                                textfont=dict(size=11), line=dict(color='#1E88E5', width=4, shape='spline'),
+                                marker=dict(size=10, color='#FF5252', line=dict(width=2, color='white'))
+                            ))
+                            fig.update_layout(
+                                title="📈 1단계 (도입기) 향후 1년 월별 매출 상승 곡선 시각화", xaxis_title="진행 월", yaxis_title="예상 매출액",
+                                xaxis=dict(tickangle=0, showgrid=False), yaxis=dict(showgrid=True, gridcolor='#e0e0e0'),
+                                template="plotly_white", margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+                            )
+                            plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
+
+                            response = model.generate_content(prompt_loan)
+                            
+                            raw_text = response.text
+                            if "```html" in raw_text:
+                                cleaned_html = raw_text.split("```html")[1].split("```")[0].strip()
+                            elif "```" in raw_text:
+                                cleaned_html = raw_text.split("```")[1].split("```")[0].strip()
+                            else:
+                                cleaned_html = raw_text.strip()
+                            
+                            # 들여쓰기(Indentation) 제거 로직 적용
+                            cleaned_html = "\n".join([line.lstrip() for line in cleaned_html.split("\n")])
+                            
+                            # 그래프 삽입
+                            if "[GRAPH_INSERT_POINT]" in cleaned_html:
+                                parts = cleaned_html.partition("[GRAPH_INSERT_POINT]")
+                                cleaned_html = parts[0] + plotly_html + parts[2]
+                                
+                            st.session_state["kosme_result_type"] = "loan"
+                            st.session_state["kosme_result_html"] = cleaned_html
+                            status.update(label="✅ 공통 융자신청서 생성 완료!", state="complete")
+                        except Exception as e:
+                            status.update(label=f"❌ 오류 발생: {str(e)}", state="error")
+            
+            # --- 우측: 사업계획서 (별첨 양식) ---
+            with col_p2:
+                st.markdown(f"#### 📝 중진공 사업계획서 ({kosme_fund_type})")
+                if kosme_fund_type == "청년전용창업자금":
+                    st.caption("💡 포커스: 창업자 역량(실행력), J커브 성장성, 스케일업")
+                elif kosme_fund_type == "개발기술사업화자금":
+                    st.caption("💡 포커스: 양산 가능성, 시장성(매출), 기술의 사업화 구조")
+                else:
+                    st.caption("💡 포커스: 기술성, 양산 및 매출 확대, 고용창출 중심")
+                
+                if st.button(f"🚀 중진공 {kosme_fund_type} 바로보기", use_container_width=True):
+                    with st.status(f"🚀 '{kosme_fund_type}' 전용 1타 심사역 로직으로 작성 중입니다...", expanded=True) as status:
+                        try:
+                            model_name = get_best_model_name()
+                            model = genai.GenerativeModel(model_name)
+                            
+                            if kosme_fund_type == "청년전용창업자금":
+                                prompt_plan = f"""
+                                당신은 중소기업진흥공단의 깐깐한 심사역입니다. 마크다운 기호 금지. 순수 HTML 태그만 사용하세요.
+                                절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
+                                
+                                [기업데이터]
+                                - 기업명: {c_name} / 대표자: {rep_name} / 업력: {biz_years}년 / 경력: {career}
+                                - 아이템: {item} / 시장현황: {market} / 경쟁우위: {diff}
+                                
+                                [청년전용창업자금 핵심 작성 룰]
+                                1. 아이디어보다 "대표자의 문제 해결 능력과 실행력", "앞으로 폭발적으로 성장할 가능성"을 집중적으로 어필하세요.
+                                2. 사업추진계획에는 작은 성과라도 테스트/피드백 결과를 반드시 포함시키고, 시장 성장 스토리(스케일업)를 엮으세요.
+                                3. 자금 조달 계획은 "돈을 쓰면 반드시 성과로 직결되는 구조"로 설득력 있게 작성하세요.
+
+                                [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
+                                - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
+                                - "결론적으로", "요약하자면", "이처럼", "도움이 될 것입니다" 등 AI 특유의 기계적인 표현을 절대 사용하지 마세요.
+                                - 실제 1타 경영컨설턴트가 시장조사 보고서를 바탕으로 직접 작성한 것처럼, 단호하고 설득력 있는 실무 비즈니스 용어를 사용하세요.
+                                - 귀하의 방대한 지식베이스(외부 시장 데이터, 최신 트렌드, 구체적 통계 수치)를 적극적으로 끌어와 내용을 꽉꽉 채우세요.
+
+                                [출력 양식 - 무조건 이 HTML 표 양식을 100% 똑같이 유지할 것]
+                                <h2 style="text-align:center; border:2px solid #333; padding:10px; margin-bottom:20px;">청년전용창업자금 세부계획서</h2>
+                                
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; text-align:center; font-size:14px; margin-bottom:30px;">
+                                <tr>
+                                <td rowspan="2" style="background-color:#f0f0f0; border:1px solid #333; width:15%; font-weight:bold;">신청내용</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; width:20%;">신청자 유형</td>
+                                <td colspan="4" style="border:1px solid #333; text-align:left; padding-left:15px;">□ 예비창업자 <br>▣ 기창업자 (□ 3년 미만, □ 7년 미만)</td>
+                                </tr>
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333;">자금구분</td>
+                                <td colspan="4" style="border:1px solid #333; text-align:left; padding-left:15px;">▣ 청년전용창업자금 &nbsp;&nbsp;&nbsp;&nbsp; □ 청년전용창업자금(융복합)</td>
+                                </tr>
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; font-weight:bold;">참고항목</td>
+                                <td style="background-color:#f0f0f0; border:1px solid #333;">창업관련 수상실적 및<br>정부지원사업 참여현황</td>
+                                <td style="border:1px solid #333; background-color:#f0f0f0; padding:10px;">대회(사업)명</td>
+                                <td style="border:1px solid #333; background-color:#f0f0f0;">수상(지원)내역</td>
+                                <td style="border:1px solid #333; background-color:#f0f0f0;">일자(기간)</td>
+                                <td style="border:1px solid #333; background-color:#f0f0f0;">주관기관</td>
+                                </tr>
+                                <tr>
+                                <td style="border:1px solid #333;"></td><td style="border:1px solid #333;"></td><td style="border:1px solid #333; padding:15px;"></td><td style="border:1px solid #333;"></td><td style="border:1px solid #333;"></td><td style="border:1px solid #333;"></td>
+                                </tr>
+                                </table>
+
+                                <h3>□ 사업 계획서</h3>
+                                <table style="width:100%; border-collapse: collapse; border: 2px solid #333; font-size:14px; margin-bottom:20px;">
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; width:20%; font-weight:bold; vertical-align:top;">창업 동기</td>
+                                <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
+                                (대표자의 뼈저린 현장 경험, 시장의 거시적 문제점, 타겟 고객의 미충족 수요를 엮어서 최소 4~5개의 거대한 문단으로 나누어, 1000자 이상의 압도적인 분량으로 매우 깊이 있게 서술. 일반적인 AI 요약체를 버리고 전문가의 통찰력이 담긴 긴 호흡의 칼럼처럼 작성할 것)
+                                </td>
+                                </tr>
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; vertical-align:top;">창업아이템의 개요</td>
+                                <td style="border:1px solid #333; padding:20px; vertical-align:top; text-align:left; line-height:1.8;">
+                                (아이템의 핵심 내용, 타사 대비 차별성, 경쟁력, 기술 확장성을 외부 전문 데이터를 동원하여 최소 4~5개의 거대한 문단으로 나누어 1000자 이상 작성할 것)
+                                </td>
+                                </tr>
+                                <tr>
+                                <td style="background-color:#f0f0f0; border:1px solid #333; padding:15px; font-weight:bold; vertical-align:top;">
