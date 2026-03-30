@@ -763,7 +763,7 @@ if check_password():
         req_fund = format_kr_currency(d.get('in_req_amount', 0))
         fund_type, fund_purpose = d.get('in_fund_type', '운전자금'), d.get('in_fund_purpose', '미입력')
         item, market, diff, route = d.get('in_item_desc', '미입력'), d.get('in_market_status', '미입력'), d.get('in_diff_point', '미입력'), d.get('in_sales_route', '')
-        
+
         biz_years = 0
         if d.get('in_start_date', '').strip():
             try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
@@ -1183,6 +1183,7 @@ if check_password():
                                 [기업데이터] 기업명:{c_name} / 아이템:{item}
                                 현재 시스템 고도화 중입니다. '{kosme_fund_type}'의 사업계획서를 자유 양식(HTML)으로 상세히 서술하세요.
                                 절대 HTML 태그를 들여쓰기(Indentation) 하지 마세요. 모든 코드는 왼쪽 끝에 붙여서 작성하세요.
+                                [GRAPH_INSERT_POINT] 라는 텍스트를 중간에 꼭 포함하세요.
 
                                 [AI 작성 흔적 제거 및 분량 강제 (매우 중요!!!)]
                                 - 전체 출력 결과물이 A4 용지 5장에 달하도록 당신이 생성할 수 있는 최대 길이의 텍스트를 쏟아내세요. 
@@ -1658,7 +1659,7 @@ if check_password():
                 st.text_input("상표등록 (건)", key="in_tm_reg")
                 st.text_input("디자인등록 (건)", key="in_design_reg")
         with pat_col2:
-            buy_patent = radio("특허매입예정", ["무", "유"], horizontal=True, key="in_buy_patent")
+            buy_patent = st.radio("특허매입예정", ["무", "유"], horizontal=True, key="in_buy_patent")
             if buy_patent == "유":
                 st.text_input("희망특허 (분야/명칭)", key="in_buy_pat_desc")
                 st.number_input("예상금액(만원)", value=0, step=1, key="in_buy_pat_amount")
