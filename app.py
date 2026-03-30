@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 # ==========================================
-# 0. 기본 설정 및 보안
+# 0. 핵심 헬퍼 함수 및 보안 설정 (최상단 배치)
 # ==========================================
 st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
@@ -27,7 +27,6 @@ def check_password():
         return False
     return True
 
-# --- 금액 변환 및 안전 로직 ---
 def safe_int(value):
     try:
         clean_val = str(value).replace(',', '').strip()
@@ -64,7 +63,6 @@ def format_corp_no(raw_no):
 def get_best_model_name():
     try:
         available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        # 대표님 계정에서 가장 빠르고 안정적인 모델 우선 선택
         if 'models/gemini-1.5-flash' in available: return 'gemini-1.5-flash'
         if 'models/gemini-pro' in available: return 'gemini-pro'
         if available: return available[0].replace('models/', '')
@@ -74,6 +72,10 @@ def get_best_model_name():
 
 def clean_html(text): 
     return "\n".join([l.lstrip() for l in text.replace("```html", "").replace("```", "").strip().split("\n")])
+
+# 포맷팅 콜백 함수
+def cb_format_biz_no(): st.session_state["in_raw_biz_no"] = format_biz_no(st.session_state.get("in_raw_biz_no", ""))
+def cb_format_corp_no(): st.session_state["in_raw_corp_no"] = format_corp_no(st.session_state.get("in_raw_corp_no", ""))
 
 if check_password():
     DB_FILE = "company_db.json"
@@ -114,10 +116,6 @@ if check_password():
             elif score >= 335: return 9
             else: return 10
 
-    # 포맷팅 콜백 (NameError 방지를 위해 상단 정의)
-    def cb_format_biz_no(): st.session_state["in_raw_biz_no"] = format_biz_no(st.session_state.get("in_raw_biz_no", ""))
-    def cb_format_corp_no(): st.session_state["in_raw_corp_no"] = format_corp_no(st.session_state.get("in_raw_corp_no", ""))
-
     # ==========================================
     # 1. 사이드바 (API 설정, 업체관리)
     # ==========================================
@@ -140,7 +138,11 @@ if check_password():
     if st.sidebar.button("💾 현재 정보 저장", use_container_width=True):
         c_name = st.session_state.get("in_company_name", "").strip()
         if c_name:
-            current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            # 현재 입력 필드에 있는 데이터들을 취합하여 저장
+            if st.session_state.get("view_mode", "INPUT") == "INPUT":
+                current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            else:
+                current_data = st.session_state.get("permanent_data", {})
             db[c_name] = current_data
             save_db(db)
             st.sidebar.success(f"✅ '{c_name}' 저장 완료!")
@@ -150,174 +152,67 @@ if check_password():
     with col_s1:
         if st.button("📂 불러오기", use_container_width=True):
             if selected_company != "선택 안 함":
+                # 기존 세션 데이터 청소 후 불러오기
+                for k in list(st.session_state.keys()):
+                    if k.startswith("in_"): del st.session_state[k]
                 for k, v in db[selected_company].items(): st.session_state[k] = v
                 st.session_state["view_mode"] = "INPUT"
                 st.rerun()
     with col_s2:
         if st.button("🔄 초기화", use_container_width=True):
-            # 모든 입력값 및 리포트 캐시 삭제
-            keys_to_clear = [k for k in st.session_state.keys() if k.startswith("in_") or k in ["permanent_data", "generated_report", "generated_matching", "kosme_result_html", "semas_result_html"]]
+            # 모든 입력 데이터 및 리포트 캐시 완벽 삭제
+            keys_to_clear = [k for k in st.session_state.keys() if k.startswith("in_") or k in ["view_mode", "permanent_data", "generated_report", "generated_matching", "kosme_result_html", "semas_result_html"]]
             for k in keys_to_clear:
                 del st.session_state[k]
-            st.session_state["view_mode"] = "INPUT"
             st.cache_data.clear()
             st.rerun()
 
-    # 탭 변경 및 데이터 백업 로직
-    def change_mode(mode):
+    # 모드 변경 및 데이터 백업 함수
+    def change_view(target_mode):
         if st.session_state.get("view_mode", "INPUT") == "INPUT":
             st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        st.session_state["view_mode"] = mode
+        st.session_state["view_mode"] = target_mode
         st.session_state.pop("generated_report", None)
         st.session_state.pop("generated_matching", None)
 
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
-    
-    if st.sidebar.button("📊 1. AI기업분석리포트", use_container_width=True):
+    if st.sidebar.button("📊 AI기업분석리포트 생성", use_container_width=True):
         if st.session_state.get("in_company_name", "").strip():
-            change_mode("REPORT"); st.rerun()
+            change_view("REPORT"); st.rerun()
         else: st.sidebar.error("🚨 기업명을 입력해주세요.")
-        
-    if st.sidebar.button("💡 2. AI 정책자금 매칭리포트", use_container_width=True):
+
+    if st.sidebar.button("💡 AI 정책자금 매칭리포트", use_container_width=True):
         if st.session_state.get("in_company_name", "").strip():
-            change_mode("MATCHING"); st.rerun()
+            change_view("MATCHING"); st.rerun()
         else: st.sidebar.error("🚨 기업명을 입력해주세요.")
-        
-    if st.sidebar.button("📝 3. 기관별 융자/사업계획서", use_container_width=True):
-        if st.session_state.get("in_company_name", "").strip():
-            change_mode("PLAN"); st.rerun()
-        
-    if st.sidebar.button("📑 4. AI 사업계획서", use_container_width=True):
-        if st.session_state.get("in_company_name", "").strip():
-            change_mode("FULL_PLAN"); st.rerun()
 
     # ==========================================
-    # 2. 메인 UI 및 리포트 렌더링
+    # 2. 메인 화면 로직
     # ==========================================
     if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 
-    st.title("📊 AI 컨설팅 대시보드")
+    # 상단 탭 버튼
     t1, t2, t3, t4 = st.columns(4)
     with t1: 
         if st.button("📊 AI기업분석리포트", key="top_1", use_container_width=True, type="primary"):
-            if st.session_state.get("in_company_name", "").strip(): change_mode("REPORT"); st.rerun()
-            else: st.error("🚨 기업명을 입력해주세요.")
+            if st.session_state.get("in_company_name", "").strip(): change_view("REPORT"); st.rerun()
     with t2: 
         if st.button("💡 AI 정책자금 매칭리포트", key="top_2", use_container_width=True, type="primary"):
-            if st.session_state.get("in_company_name", "").strip(): change_mode("MATCHING"); st.rerun()
-            else: st.error("🚨 기업명을 입력해주세요.")
+            if st.session_state.get("in_company_name", "").strip(): change_view("MATCHING"); st.rerun()
     with t3: 
         if st.button("📝 기관별 융자/사업계획서", key="top_3", use_container_width=True, type="primary"):
-            if st.session_state.get("in_company_name", "").strip(): change_mode("PLAN"); st.rerun()
-            else: st.error("🚨 기업명을 입력해주세요.")
+            if st.session_state.get("in_company_name", "").strip(): change_view("PLAN"); st.rerun()
     with t4: 
         if st.button("📑 AI 사업계획서", key="top_4", use_container_width=True, type="primary"):
-            if st.session_state.get("in_company_name", "").strip(): change_mode("FULL_PLAN"); st.rerun()
+            if st.session_state.get("in_company_name", "").strip(): change_view("FULL_PLAN"); st.rerun()
             
     st.markdown("<hr style='margin-top:0; margin-bottom:20px;'>", unsafe_allow_html=True)
 
-    # 리포트 공통 데이터 추출
-    d = st.session_state.get("permanent_data", {})
-    c_name = d.get('in_company_name', '미입력').strip()
-    biz_type = d.get('in_biz_type', '미입력')
-    c_ind = d.get('in_industry', '미입력')
-    rep_name = d.get('in_rep_name', '미입력')
-    biz_no = format_biz_no(d.get('in_raw_biz_no', '미입력'))
-    corp_no = format_corp_no(d.get('in_raw_corp_no', ''))
-    address = d.get('in_biz_addr', '미입력')
-    req_fund = format_kr_currency(d.get('in_req_amount', 0))
-    item = d.get('in_item_desc', '미입력')
-    s_cur = format_kr_currency(d.get('in_sales_current', 0))
-
     # ---------------------------------------------------------
-    # [모드 A: 1. AI기업분석리포트]
+    # [입력 화면 (대시보드)]
     # ---------------------------------------------------------
-    if st.session_state["view_mode"] == "REPORT":
-        if st.button("⬅️ 입력 화면으로 돌아가기"):
-            for k, v in st.session_state["permanent_data"].items(): st.session_state[k] = v
-            st.session_state["view_mode"] = "INPUT"; st.rerun()
-        
-        st.subheader(f"📋 AI기업분석리포트: {c_name}")
-        
-        try:
-            if "generated_report" not in st.session_state:
-                with st.status("🚀기업분석리포트는 생성중입니다", expanded=True):
-                    model = genai.GenerativeModel(get_best_model_name())
-                    prompt = f"전문 경영컨설턴트로서 {c_name} 기업에 대한 분석 리포트를 HTML 형식으로 상세히 작성해줘. 업종: {c_ind}, 아이템: {item}."
-                    response = model.generate_content(prompt)
-                    st.session_state["generated_report"] = clean_html(response.text)
-            
-            st.markdown(st.session_state["generated_report"], unsafe_allow_html=True)
-            st.download_button("📥 리포트 다운로드", st.session_state["generated_report"], f"{c_name}_분석리포트.html", "text/html")
-        except Exception as e:
-            st.error(f"❌ 생성 중 오류 발생: {str(e)}")
-
-    # ---------------------------------------------------------
-    # [모드 B: 2. AI 정책자금 매칭리포트]
-    # ---------------------------------------------------------
-    elif st.session_state["view_mode"] == "MATCHING":
-        if st.button("⬅️ 입력 화면으로 돌아가기"):
-            for k, v in st.session_state["permanent_data"].items(): st.session_state[k] = v
-            st.session_state["view_mode"] = "INPUT"; st.rerun()
-        
-        st.subheader(f"🎯 AI 정책자금 매칭리포트: {c_name}")
-        
-        try:
-            if "generated_matching" not in st.session_state:
-                with st.status("🚀전년도 매출 기준으로 심사를 진행 중입니다", expanded=True):
-                    model = genai.GenerativeModel(get_best_model_name())
-                    prompt = f"정책자금 전문가로서 {c_name}의 매출 {s_cur} 및 조건에 맞는 자금을 1~4순위로 추천해줘. HTML 형식으로 답변해줘."
-                    response = model.generate_content(prompt)
-                    st.session_state["generated_matching"] = clean_html(response.text)
-            
-            st.markdown(st.session_state["generated_matching"], unsafe_allow_html=True)
-            st.download_button("📥 매칭리포트 다운로드", st.session_state["generated_matching"], f"{c_name}_매칭리포트.html", "text/html")
-        except Exception as e:
-            st.error(f"❌ 매칭 중 오류 발생: {str(e)}")
-
-    # ---------------------------------------------------------
-    # [모드 C: 3. 기관별 융자/사업계획서]
-    # ---------------------------------------------------------
-    elif st.session_state["view_mode"] == "PLAN":
-        if st.button("⬅️ 입력 화면으로 돌아가기"):
-            for k, v in st.session_state["permanent_data"].items(): st.session_state[k] = v
-            st.session_state["view_mode"] = "INPUT"; st.rerun()
-            
-        st.title("📝 기관별 융자/사업계획서 자동 생성")
-        tabs = st.tabs(["1. 중소벤처기업진흥공단", "2. 소상공인시장진흥공단"])
-        
-        with tabs[0]:
-            st.markdown("#### 🏢 중진공 융자/사업계획서")
-            if st.button("🚀 중진공 서식 생성", use_container_width=True):
-                with st.status("🚀 서식 작성 중..."):
-                    model = genai.GenerativeModel(get_best_model_name())
-                    prompt = f"중진공 융자신청서 양식에 맞춰 {c_name}의 사업계획서를 HTML로 작성해줘."
-                    st.session_state["kosme_result_html"] = clean_html(model.generate_content(prompt).text)
-            if "kosme_result_html" in st.session_state:
-                st.markdown(st.session_state["kosme_result_html"], unsafe_allow_html=True)
-
-        with tabs[1]:
-            st.markdown("#### 🏪 소진공 융자/사업계획서")
-            semas_fund = st.selectbox("💡 소진공 자금종류 (대분류)", ["혁신성장촉진자금", "상생성장지원자금", "일시적경영애로자금", "재도전특별자금"])
-            if st.button("🚀 소진공 서식 생성", use_container_width=True):
-                with st.status("🚀 소진공 서식 렌더링 중..."):
-                    model = genai.GenerativeModel(get_best_model_name())
-                    prompt = f"소진공 {semas_fund} 신청을 위한 사업계획서를 HTML로 작성해줘."
-                    st.session_state["semas_result_html"] = clean_html(model.generate_content(prompt).text)
-            if "semas_result_html" in st.session_state:
-                st.markdown(st.session_state["semas_result_html"], unsafe_allow_html=True)
-
-    elif st.session_state["view_mode"] == "FULL_PLAN":
-        if st.button("⬅️ 입력 화면으로 돌아가기"):
-            st.session_state["view_mode"] = "INPUT"; st.rerun()
-        st.title("📑 AI 사업계획서 (마스터)")
-        st.info("준비 중인 메뉴입니다.")
-
-    # ---------------------------------------------------------
-    # [입력 화면 (메인 대시보드)]
-    # ---------------------------------------------------------
-    else:
+    if st.session_state["view_mode"] == "INPUT":
         st.header("1. 기업현황")
         c1, c2, c3 = st.columns(3)
         with c1:
@@ -332,27 +227,33 @@ if check_password():
             ls = st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
             if ls == "임대":
                 lc1, lc2 = st.columns(2)
-                with lc1: st.number_input("보증금(만원)", value=0, key="in_lease_deposit")
-                with lc2: st.number_input("월임대료(만원)", value=0, key="in_lease_rent")
+                with lc1: st.number_input("보증금(만원)", value=0, step=1, key="in_lease_deposit")
+                with lc2: st.number_input("월임대료(만원)", value=0, step=1, key="in_lease_rent")
         with c3:
             st.text_input("전화번호", key="in_biz_tel")
-            has_add = st.radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_additional_biz")
-            if has_add == "유": st.text_input("추가 사업장 정보", key="in_additional_biz_addr")
+            has_add_biz = st.radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_additional_biz")
+            if has_add_biz == "유": st.text_input("추가 사업장 정보", key="in_additional_biz_addr")
             st.text_input("사업장 주소", key="in_biz_addr")
 
         st.markdown("<br>", unsafe_allow_html=True)
         st.header("2. 대표자 정보")
         r1, r2, r3 = st.columns(3)
         with r1:
-            st.text_input("대표자명", key="in_rep_name")
-            st.text_input("생년월일", key="in_rep_dob")
+            rc1, rc2 = st.columns(2)
+            with rc1: st.text_input("대표자명", key="in_rep_name")
+            with rc2: st.text_input("생년월일", key="in_rep_dob")
             st.text_input("연락처", key="in_rep_phone")
             st.selectbox("통신사", ["SKT", "KT", "LG U+", "알뜰폰"], key="in_rep_telecom")
             st.text_input("이메일 주소", key="in_rep_email")
         with r2:
             st.text_input("거주지 주소", key="in_home_addr")
             st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status")
-            st.text_input("부동산 현황", key="in_real_estate")
+            
+            # [수정] TypeError 방지를 위해 데이터 형식 강제 변환
+            re_val = st.session_state.get("in_real_estate", "")
+            if isinstance(re_val, list): re_val = ", ".join(re_val)
+            st.text_input("부동산 현황", value=re_val, key="in_real_estate")
+            
         with r3:
             st.text_input("최종학교", key="in_edu_school")
             st.text_input("학과", key="in_edu_major")
@@ -366,30 +267,35 @@ if check_password():
             with cc1: st.radio("세금체납", ["무", "유"], horizontal=True, key="in_tax_status")
             with cc2: st.radio("금융연체", ["무", "유"], horizontal=True, key="in_fin_status")
             sc1, sc2 = st.columns(2)
-            with sc1: kcb = st.number_input("KCB 점수", value=0, key="in_kcb_score")
-            with sc2: nice = st.number_input("NICE 점수", value=0, key="in_nice_score")
+            with sc1: kcb = st.number_input("KCB 점수", value=0, step=1, key="in_kcb_score")
+            with sc2: nice = st.number_input("NICE 점수", value=0, step=1, key="in_nice_score")
         with cr2:
             st.info(f"#### 🏆 등급 판정 결과\n\n* **KCB:** {get_credit_grade(kcb, 'KCB')}등급\n* **NICE:** {get_credit_grade(nice, 'NICE')}등급")
 
         st.header("4. 재무현황")
         m1, m2, m3, m4 = st.columns(4)
-        with m1: st.number_input("금년 매출(만원)", value=0, key="in_sales_current")
-        with m2: st.number_input("25년도 매출합계(만원)", value=0, key="in_sales_2025")
-        with m3: st.number_input("24년도 매출합계(만원)", value=0, key="in_sales_2024")
-        with m4: st.number_input("23년도 매출합계(만원)", value=0, key="in_sales_2023")
+        with m1: st.number_input("금년 매출(만원)", value=0, step=1, key="in_sales_current")
+        with m2: st.number_input("25년도 매출합계(만원)", value=0, step=1, key="in_sales_2025")
+        with m3: st.number_input("24년도 매출합계(만원)", value=0, step=1, key="in_sales_2024")
+        with m4: st.number_input("23년도 매출합계(만원)", value=0, step=1, key="in_sales_2023")
 
         st.header("5. 기대출현황")
         d1, d2, d3, d4 = st.columns(4)
-        with d1: st.number_input("중진공(만원)", value=0, key="in_debt_kosme")
-        with d2: st.number_input("소진공(만원)", value=0, key="in_debt_semas")
-        with d3: st.number_input("신보재단(만원)", value=0, key="in_debt_koreg")
-        with d4: st.number_input("신용보증기금(만원)", value=0, key="in_debt_kodit")
+        with d1: st.number_input("중진공(만원)", value=0, step=1, key="in_debt_kosme")
+        with d2: st.number_input("소진공(만원)", value=0, step=1, key="in_debt_semas")
+        with d3: st.number_input("신보재단(만원)", value=0, step=1, key="in_debt_koreg")
+        with d4: st.number_input("신용보증기금(만원)", value=0, step=1, key="in_debt_kodit")
+        d5, d6, d7, d8 = st.columns(4)
+        with d5: st.number_input("기술보증기금(만원)", value=0, step=1, key="in_debt_kibo")
+        with d6: st.number_input("기타(만원)", value=0, step=1, key="in_debt_etc")
+        with d7: st.number_input("신용대출(만원)", value=0, step=1, key="in_debt_credit")
+        with d8: st.number_input("담보대출(만원)", value=0, step=1, key="in_debt_coll")
 
         st.header("6. 필요자금")
         p1, p2, p3 = st.columns([1, 1, 2])
         with p1: st.selectbox("자금구분", ["운전자금", "시설자금"], key="in_fund_type")
-        with p2: st.number_input("필요자금액(만원)", value=0, key="in_req_amount")
-        with p3: st.text_input("자금사용용도", key="in_fund_purpose")
+        with p2: st.number_input("금액(만원)", value=0, step=1, key="in_req_amount")
+        with p3: st.text_input("용도", key="in_fund_purpose")
 
         st.header("7. 인증현황")
         ac1, ac2, ac3, ac4 = st.columns(4)
@@ -401,22 +307,73 @@ if check_password():
         st.header("8. 특허정보")
         pat_col1, pat_col2 = st.columns(2)
         with pat_col1:
-            has_pat = st.radio("특허 보유여부", ["무", "유"], horizontal=True, key="in_has_patent")
-            if has_pat == "유":
+            has_patent = st.radio("특허 보유여부", ["무", "유"], horizontal=True, key="in_has_patent")
+            if has_patent == "유":
                 st.text_input("특허출원 (건)", key="in_pat_apply")
                 st.text_input("특허등록 (건)", key="in_pat_reg")
+                st.text_input("상표등록 (건)", key="in_tm_reg")
+                st.text_input("디자인등록 (건)", key="in_design_reg")
         with pat_col2:
-            buy_pat = st.radio("특허매입예정", ["무", "유"], horizontal=True, key="in_buy_patent")
-            if buy_pat == "유":
+            # [오타 수정] radio -> st.radio
+            buy_patent = st.radio("특허매입예정", ["무", "유"], horizontal=True, key="in_buy_patent")
+            if buy_patent == "유":
                 st.text_input("희망특허 명칭", key="in_buy_pat_desc")
-                st.number_input("예상금액(만원)", value=0, key="in_buy_pat_amount")
+                st.number_input("예상금액(만원)", value=0, step=1, key="in_buy_pat_amount")
 
         st.header("9. 비즈니스 정보")
-        st.text_area("아이템", key="in_item_desc")
-        st.text_input("제품생산공정도", placeholder="원물 입고 -> 세척 -> 조리 -> 포장", key="in_process_desc")
+        st.text_area("아이템 상세", key="in_item_desc")
+        st.text_input("제품생산공정도", placeholder="예: 원물 입고 -> 세척 -> 조리 -> 포장", key="in_process_desc")
         st.text_area("판매루트", key="in_sales_route")
         st.text_area("시장현황", key="in_market_status")
-        st.text_area("차별화", key="in_diff_point")
-        st.text_area("앞으로의 계획", key="in_future_plan")
+        st.text_area("차별화 포인트", key="in_diff_point")
+        st.text_area("향후 계획", key="in_future_plan")
+        st.success("✅ 세팅 완료! 상단 리포트 버튼을 클릭해 주십시오.")
 
-        st.success("✅ 세팅 완료! 좌측 사이드바 버튼을 클릭해 리포트를 생성하세요.")
+    # ---------------------------------------------------------
+    # [리포트 출력 화면 공통 로직]
+    # ---------------------------------------------------------
+    else:
+        if st.button("⬅️ 입력 화면으로 돌아가기"):
+            for k, v in st.session_state["permanent_data"].items(): st.session_state[k] = v
+            st.session_state["view_mode"] = "INPUT"; st.rerun()
+
+        d = st.session_state.get("permanent_data", {})
+        model_name = get_best_model_name()
+        
+        # 리포트 공통 변수 (데이터 바인딩)
+        c_name = d.get('in_company_name', '미입력')
+        req_fund = format_kr_currency(d.get('in_req_amount', 0))
+        s_cur = format_kr_currency(d.get('in_sales_current', 0))
+        item = d.get('in_item_desc', '미입력')
+
+        if st.session_state["view_mode"] == "REPORT":
+            st.title(f"📋 AI기업분석리포트: {c_name}")
+            if "generated_report" not in st.session_state:
+                with st.status("🚀기업분석리포트는 생성중입니다..."):
+                    try:
+                        model = genai.GenerativeModel(model_name)
+                        prompt = f"전문 경영컨설턴트로서 {c_name} 기업에 대한 분석 리포트를 HTML 형식으로 상세히 작성해줘. 아이템: {item}"
+                        st.session_state["generated_report"] = clean_html(model.generate_content(prompt).text)
+                    except Exception as e: st.error(f"오류: {str(e)}")
+            st.markdown(st.session_state.get("generated_report", ""), unsafe_allow_html=True)
+
+        elif st.session_state["view_mode"] == "MATCHING":
+            st.title(f"🎯 AI 정책자금 매칭리포트: {c_name}")
+            if "generated_matching" not in st.session_state:
+                with st.status("🚀전년도 매출 기준으로 심사를 진행 중입니다..."):
+                    try:
+                        model = genai.GenerativeModel(model_name)
+                        prompt = f"정책자금 전문가로서 {c_name}의 매출 {s_cur}에 맞는 자금을 1~4순위로 추천해줘. HTML 형식."
+                        st.session_state["generated_matching"] = clean_html(model.generate_content(prompt).text)
+                    except Exception as e: st.error(f"오류: {str(e)}")
+            st.markdown(st.session_state.get("generated_matching", ""), unsafe_allow_html=True)
+
+        elif st.session_state["view_mode"] == "PLAN":
+            st.title("📝 기관별 융자/사업계획서 생성")
+            tabs = st.tabs(["중진공", "소진공"])
+            with tabs[0]: st.info("중진공 양식 생성 대기 중")
+            with tabs[1]: st.info("소진공 양식 생성 대기 중")
+
+        elif st.session_state["view_mode"] == "FULL_PLAN":
+            st.title("📑 AI 사업계획서 (마스터)")
+            st.info("정식 사업계획서 생성 로직 업데이트 중입니다.")
