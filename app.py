@@ -61,6 +61,16 @@ def format_corp_no(raw_no):
     if len(no) == 13: return f"{no[:6]}-{no[6:]}"
     return raw_no
 
+def clean_html(text): 
+    if not text: return ""
+    t = str(text).strip()
+    if "```html" in t:
+        t = t.split("```html")[1].split("```")[0]
+    elif "```" in t:
+        t = t.split("```")[1].split("```")[0]
+    return "\n".join([line.lstrip() for line in t.strip().split("\n")])
+
+# 원본의 모델 검색 방식 복구 (단, 에러 시 fallback을 flash로 지정)
 def get_best_model_name():
     try:
         available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -71,7 +81,7 @@ def get_best_model_name():
         if available: return available[0].replace('models/', '')
     except:
         pass
-    return 'gemini-pro'
+    return 'gemini-1.5-flash'
 
 if check_password():
     DB_FILE = "company_db.json"
@@ -88,6 +98,7 @@ if check_password():
 
     def get_credit_grade(score, type="NICE"):
         score = safe_int(score)
+        if score == 0: return "-"
         if type == "NICE":
             if score >= 900: return 1
             elif score >= 870: return 2
@@ -134,7 +145,10 @@ if check_password():
     if st.sidebar.button("💾 현재 정보 저장", use_container_width=True):
         c_name = st.session_state.get("in_company_name", "").strip()
         if c_name:
-            current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            if st.session_state.get("view_mode", "INPUT") == "INPUT":
+                current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            else:
+                current_data = st.session_state.get("permanent_data", {})
             db[c_name] = current_data
             save_db(db)
             st.sidebar.success(f"✅ '{c_name}' 저장 완료!")
@@ -145,43 +159,46 @@ if check_password():
         if st.button("📂 불러오기", use_container_width=True):
             if selected_company != "선택 안 함":
                 for k, v in db[selected_company].items(): st.session_state[k] = v
+                st.session_state["view_mode"] = "INPUT"
                 st.rerun()
     with col_s2:
         if st.button("🔄 초기화", use_container_width=True):
-            for k in list(st.session_state.keys()):
-                if k.startswith("in_"): del st.session_state[k]
+            keys_to_clear = [k for k in st.session_state.keys() if k.startswith("in_") or k in ["view_mode", "permanent_data", "generated_report", "generated_matching", "kosme_result_html", "semas_result_html"]]
+            for k in keys_to_clear:
+                del st.session_state[k]
+            st.cache_data.clear()
             st.rerun()
+
+    def set_view_mode(mode):
+        if not st.session_state.get("in_company_name", "").strip():
+            st.error("🚨 최소한 기업명은 입력해야 분석이 가능합니다.")
+            return False
+        
+        if st.session_state.get("view_mode", "INPUT") == "INPUT":
+            st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+        
+        st.session_state["view_mode"] = mode
+        if mode == "REPORT": st.session_state.pop("generated_report", None)
+        if mode == "MATCHING": st.session_state.pop("generated_matching", None)
+        if mode == "PLAN": 
+            st.session_state.pop("kosme_result_html", None)
+            st.session_state.pop("semas_result_html", None)
+        return True
 
     st.sidebar.markdown("---")
     st.sidebar.header("🚀 빠른 리포트 생성")
     
-    if st.sidebar.button("📊 1. 기업분석리포트 생성", use_container_width=True):
-        if st.session_state.get("view_mode", "INPUT") == "INPUT":
-            st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        st.session_state["view_mode"] = "REPORT"
-        st.session_state.pop("generated_report", None)
-        st.rerun()
+    if st.sidebar.button("📊 1. AI기업분석리포트", use_container_width=True):
+        if set_view_mode("REPORT"): st.rerun()
         
-    if st.sidebar.button("💡 2. 정책자금 매칭 리포트", use_container_width=True):
-        if st.session_state.get("view_mode", "INPUT") == "INPUT":
-            st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        st.session_state["view_mode"] = "MATCHING"
-        st.session_state.pop("generated_matching", None)
-        st.rerun()
+    if st.sidebar.button("💡 2. AI 정책자금 매칭리포트", use_container_width=True):
+        if set_view_mode("MATCHING"): st.rerun()
         
-    if st.sidebar.button("📝 3. 기관 맞춤형 융자/사업계획서 AI자동 생성기", use_container_width=True):
-        if st.session_state.get("view_mode", "INPUT") == "INPUT":
-            st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        st.session_state["view_mode"] = "PLAN"
-        st.session_state.pop("kosme_result_html", None)
-        st.session_state.pop("semas_result_html", None)
-        st.rerun()
+    if st.sidebar.button("📝 3. 기관별 융자/사업계획서", use_container_width=True):
+        if set_view_mode("PLAN"): st.rerun()
         
-    if st.sidebar.button("📑 4. 정식 사업계획서 (마스터) 생성", use_container_width=True):
-        if st.session_state.get("view_mode", "INPUT") == "INPUT":
-            st.session_state["permanent_data"] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        st.session_state["view_mode"] = "FULL_PLAN"
-        st.rerun()
+    if st.sidebar.button("📑 4. AI 사업계획서", use_container_width=True):
+        if set_view_mode("FULL_PLAN"): st.rerun()
 
     # ==========================================
     # 2. 화면 모드 제어 (리포트 vs 대시보드)
@@ -189,11 +206,28 @@ if check_password():
     if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
     if "permanent_data" not in st.session_state: st.session_state["permanent_data"] = {}
 
+    st.title("📊 AI 컨설팅 대시보드")
+    col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+    with col_t1:
+        if st.button("📊 AI기업분석리포트", use_container_width=True, type="primary"):
+            if set_view_mode("REPORT"): st.rerun()
+    with col_t2: 
+        if st.button("💡 AI 정책자금 매칭리포트", use_container_width=True, type="primary"):
+            if set_view_mode("MATCHING"): st.rerun()
+    with col_t3: 
+        if st.button("📝 기관별 융자/사업계획서", use_container_width=True, type="primary"):
+            if set_view_mode("PLAN"): st.rerun()
+    with col_t4: 
+        if st.button("📑 AI 사업계획서", use_container_width=True, type="primary"):
+            if set_view_mode("FULL_PLAN"): st.rerun()
+            
+    st.markdown("<hr style='margin-top:0px; margin-bottom:20px;'>", unsafe_allow_html=True)
+
     # ---------------------------------------------------------
-    # [모드 A: 1. 기업분석리포트]
+    # [모드 A: 1. AI기업분석리포트]
     # ---------------------------------------------------------
     if st.session_state["view_mode"] == "REPORT":
-        if st.button("⬅️ 대시보드로 돌아가기"):
+        if st.button("⬅️ 입력 화면으로 돌아가기"):
             for k, v in st.session_state["permanent_data"].items():
                 st.session_state[k] = v
             st.session_state["view_mode"] = "INPUT"
@@ -262,21 +296,22 @@ if check_password():
                 plotly_html = fig.to_html(full_html=False, include_plotlyjs='cdn')
 
                 if "generated_report" not in st.session_state:
-                    with st.status("🚀 제미나이(Gemini)가 가로형 레이아웃으로 완벽한 리포트를 생성 중입니다...", expanded=True) as status:
+                    with st.status("🚀기업분석리포트는 생성중입니다...", expanded=True) as status:
                         try:
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
                             
                             prompt = f"""
-                            당신은 20년 경력의 중소기업 경영컨설턴트입니다.
+                            당신은 20년 경력의 중소기업 경영컨설턴트입니다. 
                             아래 양식과 서식 규칙을 **반드시 100% 똑같이** 지켜서 출력하세요.
 
                             [작성 규칙 - 절대 엄수!!!]
                             1. 마크다운 사용 금지: 제목이나 강조에 마크다운 기호(##, **, - 등)를 절대 사용하지 마세요. 반드시 제공된 HTML 태그만 사용해야 합니다.
                             2. 어투: 모든 문장 끝은 '~있음', '~가능', '~함', '~필요함' 등 명사형(음/슴체)으로 마무리하세요.
-                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 마침표 뒤 줄바꿈 &lt;br&gt; 태그를 넣으세요.
+                            3. 내용 풍성하게: 외부 지식을 총동원하여 각 항목을 3~4문장 이상으로 매우 상세하게 채우세요. 마침표 뒤 줄바꿈 <br> 태그를 넣으세요.
                             4. 자금 사용계획 작성 규칙: 5번의 좌측 항목명은 반드시 '및'을 기준으로 <br> 태그를 사용해 줄바꿈 하세요.
                             5. 경쟁사 비교 분석표 규칙: 헤더(주요 경쟁사 A, B) 작성 시, 미리 제공된 양식대로 괄호 부분은 반드시 <br> 태그 아래에 작성하여 줄바꿈을 강제하세요.
+
                             [기업 정보]
                             - 기업명: {c_name} / 대표자: {rep_name} / 업종: {c_ind} / 사업자유형: {biz_type}
                             - 아이템: {item} / 시장현황: {market} / 차별화: {diff}
@@ -297,7 +332,7 @@ if check_password():
                               </tr>
                               {add_biz_row}
                             </table>
-                            <div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 3~4문장 이상 상세히 작성. 마침표 뒤 줄바꿈 &lt;br&gt;)</div>
+                            <div style="margin-bottom:15px;">(해당 업종과 아이템의 잠재력, 향후 긍정적인 기대감을 외부 지식을 활용하여 3~4문장 이상 상세히 작성. 마침표 뒤 줄바꿈 <br>)</div>
 
                             <h2 class="section-title" style="color:#174EA6; border-bottom:2px solid #174EA6; padding-bottom:8px; margin-top:30px;">2. SWOT 분석</h2>
                             <table style="width:100%; border-collapse: collapse; margin-bottom:15px; table-layout: fixed;">
@@ -443,34 +478,14 @@ if check_password():
                             </div>
                             """
                             
-                            max_retries = 3
-                            for attempt in range(max_retries):
-                                try:
-                                    response = model.generate_content(prompt)
-                                    st.session_state["generated_report"] = response.text
-                                    status.update(label="✅ AI기업분석리포트 생성 완료!", state="complete")
-                                    st.balloons()
-                                    break
-                                except Exception as e:
-                                    if "429" in str(e) and attempt < max_retries - 1:
-                                        status.update(label=f"⏳ 구글 서버 지연 (할당량 초과). 5초 후 재시도합니다... ({attempt+1}/{max_retries})", state="running")
-                                        time.sleep(5)
-                                    else:
-                                        raise e
+                            response = model.generate_content(prompt)
+                            st.session_state["generated_report"] = clean_html(response.text)
+                            status.update(label="✅ AI기업분석리포트 생성 완료!", state="complete")
                         except Exception as e:
-                            status.update(label=f"❌ 오류가 발생했습니다. API 키 권한을 확인해주세요. (상세: {str(e)})", state="error")
+                            status.update(label=f"❌ 시스템 오류 발생: {str(e)}", state="error")
                             st.stop()
 
-                raw_text = st.session_state.get("generated_report", "")
-                if "```html" in raw_text:
-                    response_text = raw_text.split("```html")[1].split("```")[0].strip()
-                elif "```" in raw_text:
-                    response_text = raw_text.split("```")[1].split("```")[0].strip()
-                else:
-                    response_text = raw_text.strip()
-                    
-                # 스트림릿 코드 블록 오작동 방지를 위해 줄 시작 공백 제거
-                response_text = "\n".join([line.lstrip() for line in response_text.split("\n")])
+                response_text = st.session_state.get("generated_report", "")
 
                 if "[GRAPH_INSERT_POINT]" in response_text:
                     parts = response_text.partition("[GRAPH_INSERT_POINT]")
@@ -521,10 +536,10 @@ if check_password():
                 st.error(f"❌ 시스템 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 B: 2. 정책자금 매칭 리포트]
+    # [모드 B: 2. AI 정책자금 매칭 리포트]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "MATCHING":
-        if st.button("⬅️ 대시보드로 돌아가기"):
+        if st.button("⬅️ 입력 화면으로 돌아가기"):
             for k, v in st.session_state["permanent_data"].items():
                 st.session_state[k] = v
             st.session_state["view_mode"] = "INPUT"
@@ -541,7 +556,7 @@ if check_password():
         else:
             try:
                 if "generated_matching" not in st.session_state:
-                    with st.status("🚀 제미나이(Gemini)가 전년도 매출 기준으로 심사를 진행 중입니다...", expanded=True) as status:
+                    with st.status("🚀전년도 매출 기준으로 심사를 진행 중입니다...", expanded=True) as status:
                         try:
                             model_name = get_best_model_name()
                             model = genai.GenerativeModel(model_name)
@@ -613,20 +628,15 @@ if check_password():
                                - 제조업: 중진공 -> 소진공 -> 신용보증기금/기술보증기금 -> 신용보증재단 -> 은행권 협약
                                - 비제조업 (직원 5명 이하 AND 전년매출 50억 이하): 소진공 -> 신용보증기금/기술보증기금 -> 신용보증재단 -> 은행권 협약
                                - 비제조업 (그 외): 중진공 -> 소진공 -> 신용보증기금/기술보증기금 -> 신용보증재단 -> 은행권 협약
-                            
                             2. 보증기관 중복 금지 룰:
                                - 현재 기업의 보증 이용 상태: {guarantee_status}
                                - 기대출에 '기술보증기금'이 있다면 무조건 '기술보증기금'과 '신용보증재단'만 이용 가능 (신용보증기금 절대 추천 불가).
                                - 기대출에 '신용보증기금'이 있다면 무조건 '신용보증기금'과 '신용보증재단'만 이용 가능 (기술보증기금 절대 추천 불가).
-
                             3. 예상 금액 추출 룰:
                                - 외부 지식 및 중진공/보증기관 한도 산출 방식(매출액, 기대출 등)을 참고하여 실현 가능한 예상 금액을 직접 추산해서 기재할 것.
-
                             4. 보완 조언 룰 (인증/특허 활용):
                                - 이 기업의 인증({cert_status}) 및 특허 현황({pat_str})을 바탕으로, 추가적인 자금 조달처나 금리 우대 혜택 등을 방대한 외부 데이터를 검색/참고하여 컨설팅할 것.
-
                             5. 연체 컷오프: 세금/금융연체 '유'인 경우 1~4순위 비우고 연체 해소 조언만 작성.
-
                             6. 분량 제한: PDF 인쇄 시 무조건 1페이지에 모두 들어갈 수 있도록, 각 항목의 사유와 전략은 핵심만 1~2줄로 아주 간결하게 작성하세요.
 
                             [출력 양식]
@@ -670,34 +680,14 @@ if check_password():
                             </div>
                             """
                             
-                            max_retries = 3
-                            for attempt in range(max_retries):
-                                try:
-                                    response = model.generate_content(prompt)
-                                    st.session_state["generated_matching"] = response.text
-                                    status.update(label="✅ 최적화 매칭 리포트 생성 완료!", state="complete")
-                                    st.balloons()
-                                    break
-                                except Exception as e:
-                                    if "429" in str(e) and attempt < max_retries - 1:
-                                        status.update(label=f"⏳ 구글 서버 지연 (할당량 초과). 5초 후 재시도합니다... ({attempt+1}/{max_retries})", state="running")
-                                        time.sleep(5)
-                                    else:
-                                        raise e
+                            response = model.generate_content(prompt)
+                            st.session_state["generated_matching"] = clean_html(response.text)
+                            status.update(label="✅ 최적화 매칭 리포트 생성 완료!", state="complete")
                         except Exception as e:
-                            status.update(label=f"❌ 오류 발생. API 키(새 계정)를 확인해주세요. (상세: {str(e)})", state="error")
+                            status.update(label=f"❌ 오류 발생. API 키를 확인해주세요. (상세: {str(e)})", state="error")
                             st.stop()
                 
-                raw_text = st.session_state.get("generated_matching", "")
-                if "```html" in raw_text:
-                    response_text = raw_text.split("```html")[1].split("```")[0].strip()
-                elif "```" in raw_text:
-                    response_text = raw_text.split("```")[1].split("```")[0].strip()
-                else:
-                    response_text = raw_text.strip()
-                    
-                response_text = "\n".join([line.lstrip() for line in response_text.split("\n")])
-                    
+                response_text = st.session_state.get("generated_matching", "")
                 st.markdown(response_text, unsafe_allow_html=True)
                 
                 st.divider()
@@ -738,10 +728,10 @@ if check_password():
                 st.error(f"❌ 분석 중 오류 발생: {str(e)}")
 
     # ---------------------------------------------------------
-    # [모드 C: 3. 기관 맞춤형 융자/사업계획서 생성]
+    # [모드 C: 3. 기관별 융자/사업계획서 생성]
     # ---------------------------------------------------------
     elif st.session_state["view_mode"] == "PLAN":
-        if st.button("⬅️ 대시보드로 돌아가기"):
+        if st.button("⬅️ 입력 화면으로 돌아가기"):
             for k, v in st.session_state["permanent_data"].items():
                 st.session_state[k] = v
             st.session_state["view_mode"] = "INPUT"
@@ -767,7 +757,7 @@ if check_password():
         req_fund = format_kr_currency(d.get('in_req_amount', 0))
         fund_type, fund_purpose = d.get('in_fund_type', '운전자금'), d.get('in_fund_purpose', '미입력')
         item, market, diff, route = d.get('in_item_desc', '미입력'), d.get('in_market_status', '미입력'), d.get('in_diff_point', '미입력'), d.get('in_sales_route', '')
-
+        
         biz_years = 0
         if d.get('in_start_date', '').strip():
             try: biz_years = max(0, 2026 - int(d.get('in_start_date', '')[:4]))
@@ -797,10 +787,10 @@ if check_password():
         exp_cur = format_kr_currency(d.get('in_exp_current', 0))
         export_info = f"유 (24년 {exp_24}, 25년 {exp_25}, 금년 {exp_cur})" if is_export == '유' else "무 (전액 내수)"
 
-        st.title("📝 기관/서류별 맞춤형 융자·사업계획서 자동 생성기")
+        st.title("📝 기관별 융자/사업계획서 자동 생성기")
         st.info("💡 좌측은 '공통 융자신청서', 우측은 '자금별 사업계획서(별첨)'입니다. 버튼을 누르면 완벽한 HTML 양식으로 생성됩니다.")
 
-        tabs = st.tabs(["1. 중진공", "2. 소진공", "3. 신보/재단", "4. 기술보증기금", "5. 제안용(IR)"])
+        tabs = st.tabs(["1. 중소벤처기업진흥공단", "2. 소상공인시장진흥공단"])
 
         # ==========================================
         # [1. 중진공 탭]
@@ -818,9 +808,9 @@ if check_password():
             
             col_dd1, col_dd2 = st.columns(2)
             with col_dd1:
-                main_fund_type = st.selectbox("💡 1. 대분류 자금종류", list(fund_categories.keys()))
+                main_fund_type = st.selectbox("💡 1. 대분류 자금종류 (중진공)", list(fund_categories.keys()))
             with col_dd2:
-                kosme_fund_type = st.selectbox("💡 2. 세부 자금종류", fund_categories[main_fund_type])
+                kosme_fund_type = st.selectbox("💡 2. 세부 자금종류 (중진공)", fund_categories[main_fund_type])
             
             col_p1, col_p2 = st.columns(2)
             
@@ -869,21 +859,4 @@ if check_password():
                             <h3>[신청내용]</h3>
                             <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:left; font-size:13px; margin-bottom:20px;">
                             <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">신청자금명</th><td style="border:1px solid #333; padding:8px;">▣ {kosme_fund_type}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">신청금액</th><td style="border:1px solid #333; padding:8px;">{req_fund}</td></tr>
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">담보종류</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 신용 &nbsp;&nbsp; □ 부동산 &nbsp;&nbsp; □ 기타</td></tr>
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">융자방식</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 중진공 직접대출 &nbsp;&nbsp; □ 대리대출</td></tr>
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">고정금리/이차보전</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 해당없음</td></tr>
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">기업진단 희망여부</th><td colspan="3" style="border:1px solid #333; padding:8px;">▣ 미신청 &nbsp;&nbsp; □ 신청</td></tr>
-                            </table>
-
-                            <h3>[기업현황 및 실질적 기업주]</h3>
-                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">소재지</th><td colspan="3" style="border:1px solid #333; padding:8px; text-align:left;">본사: {address}</td></tr>
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">기업주 성명</th><td style="border:1px solid #333; padding:8px;">{rep_name}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">직위</th><td style="border:1px solid #333; padding:8px;">대표</td></tr>
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">학력</th><td style="border:1px solid #333; padding:8px;">{edu_school} {edu_major}</td><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">주택</th><td style="border:1px solid #333; padding:8px;">{home_addr}</td></tr>
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">대표자와 동일여부</th><td colspan="3" style="border:1px solid #333; padding:8px; text-align:left;">▣ 같음 &nbsp;&nbsp; □ 다름</td></tr>
-                            </table>
-
-                            <h3>[매출 현황]</h3>
-                            <table style="width:100%; border-collapse: collapse; border: 1px solid #333; text-align:center; font-size:13px; margin-bottom:20px;">
-                            <tr><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">구분</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">23년</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">24년</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">금년(당월)</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">27년(예상)</th><th style="border:1px solid #333; padding:8px; background:#f0f0f0;">28년(예상)</th></tr>
-                            <tr><td style="border:1px solid #333; padding:8px;">총매출액</td><td style
+                            <tr><th style="border:1px solid #333; padding:
