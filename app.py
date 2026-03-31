@@ -13,21 +13,26 @@ from datetime import datetime
 # ==========================================
 st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
+# 모든 소제목 볼드 해제 및 입력창 Placeholder 크기 조절 CSS
 st.markdown("""
 <style>
+    /* 1. 모든 위젯 라벨의 볼드 해제 및 폰트 설정 */
     [data-testid="stWidgetLabel"] p {
         font-weight: 400 !important;
         font-size: 14px !important;
         color: #31333F !important;
         margin-bottom: 2px !important;
     }
+    /* 2. 섹션 헤더(st.header)는 볼드 유지 */
     h2 {
         font-weight: 700 !important;
     }
+    /* 3. 입력창 내부 Placeholder(흐릿한 글씨) 크기 조절: 0.8em */
     input::placeholder {
         font-size: 0.8em !important;
         color: #888 !important;
     }
+    /* 4. 숫자 입력창 우측 증감 버튼 숨기기 */
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button {
         -webkit-appearance: none;
@@ -37,6 +42,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def safe_int(value):
+    """숫자 입력이 None이거나 비어있을 때 0으로 처리하는 안전 함수"""
     try:
         if value is None or value == "": return 0
         clean_val = str(value).replace(',', '').strip()
@@ -71,6 +77,7 @@ def get_best_model_name():
         return 'models/gemini-pro'
     except: return 'models/gemini-1.5-flash'
 
+# --- 신용 등급 판정 및 시각화 로직 ---
 def get_kcb_info(score):
     s = safe_int(score)
     if s >= 942: return "1등급", "#1E88E5"
@@ -168,11 +175,12 @@ with t_cols[3]:
     if st.button("📑 AI 사업계획서", use_container_width=True, type="primary"): change_mode("FULL_PLAN")
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
+# 공통 안내 문구
 GUIDE_STR = "1억=10000으로 입력"
 LABEL_HTML = f"<span style='font-weight:normal;'>(만원)</span>"
 
 if st.session_state["view_mode"] == "INPUT":
-    # --- 1. 기업현황 ---
+    # --- 1. 기업현황 (상시 노출) ---
     st.header("1. 기업현황")
     c1r1 = st.columns([2, 1, 1.5, 1.5])
     with c1r1[0]: st.text_input("기업명", key="in_company_name")
@@ -206,7 +214,8 @@ if st.session_state["view_mode"] == "INPUT":
 
     c2r2 = st.columns([2, 1, 1])
     with c2r2[0]: st.text_input("거주지 주소", key="in_home_addr")
-    with c2r2[1]: st.selectbox("최종학력", ["선택", "중학교 졸업", "고등학교 졸업", "대학교 졸업", "석사 수료", "박사 수료"], key="in_edu_school")
+    with c2r2[1]: 
+        st.selectbox("최종학력", ["선택", "중학교 졸업", "고등학교 졸업", "대학교 졸업", "석사 수료", "박사 수료"], key="in_edu_school")
     with c2r2[2]: st.text_input("전공", key="in_edu_major")
 
     c2r3 = st.columns([1.5, 2.5])
@@ -219,7 +228,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r4[2]: st.text_input("주요경력 2", key="in_career_2")
     with c2r4[3]: st.text_input("주요경력 3", key="in_career_3")
 
-    # --- 3. 대표자 신용정보 (정렬 완성본) ---
+    # --- 3. 대표자 신용정보 (수직 균등 정렬) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
@@ -243,7 +252,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c3_col2:
         st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
         if delinquency == "유" or tax_delin == "유":
-            st.markdown(f"""<div style='background-color: #FFEBEE; padding: 20px; border-radius: 10px; border-left: 5px solid #E53935; height: 185px; overflow: hidden;'><p style='color: #B71C1C; margin-top: 0; font-weight:700;'>⚠️ 연체/체납 주의</p><p style='color: #D32F2F; font-size: 0.9em;'>즉시 해결이 필요합니다.</p></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div style='background-color: #FFEBEE; padding: 20px; border-radius: 10px; border-left: 5px solid #E53935; height: 185px; overflow: hidden;'><p style='color: #B71C1C; margin-top: 0; font-weight:700;'>⚠️ 연체/체납 주의</p><p style='color: #D32F2F; font-size: 0.9em;'>즉시 소명 및 해결이 필요합니다.</p></div>""", unsafe_allow_html=True)
         else:
             st.markdown(f"""<div style='background-color: #E8F5E9; padding: 20px; border-radius: 10px; border-left: 5px solid #43A047; height: 185px; overflow: hidden;'><p style='color: #1B5E20; margin-top: 0; font-weight:700;'>✅ 신용 양호</p><p style='color: #2E7D32; font-size: 0.9em; line-height: 1.5;'>기초 신용 요건을 충족한 상태입니다.</p></div>""", unsafe_allow_html=True)
     with c3_col3:
@@ -305,7 +314,7 @@ if st.session_state["view_mode"] == "INPUT":
                     st.markdown(f"{title} {LABEL_HTML}", unsafe_allow_html=True)
                     st.number_input(title, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, label_visibility="collapsed", step=1, format="%d")
 
-    # --- 6. 보유 인증 ---
+    # --- 6, 7. 인증 및 특허 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("6. 보유 인증")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
@@ -314,7 +323,6 @@ if st.session_state["view_mode"] == "INPUT":
         for j in range(4):
             if i+j < len(cert_list): cols[j].checkbox(cert_list[i+j], key=f"in_cert_{cert_list[i+j]}")
 
-    # --- 7. 특허 및 정부지원 ---
     st.header("7. 특허 및 정부지원")
     c7r1 = st.columns(2)
     with c7r1[0]:
@@ -326,18 +334,28 @@ if st.session_state["view_mode"] == "INPUT":
         st.number_input("수혜 건수", value=st.session_state.get("in_gov_cnt", None), key="in_gov_cnt", placeholder="건수 입력", step=1, format="%d")
         st.text_area("사업명 상세", key="in_gov_desc")
 
-    # --- 8. 비즈니스 정보 (수정 반영) ---
+    # --- 8. 비즈니스 정보 (심사위원 설득 포인트) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("8. 비즈니스 정보")
-    st.text_area("핵심 아이템 상세 설명", key="in_item_desc", help="제품이나 서비스의 핵심 기능을 설명하세요.")
-    st.text_input("제품 생산 공정도 상세", key="in_process_desc")
-    st.text_area("시장 현황", key="in_market_status", help="주요 고객층, 시장 규모, 경쟁사 분석 등을 입력하세요.")
-    st.text_area("앞으로의 계획", key="in_future_plan", help="매출 증대 계획, 마케팅 전략, 신규 아이템 개발 등 향후 비전을 입력하세요.")
+    st.text_area("아이템 핵심 경쟁력 및 차별성", key="in_item_diff", help="경쟁사 대비 강점을 수치나 기술력 중심으로 기재하세요.")
+    st.text_input("제품 생산/서비스 공정도", key="in_process_desc")
+    st.text_area("시장 현황 및 구체적 타겟 고객", key="in_market_target", help="누구에게, 어떤 시장 규모에서 팔 것인지 정의하세요.")
+    st.text_area("앞으로의 계획 및 수익 모델", key="in_future_revenue", help="돈을 어떻게 벌 것인지와 향후 1~3년의 로드맵을 기재하세요.")
 
-    st.success("✅ [개편 완료] 8번 비즈니스 정보가 세분화되었습니다. 모든 정렬이 유지된 상태입니다.")
+    # --- 9. 자금 계획 (추가) ---
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.header("9. 자금 계획")
+    c9_col1, c9_col2 = st.columns([1, 2])
+    with c9_col1:
+        st.markdown(f"**이번 조달 필요 자금** {LABEL_HTML}", unsafe_allow_html=True)
+        st.number_input("조달 필요 자금", value=st.session_state.get("in_req_funds", None), key="in_req_funds", placeholder=GUIDE_STR, label_visibility="collapsed", step=1, format="%d")
+    with c9_col2:
+        st.text_area("상세 자금 집행 계획", key="in_fund_plan", placeholder="예: 연구인력 채용(40%), 시제품 제작(30%), 온라인 마케팅 집행(30%) 등", help="자금의 용도가 명확할수록 승인율이 높습니다.")
+
+    st.success("✅ [최종 업데이트] 9번 자금 계획 섹션이 추가되었습니다. 모든 정렬이 완벽하게 유지되었습니다.")
 
 # ==========================================
-# 4. 리포트 출력 화면
+# 4. 리포트 출력 화면 (사업계획서 최적화 로직)
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"):
@@ -350,7 +368,19 @@ else:
     model = genai.GenerativeModel(get_best_model_name())
 
     if st.session_state["view_mode"] == "REPORT":
-        st.subheader(f"📊 AI기업분석리포트: {cn}")
-        with st.status("🚀정밀 분석 중..."):
-            res = clean_html(model.generate_content(f"{cn} 기업 분석 리포트 HTML").text)
+        st.subheader(f"📊 AI 사업계획서 초안: {cn}")
+        with st.status("🚀 정책자금 심사위원 설득을 위한 정밀 분석 중..."):
+            prompt = f"""
+            업체명: {cn}
+            산업분야: {d.get('in_industry')}
+            아이템경쟁력: {d.get('in_item_diff')}
+            시장타겟: {d.get('in_market_target')}
+            수익모델: {d.get('in_future_revenue')}
+            필요자금: {format_kr_currency(d.get('in_req_funds',0))}
+            집행계획: {d.get('in_fund_plan')}
+
+            위 데이터를 바탕으로 '정책자금 융자/출연을 위한 공식 사업계획서' 초안을 HTML로 작성하라.
+            심사위원의 관점에서 1.사업성, 2.기술성, 3.자금용도의 타당성, 4.상환능력/성장성을 강조하여 작성할 것.
+            """
+            res = clean_html(model.generate_content(prompt).text)
         st.markdown(res, unsafe_allow_html=True)
