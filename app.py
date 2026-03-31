@@ -73,7 +73,7 @@ def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path
 def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
 # ==========================================
-# 2. 사이드바 및 업체 관리
+# 2. 사이드바 관리
 # ==========================================
 st.sidebar.header("⚙️ AI 엔진 설정")
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
@@ -85,11 +85,11 @@ if st.session_state["api_key"]: genai.configure(api_key=st.session_state["api_ke
 st.sidebar.markdown("---")
 st.sidebar.header("📂 업체 관리")
 db = load_db()
-if st.sidebar.button("💾 현재 업체 정보 저장"):
+if st.sidebar.button("💾 현재 정보 저장"):
     cn = st.session_state.get("in_company_name", "").strip()
     if cn:
         db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        save_db(db); st.sidebar.success(f"✅ '{cn}' 저장 완료!")
+        save_db(db); st.sidebar.success(f"✅ 저장 완료!")
 
 selected_company = st.sidebar.selectbox("저장된 업체 목록", ["선택 안 함"] + list(db.keys()))
 c_s1, c_s2 = st.sidebar.columns(2)
@@ -102,132 +102,107 @@ with c_s2:
         for k in [k for k in st.session_state.keys() if k.startswith("in_")]: del st.session_state[k]
         st.session_state.pop("permanent_data", None); st.session_state["view_mode"] = "INPUT"; st.cache_data.clear(); st.rerun()
 
-st.sidebar.markdown("---")
-st.sidebar.header("🚀 빠른 리포트 생성")
-if st.sidebar.button("📊 AI기업분석리포트 생성", key="side_1", use_container_width=True): change_mode("REPORT")
-if st.sidebar.button("💡 AI 정책자금 매칭리포트", key="side_2", use_container_width=True): change_mode("MATCHING")
-if st.sidebar.button("📝 기관별 융자/사업계획서", key="side_3", use_container_width=True): change_mode("PLAN")
-
 # ==========================================
-# 3. 메인 상단 탭
+# 3. 메인 화면 로직
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
 t1, t2, t3, t4 = st.columns(4)
 with t1: 
-    if st.button("📊 AI기업분석리포트", key="top_1", use_container_width=True, type="primary"): change_mode("REPORT")
+    if st.button("📊 AI기업분석리포트", use_container_width=True, type="primary"): change_mode("REPORT")
 with t2: 
-    if st.button("💡 AI 정책자금 매칭리포트", key="top_2", use_container_width=True, type="primary"): change_mode("MATCHING")
+    if st.button("💡 AI 정책자금 매칭리포트", use_container_width=True, type="primary"): change_mode("MATCHING")
 with t3: 
-    if st.button("📝 기관별 융자/사업계획서", key="top_3", use_container_width=True, type="primary"): change_mode("PLAN")
+    if st.button("📝 기관별 융자/사업계획서", use_container_width=True, type="primary"): change_mode("PLAN")
 with t4: 
-    if st.button("📑 AI 사업계획서", key="top_4", use_container_width=True, type="primary"): change_mode("FULL_PLAN")
+    if st.button("📑 AI 사업계획서", use_container_width=True, type="primary"): change_mode("FULL_PLAN")
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
-# ==========================================
-# 4. 모드별 렌더링
-# ==========================================
 if st.session_state["view_mode"] == "INPUT":
-    # --- 1. 기업현황 (기존 유지) ---
+    # --- 1. 기업현황 ---
     st.header("1. 기업현황")
-    r1_c1, r1_c2, r1_c3, r1_c4 = st.columns([2, 1, 1.5, 1.5])
-    with r1_c1: st.text_input("기업명", key="in_company_name")
-    with r1_c2: biz_type = st.radio("사업자유형", ["개인", "법인"], horizontal=True, key="in_biz_type")
-    with r1_c3: st.text_input("사업자번호", placeholder="000-00-00000", key="in_raw_biz_no", on_change=lambda: st.session_state.update({"in_raw_biz_no": format_biz_no(st.session_state.in_raw_biz_no)}))
-    with r1_c4: 
-        if biz_type == "법인":
-            st.text_input("법인등록번호", placeholder="000000-0000000", key="in_raw_corp_no", on_change=lambda: st.session_state.update({"in_raw_corp_no": format_corp_no(st.session_state.in_raw_corp_no)}))
+    r1c1, r1c2, r1c3, r1c4 = st.columns([2, 1, 1.5, 1.5])
+    with r1c1: st.text_input("기업명", key="in_company_name")
+    with r1c2: biz_type = st.radio("사업자유형", ["개인", "법인"], horizontal=True, key="in_biz_type")
+    with r1c3: st.text_input("사업자번호", placeholder="000-00-00000", key="in_raw_biz_no", on_change=lambda: st.session_state.update({"in_raw_biz_no": format_biz_no(st.session_state.in_raw_biz_no)}))
+    with r1c4: 
+        if biz_type == "법인": st.text_input("법인등록번호", placeholder="000000-0000000", key="in_raw_corp_no", on_change=lambda: st.session_state.update({"in_raw_corp_no": format_corp_no(st.session_state.in_raw_corp_no)}))
     
-    r2_c1, r2_c2, r2_c3 = st.columns([1, 2, 1])
-    with r2_c1: st.text_input("사업개시일", placeholder="YYYY.MM.DD", key="in_start_date")
-    with r2_c2: st.text_input("사업장 주소", key="in_biz_addr")
-    with r2_c3: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
+    r2c1, r2c2, r2c3 = st.columns([1, 2, 1])
+    with r2c1: st.text_input("사업개시일", placeholder="YYYY.MM.DD", key="in_start_date")
+    with r2c2: st.text_input("사업장 주소", key="in_biz_addr")
+    with r2c3: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
 
-    r3_c1, r3_c2 = st.columns([1, 3])
-    with r3_c1: st.text_input("전화번호", placeholder="010-0000-0000", key="in_biz_tel")
-    with r3_c2:
+    r3c1, r3c2 = st.columns([1, 3])
+    with r3c1: st.text_input("전화번호", placeholder="010-0000-0000", key="in_biz_tel")
+    with r3c2:
         ls_cols = st.columns([1, 1, 1])
         with ls_cols[0]: lease_status = st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
         if lease_status == "임대":
             with ls_cols[1]: st.number_input("보증금(만원)", value=0, step=1, key="in_lease_deposit")
             with ls_cols[2]: st.number_input("월임대료(만원)", value=0, step=1, key="in_lease_rent")
 
-    r4_c1, r4_c2 = st.columns([1, 3])
-    with r4_c1: st.number_input("상시근로자수(명)", value=0, step=1, key="in_employee_count")
-    with r4_c2:
+    r4c1, r4c2 = st.columns([1, 3])
+    with r4c1: st.number_input("상시근로자수(명)", value=0, step=1, key="in_employee_count")
+    with r4c2:
         add_cols = st.columns([1, 2])
         with add_cols[0]: has_add = st.radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_additional_biz")
         if has_add == "유":
             with add_cols[1]: st.text_input("추가 사업장명", key="in_additional_biz_addr")
 
-    # --- 2. 대표자 정보 (신규 레이아웃) ---
+    # --- 2. 대표자 정보 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("2. 대표자 정보")
     
-    # 1행: 성함 -> 생일 -> 연락처 -> 통신사
+    # 1행
     rep_r1_c1, rep_r1_c2, rep_r1_c3, rep_r1_c4 = st.columns(4)
     with rep_r1_c1: st.text_input("대표자명", key="in_rep_name")
     with rep_r1_c2: st.text_input("생년월일", placeholder="YYYY.MM.DD", key="in_rep_dob")
     with rep_r1_c3: st.text_input("연락처", placeholder="010-0000-0000", key="in_rep_phone")
     with rep_r1_c4: st.selectbox("통신사", ["SKT", "KT", "LG U+", "알뜰폰"], key="in_rep_telecom")
 
-    # 2행: 거주지 주소 -> 최종학력 -> 전공
+    # 2행
     rep_r2_c1, rep_r2_c2, rep_r2_c3 = st.columns([2, 1, 1])
     with rep_r2_c1: st.text_input("거주지 주소", key="in_home_addr")
     with rep_r2_c2: st.selectbox("최종학력", ["중학교 졸업", "고등학교 졸업", "대학교 졸업", "석사 수료", "박사 수료"], key="in_edu_school")
     with rep_r2_c3: st.text_input("전공", key="in_edu_major")
 
-    # 3행: 거주지 상태 -> 이메일 -> 경력
+    # 3행
     rep_r3_c1, rep_r3_c2, rep_r3_c3 = st.columns([1, 1, 2])
     with rep_r3_c1: st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status")
     with rep_r3_c2: st.text_input("이메일 주소", key="in_rep_email")
-    with rep_r3_c3: st.text_area("경력사항(핵심위주)", key="in_career", height=68)
+    with rep_r3_c3: st.text_area("경력사항", key="in_career", height=68)
 
-    # 4행: 부동산 소유현황 (중복선택 드롭박스)
-    st.multiselect("부동산 소유현황 (중복 선택)", ["아파트", "빌라", "토지", "임야", "공장", "기타"], key="in_real_estate")
+    # 4행: [수정] 부동산 소유현황 너비 조절 및 옆에 출력
+    re_cols = st.columns([1.5, 2.5])
+    with re_cols[0]:
+        selected_re = st.multiselect("부동산 소유현황", ["아파트", "빌라", "토지", "임야", "공장", "기타"], key="in_real_estate")
+    with re_cols[1]:
+        if selected_re:
+            st.markdown(f"<div style='margin-top: 28px; padding: 10px; background-color: #f0f2f6; border-radius: 5px; border-left: 5px solid #1E88E5;'><b>선택 내역:</b> {', '.join(selected_re)}</div>", unsafe_allow_html=True)
 
-    # --- 3. 신용 및 매출 현황 ---
+    # --- 나머지 정보 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("3. 신용 및 매출 현황")
     fin_c1, fin_c2 = st.columns(2)
     with fin_c1:
-        st.number_input("NICE 신용점수", value=0, key="in_nice")
+        st.number_input("NICE 점수", value=0, key="in_nice")
         st.radio("세금체납 여부", ["무", "유"], horizontal=True, key="in_tax_status")
     with fin_c2:
         m_cols = st.columns(2)
         with m_cols[0]: st.number_input("금년 매출(만)", value=0, key="in_sales_cur"); st.number_input("24년 매출(만)", value=0, key="in_sales_24")
         with m_cols[1]: st.number_input("25년 매출(만)", value=0, key="in_sales_25"); st.number_input("23년 매출(만)", value=0, key="in_sales_23")
 
-    st.header("4. 기대출 및 필요자금")
-    d_cols = st.columns(4)
-    with d_cols[0]: st.number_input("중진공(만)", value=0, key="in_debt_kosme")
-    with d_cols[1]: st.number_input("소진공(만)", value=0, key="in_debt_semas")
-    with d_cols[2]: st.number_input("보증기금(만)", value=0, key="in_debt_guarantee")
-    with d_cols[3]: st.number_input("필요금액(만)", value=0, key="in_req_amount")
-
-    st.header("5. 인증 현황 (4열 배치)")
+    st.header("4. 인증 및 특허")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
     for i in range(0, len(cert_list), 4):
         cols = st.columns(4)
         for j in range(4):
             if i + j < len(cert_list): cols[j].checkbox(cert_list[i + j], key=f"in_cert_{cert_list[i + j]}")
 
-    st.header("6. 특허 및 정부지원")
-    c6_1, c6_2 = st.columns(2)
-    with c6_1:
-        if st.radio("특허 보유", ["무", "유"], horizontal=True, key="in_has_patent") == "유":
-            st.number_input("건수", value=0, key="in_pat_cnt"); st.text_area("특허 내용", key="in_pat_desc")
-    with c6_2:
-        if st.radio("정부지원 수혜", ["무", "유"], horizontal=True, key="in_has_gov") == "유":
-            st.number_input("수혜건수", value=0, key="in_gov_cnt"); st.text_area("지원사업명", key="in_gov_desc")
-
-    st.header("7. 비즈니스 정보")
-    st.text_area("핵심 아이템", key="in_item_desc")
-    st.text_input("제품 생산 공정도", key="in_process_desc")
-    st.text_area("시장현황 및 계획", key="in_future_plan")
-    st.success("✅ 대표자 정보 설정 완료! 상단 버튼을 클릭하여 리포트를 생성하세요.")
+    st.success("✅ 설정을 완료했습니다. 상단 리포트 버튼을 클릭하세요.")
 
 # ==========================================
-# 5. 리포트 출력 화면 (데이터 연동 확인)
+# 5. 리포트 출력 화면 (데이터 보존 확인)
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"):
@@ -241,14 +216,9 @@ else:
 
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
-        with st.status("🚀기업분석리포트는 생성중입니다"):
-            # 대표자 정보 포함 상세 현황표
-            pr = f"""전문 컨설턴트. {cn} 분석 리포트 HTML 작성. 
-            최상단에 <table border='1' width='100%'>
-            <tr><th>기업명</th><td colspan='3'>{cn}</td></tr>
-            <tr><th>대표자</th><td>{d.get('in_rep_name','-')}</td><th>학력</th><td>{d.get('in_edu_school','-')}</td></tr>
-            <tr><th>사업자번호</th><td>{d.get('in_raw_biz_no','-')}</td><th>부동산</th><td>{', '.join(d.get('in_real_estate', []))}</td></tr>
-            <tr><th>사업장주소</th><td colspan='3'>{d.get('in_biz_addr','-')}</td></tr>
-            </table> 포함. 매출 전망 상세 서술."""
+        with st.status("🚀분석 중..."):
+            # 부동산 정보 리스트를 문자열로 변환하여 전달
+            re_info = ", ".join(d.get('in_real_estate', [])) if d.get('in_real_estate') else "없음"
+            pr = f"{cn} 기업분석 HTML. 최상단 현황표에 대표자:{d.get('in_rep_name')}, 부동산현황:{re_info} 포함할 것."
             res = clean_html(model.generate_content(pr).text)
         st.markdown(res, unsafe_allow_html=True)
