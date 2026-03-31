@@ -124,7 +124,7 @@ if st.sidebar.button("💾 현재 정보 저장", use_container_width=True):
     cn = st.session_state.get("in_company_name", "").strip()
     if cn:
         db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        save_db(db); st.sidebar.success(f"✅ 저장 완료!")
+        save_db(db); st.sidebar.success(f"✅ '{cn}' 저장 완료!")
 
 selected_company = st.sidebar.selectbox("불러올 업체", ["선택 안 함"] + list(db.keys()))
 if st.sidebar.button("📂 불러오기", use_container_width=True) and selected_company != "선택 안 함":
@@ -183,56 +183,64 @@ if st.session_state["view_mode"] == "INPUT":
         if ac_cols[0].radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_add") == "유":
             ac_cols[1].text_input("추가 사업장명", key="in_add_info")
 
-    # --- 2. 대표자 정보 (시안 반영 수정) ---
+    # --- 2. 대표자 정보 (수정: 경력사항 3단 분할) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("2. 대표자 정보")
     
-    # 1행: 성함, 생년월일, 연락처, 통신사
     c2r1 = st.columns(4)
     with c2r1[0]: st.text_input("대표자명", key="in_rep_name")
     with c2r1[1]: st.text_input("생년월일", placeholder="YYYY.MM.DD", key="in_rep_dob")
     with c2r1[2]: st.text_input("연락처", placeholder="010-0000-0000", key="in_rep_phone")
     with c2r1[3]: st.selectbox("통신사", ["SKT", "KT", "LG U+", "알뜰폰"], key="in_rep_telecom")
 
-    # 2행: 주소, 학력, 전공
     c2r2 = st.columns([2, 1, 1])
     with c2r2[0]: st.text_input("거주지 주소", key="in_home_addr")
     with c2r2[1]: st.selectbox("최종학력", ["중학교 졸업", "고등학교 졸업", "대학교 졸업", "석사 수료", "박사 수료"], key="in_edu_school")
     with c2r2[2]: st.text_input("전공", key="in_edu_major")
 
-    # 3행: 상태, 부동산현황 (병렬)
     c2r3 = st.columns([1.5, 2.5])
     with c2r3[0]: st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status")
     with c2r3[1]: st.multiselect("부동산 소유현황", ["아파트", "빌라", "토지", "임야", "공장", "기타"], key="in_real_estate")
 
-    # 4행: 이메일, 경력 (경력 비중 확대)
-    c2r4 = st.columns([1, 3])
+    # [수정] 경력사항 3분할 및 이메일과 높이 통일
+    c2r4 = st.columns(4)
     with c2r4[0]: st.text_input("이메일 주소", key="in_rep_email")
-    with c2r4[1]: st.text_area("경력사항", key="in_career", height=68)
+    with c2r4[1]: st.text_input("주요경력 1", key="in_career_1", placeholder="최근 경력")
+    with c2r4[2]: st.text_input("주요경력 2", key="in_career_2", placeholder="이전 경력")
+    with c2r4[3]: st.text_input("주요경력 3", key="in_career_3", placeholder="기타 경력")
 
-    # --- 3. 신용 정보 시각화 (시안 반영 3분할 레이아웃) ---
+    # --- 3. 신용 정보 시각화 (수정: 상태 메시지 레이아웃) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("3. 신용 정보 시각화")
     
-    c3_left, c3_mid, c3_right = st.columns([1.2, 1, 1.8])
+    c3_left, c3_mid, c3_right = st.columns([1.2, 1.2, 1.8])
     
     with c3_left:
-        # 상단 라디오 버튼 한 줄 배치
         rad_cols = st.columns(2)
         with rad_cols[0]: delinquency = st.radio("금융연체 여부", ["무", "유"], horizontal=True, key="in_fin_delinquency")
         with rad_cols[1]: tax_delin = st.radio("세금체납 여부", ["무", "유"], horizontal=True, key="in_tax_delinquency")
         
-        st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True) # 줄간격
+        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
         s_kcb = st.number_input("KCB 점수", value=0, max_value=1000, key="in_kcb_score")
         s_nice = st.number_input("NICE 점수", value=0, max_value=1000, key="in_nice_score")
         
     with c3_mid:
-        # 상태 박스 (높이 보정)
         st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        # [수정] 신용상태 메시지 레이아웃 (제목 - 내용 분리)
         if delinquency == "유" or tax_delin == "유":
-            st.error("🚨 **연체/체납 주의:**\n자금 신청 제한 가능성이 매우 높습니다.")
+            st.markdown("""
+            <div style='background-color: #FFEBEE; padding: 15px; border-radius: 10px; border-left: 5px solid #E53935; height: 165px;'>
+                <h4 style='color: #B71C1C; margin-top: 0;'>⚠️ 연체/체납 주의</h4>
+                <p style='color: #D32F2F; font-size: 0.95em;'>현재 연체 또는 체납 정보가 확인됩니다. 정책자금 신청 시 결격사유가 될 수 있으므로 최우선 해결이 필요합니다.</p>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.success("✅ **신용 양호:**\n현재 연체 및 체납 내역이 없습니다.")
+            st.markdown("""
+            <div style='background-color: #E8F5E9; padding: 15px; border-radius: 10px; border-left: 5px solid #43A047; height: 165px;'>
+                <h4 style='color: #1B5E20; margin-top: 0;'>✅ 신용 양호</h4>
+                <p style='color: #2E7D32; font-size: 0.95em;'>현재 금융연체 및 세금체납 내역이 없습니다. 정책자금 신청을 위한 기초 신용 요건을 충족한 상태입니다.</p>
+            </div>
+            """, unsafe_allow_html=True)
         
     with c3_right:
         v_cols = st.columns(2)
@@ -245,19 +253,10 @@ if st.session_state["view_mode"] == "INPUT":
             st.plotly_chart(create_gauge(s_nice, "NICE Score", n_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-10px;'><b>NICE: {n_grade}</b></div>", unsafe_allow_html=True)
 
-    # --- 하단 섹션 (매출/인증) ---
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.header("4. 매출 및 기대출")
-    c4 = st.columns(4)
-    with c4[0]: st.number_input("금년 매출(만)", value=0, key="in_sales_cur")
-    with c4[1]: st.number_input("24년 매출(만)", value=0, key="in_sales_24")
-    with c4[2]: st.number_input("중진공 기대출(만)", value=0, key="in_debt_kosme")
-    with c4[3]: st.number_input("필요자금(만)", value=0, key="in_req_amount")
-
-    st.success("✅ 포토샵 시안 반영 완료! 상단 탭을 눌러 리포트를 생성하세요.")
+    st.success("✅ 대표자 정보 및 신용 시각화 보완 완료! 4번 항목 설정을 진행하시겠습니까?")
 
 # ==========================================
-# 4. 리포트 출력 화면
+# 4. 리포트 출력 화면 (생략)
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"):
@@ -272,6 +271,7 @@ else:
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
         with st.status("🚀정밀 분석 중..."):
-            pr = f"{cn} 리포트 HTML. 현황표(사업자:{d.get('in_raw_biz_no')}, 대표:{d.get('in_rep_name')}, 부동산:{', '.join(d.get('in_real_estate', []))}) 필수 포함."
+            k_grade, _ = get_kcb_info(d.get('in_kcb_score', 0))
+            pr = f"{cn} 기업분석 리포트 HTML. 대표자:{d.get('in_rep_name')}, 경력:{d.get('in_career_1')}, {d.get('in_career_2')}, 신용:{k_grade} 반영."
             res = clean_html(model.generate_content(pr).text)
         st.markdown(res, unsafe_allow_html=True)
