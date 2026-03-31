@@ -104,7 +104,7 @@ def create_gauge(score, title, color):
     return fig
 
 # ==========================================
-# 1. 상태 관리 및 사이드바 (리포트 탭 복구)
+# 1. 상태 관리 및 사이드바
 # ==========================================
 DB_FILE = "company_db.json"
 def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path.exists(DB_FILE) else {}
@@ -170,19 +170,30 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r1[2]: st.text_input("사업자번호", placeholder="000-00-00000", key="in_raw_biz_no")
     with c1r1[3]: st.text_input("법인등록번호", placeholder="000000-0000000", key="in_raw_corp_no")
 
-    c1r2 = st.columns([1, 2, 1])
+    c1r2 = st.columns([1, 1.5, 1, 1.5]) # 이메일 주소 배치를 위해 칸 조절
     with c1r2[0]: st.text_input("사업개시일", placeholder="YYYY.MM.DD", key="in_start_date")
     with c1r2[1]: st.text_input("사업장 주소", key="in_biz_addr")
     with c1r2[2]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
+    with c1r2[3]: st.text_input("이메일 주소", placeholder="example@email.com", key="in_email_addr") # 추가된 항목
 
     c1r3 = st.columns([1, 1, 1, 1])
     with c1r3[0]: st.text_input("사업장 전화번호", placeholder="000-0000-0000", key="in_biz_tel")
     with c1r3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
     with c1r3[2]: st.number_input("보증금 (만원)", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE_STR, step=1)
     with c1r3[3]: st.number_input("월임대료 (만원)", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE_STR, step=1)
+    
+    # 추가 사업장 관련 로직
+    c1r4 = st.columns([1, 3])
+    with c1r4[0]: has_extra_biz = st.radio("추가 사업장 유무", ["무", "유"], horizontal=True, key="in_has_extra_biz")
+    with c1r4[1]: 
+        if has_extra_biz == "유":
+            st.text_input("추가사업장 정보입력", placeholder="사업장명/사업자등록번호 기재", key="in_extra_biz_info")
+        else:
+            st.empty() # '무'일 때는 공간을 비워둠
+            
     st.markdown("---")
 
-    # --- 2. 대표자 정보 (풀 복구) ---
+    # --- 2. 대표자 정보 (복구 완료) ---
     st.header("2. 대표자 정보")
     c2r1 = st.columns(4)
     with c2r1[0]: st.text_input("대표자명", key="in_rep_name")
@@ -215,10 +226,10 @@ if st.session_state["view_mode"] == "INPUT":
         vk, vn = safe_int(s_kcb), safe_int(s_nice)
         has_issue = (delinquency == "유" or tax_delin == "유")
         low_score = (vk > 0 and vk < 630) or (vn > 0 and vn < 665)
-        if has_issue: status, color, text = "🔴 진행 불가", "#FFEBEE", "연체/체납 해소가 선행되어야 합니다."
-        elif low_score: status, color, text = "🟡 진행 주의", "#FFF3E0", "신용 보완책 검토가 필요합니다."
-        elif vk == 0: status, color, text = "⚪ 대기 중", "#F8F9FA", "정보를 입력해 주세요."
-        else: status, color, text = "🟢 진행 원활", "#E8F5E9", "양호한 신용 상태입니다."
+        if has_issue: status, color, text = "🔴 진행 불가", "#FFEBEE", "연체/체납 정보가 조달 가능성을 낮춥니다."
+        elif low_score: status, color, text = "🟡 진행 주의", "#FFF3E0", "신용 보완책이나 정밀 심사가 권장됩니다."
+        elif vk == 0: status, color, text = "⚪ 대기 중", "#F8F9FA", "정보를 입력하시면 진단이 시작됩니다."
+        else: status, color, text = "🟢 진행 원활", "#E8F5E9", "정책자금 조달에 유리한 신용 상태입니다."
         st.markdown(f"<div style='background-color:{color}; padding:20px; border-radius:10px; height:185px;'><p style='font-weight:700;'>금융 상태 요약</p><p style='font-size:1.2em; font-weight:700;'>{status}</p><p>{text}</p></div>", unsafe_allow_html=True)
     with c3_col3:
         v_cols = st.columns(2); kg, kc = get_kcb_info(vk); ng, nc = get_nice_info(vn)
@@ -302,19 +313,4 @@ if st.session_state["view_mode"] == "INPUT":
         st.number_input("조달금액", value=st.session_state.get("in_req_funds", None), key="in_req_funds", placeholder=GUIDE_STR, step=1, label_visibility="collapsed")
     with c9[1]:
         st.markdown('<p class="std-label-14">상세 자금 집행 계획</p>', unsafe_allow_html=True)
-        st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%) 등", label_visibility="collapsed")
-
-# ==========================================
-# 3. 리포트 출력
-# ==========================================
-else:
-    if st.button("⬅️ 입력 화면으로 돌아가기"): st.session_state["view_mode"] = "INPUT"; st.rerun()
-    current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-    st.subheader(f"📊 {current_data.get('in_company_name', '미입력')} 분석 리포트")
-    with st.status("🚀 분석 진행 중..."):
-        if not st.session_state.get("api_key"): st.error("API Key를 입력하세요.")
-        else:
-            genai.configure(api_key=st.session_state["api_key"])
-            model = genai.GenerativeModel(get_best_model_name())
-            res = model.generate_content(f"기업 정보: {current_data} 를 바탕으로 {st.session_state['view_mode']} 성격에 맞는 리포트를 작성하라.").text
-            st.markdown(res)
+        st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%) 등
