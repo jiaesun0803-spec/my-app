@@ -3,7 +3,7 @@ import json
 import os
 import time
 import plotly.graph_objects as go
-import streamlit.components.v1 as components # HTML 출력을 위한 컴포넌트
+import streamlit.components.v1 as components
 
 # [엔진 연결]
 import engine_analysis
@@ -12,7 +12,7 @@ import engine_loan
 import engine_ai_plan
 
 # ==========================================
-# 0. 핵심 설정 및 디자인 커스텀 (원본 그대로 유지)
+# 0. 핵심 설정 및 디자인 커스텀 (원본 유지)
 # ==========================================
 st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
@@ -31,6 +31,21 @@ st.markdown("""
     input::placeholder, textarea::placeholder { color: #aaa !important; font-size: 0.85em !important; }
 </style>
 """, unsafe_allow_html=True)
+
+# [데이터 영구 저장용 함수]
+DB_FILE = "companies_data.json"
+
+def load_all_companies():
+    """파일에서 저장된 기업 목록 불러오기"""
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_to_file(data_dict):
+    """파일에 기업 목록 저장하기"""
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(data_dict, f, ensure_ascii=False, indent=4)
 
 def safe_int(value):
     try: return int(float(str(value).replace(',', '').strip())) if value else 0
@@ -51,12 +66,13 @@ def get_nice_grade(score):
     else: return f"{s}점(등급외)", "#E53935"
 
 # ==========================================
-# 1. 상태 관리 및 사이드바 (저장/불러오기 탭 완벽 복구)
+# 1. 상태 관리 및 영구 저장 사이드바
 # ==========================================
 if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
-# 저장된 업체 데이터를 담을 큰 바구니
-if "company_list" not in st.session_state: st.session_state["company_list"] = {}
+# 시작 시 파일에서 데이터 로드
+if "company_list" not in st.session_state: 
+    st.session_state["company_list"] = load_all_companies()
 
 st.sidebar.header("⚙️ AI 엔진 설정")
 api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password", placeholder="API Key 입력")
@@ -64,37 +80,35 @@ if st.sidebar.button("💾 API KEY 저장", use_container_width=True):
     st.session_state["api_key"] = api_key_input; st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.header("📁 업체 관리")
+st.sidebar.header("📁 업체 관리 (영구 저장)")
 
-# [저장하기/불러오기 탭 구성]
 save_tab, load_tab = st.sidebar.tabs(["💾 저장하기", "📂 불러오기"])
 
 with save_tab:
-    if st.button("현재 기업 정보 저장", use_container_width=True, key="save_current"):
-        # 입력창(st.session_state)에서 기업명을 가져옵니다.
+    if st.button("현재 기업 정보 파일 저장", use_container_width=True):
         name_to_save = st.session_state.get("in_company_name", "").strip()
         if name_to_save:
-            # "in_"으로 시작하는 모든 입력 데이터 수집
             current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            # 1. 세션에 저장
             st.session_state["company_list"][name_to_save] = current_data
-            st.success(f"'{name_to_save}' 저장 완료!")
-            time.sleep(0.5)
-            st.rerun()
+            # 2. 파일에 영구 저장
+            save_to_file(st.session_state["company_list"])
+            st.success(f"'{name_to_save}' 파일 저장 완료!")
+            time.sleep(0.5); st.rerun()
         else:
-            st.error("기업명을 먼저 입력해 주세요.")
+            st.error("기업명을 입력해 주세요.")
 
 with load_tab:
     if st.session_state["company_list"]:
         selected_target = st.selectbox("저장된 업체 목록", options=list(st.session_state["company_list"].keys()))
         if st.button("데이터 불러오기", use_container_width=True):
-            # 선택한 업체의 데이터를 다시 세션 상태로 복사
             loaded_data = st.session_state["company_list"][selected_target]
             for key, val in loaded_data.items():
                 st.session_state[key] = val
-            st.info(f"'{selected_target}' 정보를 불러왔습니다.")
+            st.info(f"'{selected_target}' 로드 완료.")
             st.rerun()
     else:
-        st.write("저장된 기업이 없습니다.")
+        st.write("저장된 파일이 없습니다.")
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 리포트 생성")
@@ -108,20 +122,18 @@ if st.sidebar.button("📑 AI 사업계획서", use_container_width=True): st.se
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
 t_cols = st.columns(4)
-with t_cols[0]: 
-    if st.button("📊 AI 기업분석리포트", key="m_b1", use_container_width=True, type="primary"): st.session_state["view_mode"] = "REPORT"; st.rerun()
-with t_cols[1]: 
-    if st.button("💡 AI 정책자금 매칭", key="m_b2", use_container_width=True, type="primary"): st.session_state["view_mode"] = "MATCHING"; st.rerun()
-with t_cols[2]: 
-    if st.button("📝 기관별 융자/사업계획서", key="m_b3", use_container_width=True, type="primary"): st.session_state["view_mode"] = "LOAN_PLAN"; st.rerun()
-with t_cols[3]: 
-    if st.button("📑 AI 사업계획서", key="m_b4", use_container_width=True, type="primary"): st.session_state["view_mode"] = "AI_PLAN"; st.rerun()
+btn_types = ["REPORT", "MATCHING", "LOAN_PLAN", "AI_PLAN"]
+for i, m in enumerate(btn_types):
+    with t_cols[i]:
+        label = ["📊 AI 기업분석리포트", "💡 AI 정책자금 매칭", "📝 기관별 융자/사업계획서", "📑 AI 사업계획서"][i]
+        if st.button(label, key=f"m_b{i}", use_container_width=True, type="primary"):
+            st.session_state["view_mode"] = m; st.rerun()
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
 GUIDE_STR = "1억=10000으로 입력"
 
 # ==========================================
-# 3. 화면 분기 (입력 vs 리포트)
+# 3. 화면 분기 (입력 vs 리포트) - 디자인 유지
 # ==========================================
 if st.session_state["view_mode"] == "INPUT":
     st.header("1. 기업현황")
@@ -139,7 +151,6 @@ if st.session_state["view_mode"] == "INPUT":
     c1r3 = st.columns([1, 1, 1, 1])
     with c1r3[0]: st.text_input("사업장 전화번호", key="in_biz_tel", placeholder="000-00-0000")
     with c1r3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
-    # [수정] value=None을 주어야 placeholder(가이드 문구)가 보입니다.
     with c1r3[2]: st.number_input("보증금 (만원)", key="in_lease_deposit", step=1, placeholder=GUIDE_STR, value=None)
     with c1r3[3]: st.number_input("월임대료 (만원)", key="in_lease_rent", step=1, placeholder=GUIDE_STR, value=None)
     
@@ -188,7 +199,7 @@ if st.session_state["view_mode"] == "INPUT":
     st.markdown("---")
 
     st.header("4. 매출현황")
-    exp_c1, exp_c2 = st.columns([1, 1])
+    exp_c1, exp_c2 = st.columns(2)
     with exp_c1: has_exp = st.radio("수출매출 여부", ["없음", "있음"], horizontal=True, key="in_export_revenue")
     with exp_c2: plan_exp = st.radio("수출예정 여부", ["없음", "있음"], horizontal=True, key="in_planned_export")
     mc = st.columns(4)
@@ -243,7 +254,7 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%) 등", label_visibility="collapsed")
 
 # ==========================================
-# 4. 리포트 출력 모드 (기존 유지)
+# 4. 리포트 출력 모드 (데이터 보존 보장)
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"): 
@@ -251,7 +262,6 @@ else:
 
     current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     mode = st.session_state["view_mode"]
-    
     biz_name = current_data.get("in_company_name", "미입력")
     v_titles = {"REPORT":"기업분석리포트", "MATCHING":"정책자금매칭결과", "LOAN_PLAN":"융자/사업계획서", "AI_PLAN":"사업계획서"}
     
@@ -260,14 +270,12 @@ else:
     if not st.session_state.get("api_key"):
         st.error("사이드바에서 API Key를 먼저 저장해 주세요.")
     else:
-        with st.status(f"🚀 {biz_name} AI 분석 및 리포트 생성 중..."):
+        with st.status(f"🚀 {biz_name} AI 분석 중..."):
             try:
                 if mode == "REPORT": res_html = engine_analysis.run_report(st.session_state["api_key"], current_data)
                 elif mode == "MATCHING": res_html = engine_matching.run_report(st.session_state["api_key"], current_data)
                 elif mode == "LOAN_PLAN": res_html = engine_loan.run_report(st.session_state["api_key"], current_data)
                 elif mode == "AI_PLAN": res_html = engine_ai_plan.run_report(st.session_state["api_key"], current_data)
-                
                 components.html(res_html, height=1200, scrolling=True)
-                
             except Exception as e:
                 st.error(f"오류 발생: {e}")
