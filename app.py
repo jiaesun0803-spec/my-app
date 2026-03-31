@@ -107,8 +107,9 @@ def get_nice_info(score):
     else: return "10등급", "#E53935"
 
 def create_gauge(score, title, color):
+    val = safe_int(score)
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number", value = score if score else 0,
+        mode = "gauge+number", value = val,
         domain = {'x': [0, 1], 'y': [0, 1]},
         title = {'text': title, 'font': {'size': 14}},
         gauge = {
@@ -121,19 +122,17 @@ def create_gauge(score, title, color):
     return fig
 
 # ==========================================
-# 1. 초기화 및 세션 관리 (API KEY 유지 로직 포함)
+# 1. 초기화 및 세션 관리
 # ==========================================
 DB_FILE = "company_db.json"
 def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path.exists(DB_FILE) else {}
 def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
-# 페이지 뷰 모드 초기화
 if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 
 # ---------------- 사이드바 ----------------
 st.sidebar.header("⚙️ AI 엔진 설정")
 
-# [수정] API KEY 입력 및 유지 로직
 if "api_key" not in st.session_state:
     st.session_state["api_key"] = ""
 
@@ -147,7 +146,6 @@ if st.sidebar.button("💾 API KEY 저장"):
 
 if st.session_state["api_key"]:
     genai.configure(api_key=st.session_state["api_key"])
-    st.sidebar.info("🤖 AI 엔진이 활성화되었습니다.")
 else:
     st.sidebar.warning("🔑 API Key를 입력해주세요.")
 
@@ -169,10 +167,9 @@ with sb_col2:
             db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
             save_db(db); st.sidebar.success("저장 완료!")
 
-# [수정] 전체 데이터 초기화 (API Key 제외하고 모든 입력값 삭제)
+# [해결] 초기화 시 에러 방지 로직 포함
 if st.sidebar.button("🧹 전체 데이터 초기화", use_container_width=True):
     for key in list(st.session_state.keys()):
-        # 'in_'으로 시작하는 모든 입력 데이터 및 리포트 관련 상태 제거
         if key.startswith("in_") or key == "view_mode":
             del st.session_state[key]
     st.session_state["view_mode"] = "INPUT"
@@ -216,7 +213,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r2[2]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
 
     c1r3 = st.columns([1, 1, 1, 1])
-    with c1r3[0]: st.text_input("사업장 전화번호", placeholder="000-0000-0000", key="in_biz_tel")
+    with c1r3[0]: st.text_input("사업장 전화번호", placeholder="000-00-00000", key="in_biz_tel")
     with c1r3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
     with c1r3[2]: st.number_input("보증금 (만원)", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE_STR, step=1, format="%d")
     with c1r3[3]: st.number_input("월임대료 (만원)", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE_STR, step=1, format="%d")
@@ -235,7 +232,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (즉각 판단 로직) ---
+    # --- 3. 대표자 신용정보 (TypeError 방지 완료) ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
     with c3_col1:
@@ -250,9 +247,14 @@ if st.session_state["view_mode"] == "INPUT":
         s_nice = r2[1].number_input("n_i", value=st.session_state.get("in_nice_score", None), key="in_nice_score", label_visibility="collapsed", placeholder="점수", step=1, format="%d")
     with c3_col2:
         st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
-        # 즉각 판단 로직
+        
+        # [수정] TypeError 방지용 안전한 값 변환
+        val_kcb = safe_int(s_kcb)
+        val_nice = safe_int(s_nice)
+        
         has_issue = (delinquency == "유" or tax_delin == "유")
-        low_score = (s_kcb > 0 and s_kcb < 630) or (s_nice > 0 and s_nice < 665)
+        # 비어있는 값이 아닌 실제 입력값이 기준치 미만인 경우만 체크
+        low_score = (val_kcb > 0 and val_kcb < 630) or (val_nice > 0 and val_nice < 665)
         
         if has_issue:
             status_text = "🔴 진행 불가 (위험)"
@@ -262,6 +264,10 @@ if st.session_state["view_mode"] == "INPUT":
             status_text = "🟡 진행 검토 필요 (주의)"
             comment_text = "신용 점수가 다소 낮습니다. 보증서 발급 시 추가 담보 요구나 한도 제한이 있을 수 있으니 정밀 검토가 필요합니다."
             bg_color = "#FFF3E0"
+        elif val_kcb == 0 and val_nice == 0:
+            status_text = "⚪ 정보 입력 대기"
+            comment_text = "신용 정보를 입력하시면 즉시 금융 상태를 진단해 드립니다."
+            bg_color = "#F8F9FA"
         else:
             status_text = "🟢 진행 원활 (양호)"
             comment_text = "금융 이력 및 신용 점수가 양호합니다. 매출액 및 고용 현황에 따라 원활한 자금 조달이 가능할 것으로 보입니다."
@@ -276,12 +282,13 @@ if st.session_state["view_mode"] == "INPUT":
         """, unsafe_allow_html=True)
 
     with c3_col3:
-        v_cols = st.columns(2); k_grade, k_color = get_kcb_info(s_kcb); n_grade, n_color = get_nice_info(s_nice)
+        # 게이지 역시 safe_int 처리된 값 사용
+        v_cols = st.columns(2); k_grade, k_color = get_kcb_info(val_kcb); n_grade, n_color = get_nice_info(val_nice)
         with v_cols[0]: 
-            st.plotly_chart(create_gauge(s_kcb, "KCB Score", k_color), use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(create_gauge(val_kcb, "KCB Score", k_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{k_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'>KCB: {k_grade}</div>", unsafe_allow_html=True)
         with v_cols[1]: 
-            st.plotly_chart(create_gauge(s_nice, "NICE Score", n_color), use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(create_gauge(val_nice, "NICE Score", n_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'>NICE: {n_grade}</div>", unsafe_allow_html=True)
     st.markdown("---")
 
@@ -352,7 +359,7 @@ if st.session_state["view_mode"] == "INPUT":
     with row4[1]: st.text_area("앞으로의 계획", key="in_future_plan")
     st.markdown("---")
 
-    # --- 9. 자금 계획 ---
+    # --- 9. 자금 계획 (수평 상단 정렬 및 16px) ---
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
@@ -371,8 +378,11 @@ else:
     cn = d.get('in_company_name', '미입력').strip()
     st.subheader(f"📊 {cn} 분석 리포트")
     with st.status("🚀 분석 진행 중..."):
-        if not st.session_state["api_key"]: st.error("사이드바에서 API Key를 먼저 저장하세요.")
+        if not st.session_state.get("api_key"): st.error("사이드바에서 API Key를 먼저 저장하세요.")
         else:
-            model = genai.GenerativeModel(get_best_model_name())
-            res = model.generate_content(f"기업 정보: {d} 를 바탕으로 리포트를 작성하라.").text
-            st.markdown(clean_html(res), unsafe_allow_html=True)
+            try:
+                model = genai.GenerativeModel(get_best_model_name())
+                res = model.generate_content(f"기업 정보: {d} 를 바탕으로 전문적인 리포트를 작성하라.").text
+                st.markdown(clean_html(res), unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"리포트 생성 중 오류가 발생했습니다: {e}")
