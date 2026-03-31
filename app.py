@@ -73,7 +73,7 @@ def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path
 def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
 # ==========================================
-# 2. 사이드바 관리
+# 2. 사이드바 및 업체 관리
 # ==========================================
 st.sidebar.header("⚙️ AI 엔진 설정")
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
@@ -85,11 +85,11 @@ if st.session_state["api_key"]: genai.configure(api_key=st.session_state["api_ke
 st.sidebar.markdown("---")
 st.sidebar.header("📂 업체 관리")
 db = load_db()
-if st.sidebar.button("💾 현재 정보 저장"):
+if st.sidebar.button("💾 현재 업체 정보 저장"):
     cn = st.session_state.get("in_company_name", "").strip()
     if cn:
         db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        save_db(db); st.sidebar.success(f"✅ 저장 완료!")
+        save_db(db); st.sidebar.success(f"✅ '{cn}' 저장 완료!")
 
 selected_company = st.sidebar.selectbox("저장된 업체 목록", ["선택 안 함"] + list(db.keys()))
 c_s1, c_s2 = st.sidebar.columns(2)
@@ -103,20 +103,23 @@ with c_s2:
         st.session_state.pop("permanent_data", None); st.session_state["view_mode"] = "INPUT"; st.cache_data.clear(); st.rerun()
 
 # ==========================================
-# 3. 메인 화면 로직
+# 3. 메인 상단 탭 (Persistence 유지)
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
 t1, t2, t3, t4 = st.columns(4)
 with t1: 
-    if st.button("📊 AI기업분석리포트", use_container_width=True, type="primary"): change_mode("REPORT")
+    if st.button("📊 AI기업분석리포트", key="top_1", use_container_width=True, type="primary"): change_mode("REPORT")
 with t2: 
-    if st.button("💡 AI 정책자금 매칭리포트", use_container_width=True, type="primary"): change_mode("MATCHING")
+    if st.button("💡 AI 정책자금 매칭리포트", key="top_2", use_container_width=True, type="primary"): change_mode("MATCHING")
 with t3: 
-    if st.button("📝 기관별 융자/사업계획서", use_container_width=True, type="primary"): change_mode("PLAN")
+    if st.button("📝 기관별 융자/사업계획서", key="top_3", use_container_width=True, type="primary"): change_mode("PLAN")
 with t4: 
-    if st.button("📑 AI 사업계획서", use_container_width=True, type="primary"): change_mode("FULL_PLAN")
+    if st.button("📑 AI 사업계획서", key="top_4", use_container_width=True, type="primary"): change_mode("FULL_PLAN")
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
+# ==========================================
+# 4. 모드별 렌더링
+# ==========================================
 if st.session_state["view_mode"] == "INPUT":
     # --- 1. 기업현황 ---
     st.header("1. 기업현황")
@@ -138,47 +141,42 @@ if st.session_state["view_mode"] == "INPUT":
         ls_cols = st.columns([1, 1, 1])
         with ls_cols[0]: lease_status = st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
         if lease_status == "임대":
-            with ls_cols[1]: st.number_input("보증금(만원)", value=0, step=1, key="in_lease_deposit")
-            with ls_cols[2]: st.number_input("월임대료(만원)", value=0, step=1, key="in_lease_rent")
+            with ls_cols[1]: st.number_input("보증금(만원)", value=0, key="in_lease_deposit")
+            with ls_cols[2]: st.number_input("월임대료(만원)", value=0, key="in_lease_rent")
 
     r4c1, r4c2 = st.columns([1, 3])
-    with r4c1: st.number_input("상시근로자수(명)", value=0, step=1, key="in_employee_count")
+    with r4c1: st.number_input("상시근로자수(명)", value=0, key="in_employee_count")
     with r4c2:
         add_cols = st.columns([1, 2])
-        with add_cols[0]: has_add = st.radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_additional_biz")
-        if has_add == "유":
-            with add_cols[1]: st.text_input("추가 사업장명", key="in_additional_biz_addr")
+        if add_cols[0].radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_add") == "유":
+            add_cols[1].text_input("추가 사업장명", key="in_add_info")
 
-    # --- 2. 대표자 정보 ---
+    # --- 2. 대표자 정보 (정렬 보완 단계) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("2. 대표자 정보")
     
     # 1행
-    rep_r1_c1, rep_r1_c2, rep_r1_c3, rep_r1_c4 = st.columns(4)
-    with rep_r1_c1: st.text_input("대표자명", key="in_rep_name")
-    with rep_r1_c2: st.text_input("생년월일", placeholder="YYYY.MM.DD", key="in_rep_dob")
-    with rep_r1_c3: st.text_input("연락처", placeholder="010-0000-0000", key="in_rep_phone")
-    with rep_r1_c4: st.selectbox("통신사", ["SKT", "KT", "LG U+", "알뜰폰"], key="in_rep_telecom")
+    rep_r1_cols = st.columns(4)
+    with rep_r1_cols[0]: st.text_input("대표자명", key="in_rep_name")
+    with rep_r1_cols[1]: st.text_input("생년월일", placeholder="YYYY.MM.DD", key="in_rep_dob")
+    with rep_r1_cols[2]: st.text_input("연락처", placeholder="010-0000-0000", key="in_rep_phone")
+    with rep_r1_cols[3]: st.selectbox("통신사", ["SKT", "KT", "LG U+", "알뜰폰"], key="in_rep_telecom")
 
     # 2행
-    rep_r2_c1, rep_r2_c2, rep_r2_c3 = st.columns([2, 1, 1])
-    with rep_r2_c1: st.text_input("거주지 주소", key="in_home_addr")
-    with rep_r2_c2: st.selectbox("최종학력", ["중학교 졸업", "고등학교 졸업", "대학교 졸업", "석사 수료", "박사 수료"], key="in_edu_school")
-    with rep_r2_c3: st.text_input("전공", key="in_edu_major")
+    rep_r2_cols = st.columns([2, 1, 1])
+    with rep_r2_cols[0]: st.text_input("거주지 주소", key="in_home_addr")
+    with rep_r2_cols[1]: st.selectbox("최종학력", ["중학교 졸업", "고등학교 졸업", "대학교 졸업", "석사 수료", "박사 수료"], key="in_edu_school")
+    with rep_r2_cols[2]: st.text_input("전공", key="in_edu_major")
 
-    # 3행
-    rep_r3_c1, rep_r3_c2, rep_r3_c3 = st.columns([1, 1, 2])
-    with rep_r3_c1: st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status")
-    with rep_r3_c2: st.text_input("이메일 주소", key="in_rep_email")
-    with rep_r3_c3: st.text_area("경력사항", key="in_career", height=68)
+    # 3행: [수정] 거주지 상태가 있던 자리에 이메일 배치
+    rep_r3_cols = st.columns([1, 1])
+    with rep_r3_cols[0]: st.text_input("이메일 주소", key="in_rep_email")
+    with rep_r3_cols[1]: st.text_area("경력사항", key="in_career", height=68)
 
-    # 4행: [수정] 부동산 소유현황 너비 조절 및 옆에 출력
-    re_cols = st.columns([1.5, 2.5])
-    with re_cols[0]:
-        selected_re = st.multiselect("부동산 소유현황", ["아파트", "빌라", "토지", "임야", "공장", "기타"], key="in_real_estate")
-    with re_cols[1]:
-        if selected_re:
-            st.markdown(f"<div style='margin-top: 28px; padding: 10px; background-color: #f0f2f6; border-radius: 5px; border-left: 5px solid #1E88E5;'><b>선택 내역:</b> {', '.join(selected_re)}</div>", unsafe_allow_html=True)
+    # 4행: [신설] 거주지 상태 - 부동산 소유현황 일렬 배치
+    rep_r4_cols = st.columns([1.5, 2.5])
+    with rep_r4_cols[0]: st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status")
+    with rep_r4_cols[1]: st.multiselect("부동산 소유현황", ["아파트", "빌라", "토지", "임야", "공장", "기타"], key="in_real_estate")
 
     # --- 나머지 정보 ---
     st.markdown("<br>", unsafe_allow_html=True)
@@ -199,10 +197,10 @@ if st.session_state["view_mode"] == "INPUT":
         for j in range(4):
             if i + j < len(cert_list): cols[j].checkbox(cert_list[i + j], key=f"in_cert_{cert_list[i + j]}")
 
-    st.success("✅ 설정을 완료했습니다. 상단 리포트 버튼을 클릭하세요.")
+    st.success("✅ 대표자 정보 정렬 완료! 상단 리포트 버튼을 클릭하세요.")
 
 # ==========================================
-# 5. 리포트 출력 화면 (데이터 보존 확인)
+# 5. 리포트 출력 화면
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"):
@@ -217,8 +215,7 @@ else:
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
         with st.status("🚀분석 중..."):
-            # 부동산 정보 리스트를 문자열로 변환하여 전달
             re_info = ", ".join(d.get('in_real_estate', [])) if d.get('in_real_estate') else "없음"
-            pr = f"{cn} 기업분석 HTML. 최상단 현황표에 대표자:{d.get('in_rep_name')}, 부동산현황:{re_info} 포함할 것."
+            pr = f"{cn} 기업분석 HTML. 최상단 현황표에 대표자:{d.get('in_rep_name')}, 부동산현황:{re_info}, 학력:{d.get('in_edu_school')} 포함."
             res = clean_html(model.generate_content(pr).text)
         st.markdown(res, unsafe_allow_html=True)
