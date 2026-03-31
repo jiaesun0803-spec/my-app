@@ -15,7 +15,7 @@ st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
 st.markdown("""
 <style>
-    /* 1. 모든 위젯 라벨 설정: 일반 굵기(400), 폰트 크기 14px */
+    /* 1. 일반 위젯 라벨 설정 (표준 14px) */
     [data-testid="stWidgetLabel"] p {
         font-weight: 400 !important;
         font-size: 14px !important;
@@ -25,33 +25,32 @@ st.markdown("""
     /* 2. 섹션 헤더 스타일 */
     h2 { font-weight: 700 !important; margin-top: 25px !important; }
     
-    /* 3. 입력창 내부 Placeholder(흐릿한 글씨) 크기 조절: 0.8em */
+    /* 3. 입력창 내부 Placeholder(흐릿한 글씨) 크기 조절 */
     input::placeholder {
         font-size: 0.8em !important;
         color: #888 !important;
     }
     
-    /* 4. 숫자 입력창 우측 증감 버튼 숨기기 */
+    /* 4. 숫자 입력창 우측 증감 버튼 제거 */
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button {
         -webkit-appearance: none;
         margin: 0;
     }
     
-    /* 5. 6번 보유인증 폰트 확대 (15px) */
+    /* 5. 6번 보유인증 폰트 설정 */
     [data-testid="stCheckbox"] label p {
         font-size: 15px !important;
         font-weight: 450 !important;
     }
 
-    /* 6. 9번 섹션 강조 라벨: 표준 라벨과 높이 및 크기(14px) 동일화 */
-    .blue-bold-label {
+    /* 6. 9번 섹션 강조 라벨: 폰트 1pt 상향 (16px) */
+    .blue-bold-label-16 {
         color: #1E88E5 !important;
-        font-size: 14px !important;
+        font-size: 16px !important;
         font-weight: 700 !important;
         margin-bottom: 5px !important;
         display: inline-block;
-        padding-top: 0px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -166,7 +165,7 @@ st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 GUIDE_STR = "1억=10000으로 입력"
 
 if st.session_state["view_mode"] == "INPUT":
-    # --- 1. 기업현황 (위치 변경 및 리셋 적용) ---
+    # --- 1. 기업현황 ---
     st.header("1. 기업현황")
     c1r1 = st.columns([2, 1, 1.5, 1.5])
     with c1r1[0]: st.text_input("기업명", key="in_company_name")
@@ -179,13 +178,12 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r2[1]: st.text_input("사업장 주소", key="in_biz_addr")
     with c1r2[2]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
 
-    # [수정] 사업장 전화번호와 임대여부 위치 변경 및 명칭 수정
+    # [배치] 전화번호(0), 임대여부(1), 보증금(2), 월임대료(3)
     c1r3 = st.columns([1, 1, 1, 1])
     with c1r3[0]: st.text_input("사업장 전화번호", placeholder="010-0000-0000", key="in_biz_tel")
     with c1r3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
     with c1r3[2]: st.number_input("보증금 (만원)", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE_STR, step=1, format="%d")
     with c1r3[3]: st.number_input("월임대료 (만원)", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE_STR, step=1, format="%d")
-    
     st.markdown("---")
 
     # --- 2. 대표자 정보 ---
@@ -201,7 +199,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (리셋 및 정렬 유지) ---
+    # --- 3. 대표자 신용정보 ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
     with c3_col1:
@@ -217,7 +215,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c3_col2:
         st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
         box_color = "#FFEBEE" if delinquency == "유" or tax_delin == "유" else "#E8F5E9"
-        st.markdown(f"<div style='background-color:{box_color}; padding:20px; border-radius:10px; height:185px;'><p style='font-weight:700;'>분석 코멘트</p><p style='font-size:0.9em;'>신용 기반 정책자금 가이드가 이곳에 출력됩니다.</p></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color:{box_color}; padding:20px; border-radius:10px; height:185px;'><p style='font-weight:700;'>분석 코멘트</p><p style='font-size:0.9em;'>입력된 신용 지표를 기반으로 조달 가능 한도를 산출합니다.</p></div>", unsafe_allow_html=True)
     with c3_col3:
         v_cols = st.columns(2); k_grade, k_color = get_kcb_info(s_kcb); n_grade, n_color = get_nice_info(s_nice)
         with v_cols[0]: 
@@ -228,21 +226,18 @@ if st.session_state["view_mode"] == "INPUT":
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'>NICE: {n_grade}</div>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # --- 4. 매출현황 (태그 제거 및 리셋) ---
+    # --- 4. 매출현황 ---
     st.header("4. 매출현황")
     exp_r = st.columns([1, 1, 2])
     with exp_r[0]: has_export = st.radio("수출매출 여부", ["무", "유"], horizontal=True, key="in_export_revenue")
     with exp_r[1]: plan_export = st.radio("수출예정 여부", ["무", "유"], horizontal=True, key="in_planned_export")
-    
-    # [수정] 태그 제거 및 정수 리셋 적용
-    m_keys = [("금년 매출 (만원)", "in_sales_cur"), ("25년 매출 (만원)", "in_sales_25"), ("24년 매출 (만원)", "in_sales_24"), ("23년 매출 (만원)", "in_sales_23")]
     mc = st.columns(4)
+    m_keys = [("금년 매출 (만원)", "in_sales_cur"), ("25년 매출 (만원)", "in_sales_25"), ("24년 매출 (만원)", "in_sales_24"), ("23년 매출 (만원)", "in_sales_23")]
     for i, (title, key) in enumerate(m_keys):
         mc[i].number_input(title, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, step=1, format="%d")
-    
     if has_export == "유":
-        e_keys = [("금년 수출 (만원)", "in_exp_cur"), ("25년 수출 (만원)", "in_exp_25"), ("24년 수출 (만원)", "in_exp_24"), ("23년 수출 (만원)", "in_exp_23")]
         ec = st.columns(4)
+        e_keys = [("금년 수출 (만원)", "in_exp_cur"), ("25년 수출 (만원)", "in_exp_25"), ("24년 수출 (만원)", "in_exp_24"), ("23년 수출 (만원)", "in_exp_23")]
         for i, (title, key) in enumerate(e_keys):
             ec[i].number_input(title, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, step=1, format="%d")
     st.markdown("---")
@@ -279,7 +274,7 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("수혜 사업명 상세", key="in_gov_desc")
     st.markdown("---")
 
-    # --- 8. 비즈니스 상세 정보 ---
+    # --- 8. 비즈니스 상세 정보 (4단 레이아웃) ---
     st.header("8. 비즈니스 상세 정보")
     row1 = st.columns(2)
     with row1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100)
@@ -295,18 +290,17 @@ if st.session_state["view_mode"] == "INPUT":
     with row4[1]: st.text_area("앞으로의 계획", key="in_future_plan")
     st.markdown("---")
 
-    # --- 9. 자금 계획 (라벨 정렬 고도화) ---
+    # --- 9. 자금 계획 (라벨 16px 반영) ---
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
-        # [수정] 폰트 크기 조절 및 볼드 적용하여 수직 라인 일치
-        st.markdown('<p class="blue-bold-label">이번 조달 필요 자금 (만원)</p>', unsafe_allow_html=True)
+        st.markdown('<p class="blue-bold-label-16">이번 조달 필요 자금 (만원)</p>', unsafe_allow_html=True)
         st.number_input("조달금액", value=st.session_state.get("in_req_funds", None), key="in_req_funds", placeholder=GUIDE_STR, step=1, format="%d", label_visibility="collapsed")
     with c9[1]:
         st.markdown('상세 자금 집행 계획', unsafe_allow_html=True)
         st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%), 시제품 제작(30%), 마케팅 집행(30%) 등", label_visibility="collapsed")
 
-    st.success("✅ [보완 완료] 모든 요청 사항이 반영된 최신 버전입니다.")
+    st.success("✅ 대시보드 폰트 및 정렬 업데이트가 완료되었습니다.")
 
 # ==========================================
 # 3. 리포트 출력
@@ -316,10 +310,10 @@ else:
     d = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     cn = d.get('in_company_name', '미입력').strip()
     
-    st.subheader(f"📊 {cn} 분석 리포트")
-    with st.status("🚀 AI 분석 진행 중..."):
-        if not st.session_state.get("api_key"): st.error("API Key를 먼저 설정하세요.")
+    st.subheader(f"📊 {cn} 리포트")
+    with st.status("🚀 분석 진행 중..."):
+        if not st.session_state.get("api_key"): st.error("API Key를 설정하세요.")
         else:
             model = genai.GenerativeModel(get_best_model_name())
-            res = model.generate_content(f"기업 정보: {d} 를 바탕으로 리포트를 작성하라.").text
+            res = model.generate_content(f"기업 정보: {d} 를 바탕으로 정책자금 보고서를 작성하라.").text
             st.markdown(clean_html(res), unsafe_allow_html=True)
