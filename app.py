@@ -4,6 +4,7 @@ import os
 import time
 import pandas as pd
 import numpy as np
+import google.generativeai as genai
 import plotly.graph_objects as go
 
 # ==========================================
@@ -68,6 +69,12 @@ def safe_int(value):
         return int(float(str(value).replace(',', '').strip()))
     except: return 0
 
+def clean_html(text):
+    if not text: return ""
+    return text.replace("```html", "").replace("```", "").strip()
+
+def get_best_model_name(): return 'gemini-1.5-flash'
+
 def get_kcb_info(score):
     s = safe_int(score)
     if s >= 942: return "1등급", "#43A047"
@@ -97,7 +104,7 @@ def create_gauge(score, title, color):
     return fig
 
 # ==========================================
-# 1. 상태 관리 및 사이드바 (DB 보존 로직)
+# 1. 상태 관리 및 사이드바 (리포트 탭 복구)
 # ==========================================
 DB_FILE = "company_db.json"
 def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path.exists(DB_FILE) else {}
@@ -105,7 +112,6 @@ def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_
 
 if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
-if "form_id" not in st.session_state: st.session_state["form_id"] = 0
 
 st.sidebar.header("⚙️ AI 엔진 설정")
 api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
@@ -122,8 +128,7 @@ sb_col1, sb_col2 = st.sidebar.columns(2)
 with sb_col1:
     if st.button("📂 불러오기", use_container_width=True):
         if selected_company != "선택 안 함":
-            company_data = db[selected_company]
-            for k, v in company_data.items(): st.session_state[k] = v
+            for k, v in db[selected_company].items(): st.session_state[k] = v
             st.rerun()
 with sb_col2:
     if st.button("💾 정보 저장", use_container_width=True):
@@ -133,19 +138,27 @@ with sb_col2:
             db[name] = current_data
             save_db(db); st.sidebar.success("저장 완료!")
 
-if st.sidebar.button("🧹 전체 데이터 초기화", use_container_width=True):
-    for k in list(st.session_state.keys()):
-        if k.startswith("in_"): del st.session_state[k]
-    st.session_state["form_id"] += 1 # 위젯 리셋용
-    st.rerun()
+st.sidebar.markdown("---")
+st.sidebar.header("🚀 리포트 생성")
+if st.sidebar.button("📊 AI 기업분석리포트"): st.session_state["view_mode"] = "REPORT"; st.rerun()
+if st.sidebar.button("💡 AI 정책자금 매칭"): st.session_state["view_mode"] = "MATCHING"; st.rerun()
+if st.sidebar.button("📝 AI 사업계획서"): st.session_state["view_mode"] = "PLAN"; st.rerun()
 
 # ==========================================
-# 2. 메인 대시보드 (1~9번 전체 복구)
+# 2. 메인 대시보드
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
+t_cols = st.columns(4)
+with t_cols[0]: 
+    if st.button("📊 AI기업분석리포트", use_container_width=True, type="primary"): st.session_state["view_mode"] = "REPORT"; st.rerun()
+with t_cols[1]: 
+    if st.button("💡 AI 정책자금 매칭", use_container_width=True, type="primary"): st.session_state["view_mode"] = "MATCHING"; st.rerun()
+with t_cols[2]: 
+    if st.button("📝 AI 사업계획서", use_container_width=True, type="primary"): st.session_state["view_mode"] = "PLAN"; st.rerun()
+with t_cols[3]: 
+    if st.button("📑 화면 리프레시", use_container_width=True): st.rerun()
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
-fid = st.session_state["form_id"]
 GUIDE_STR = "1억=10000으로 입력"
 
 if st.session_state["view_mode"] == "INPUT":
@@ -169,16 +182,21 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r3[3]: st.number_input("월임대료 (만원)", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE_STR, step=1)
     st.markdown("---")
 
-    # --- 2. 대표자 정보 ---
+    # --- 2. 대표자 정보 (풀 복구) ---
     st.header("2. 대표자 정보")
     c2r1 = st.columns(4)
     with c2r1[0]: st.text_input("대표자명", key="in_rep_name")
     with c2r1[1]: st.text_input("생년월일", placeholder="YYYY.MM.DD", key="in_rep_dob")
     with c2r1[2]: st.text_input("연락처", placeholder="010-0000-0000", key="in_rep_phone")
     with c2r1[3]: st.selectbox("최종학력", ["선택", "중학교 졸업", "고등학교 졸업", "대학교 졸업", "석사 수료", "박사 수료"], key="in_edu_school")
+    
+    c2r2 = st.columns([1.5, 1, 1.5])
+    with c2r2[0]: st.text_input("거주지 주소", key="in_home_addr")
+    with c2r2[1]: st.radio("거주지 임대여부", ["자가", "임대"], horizontal=True, key="in_home_status")
+    with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (즉시 판정) ---
+    # --- 3. 대표자 신용정보 ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
     with c3_col1:
@@ -197,9 +215,9 @@ if st.session_state["view_mode"] == "INPUT":
         vk, vn = safe_int(s_kcb), safe_int(s_nice)
         has_issue = (delinquency == "유" or tax_delin == "유")
         low_score = (vk > 0 and vk < 630) or (vn > 0 and vn < 665)
-        if has_issue: status, color, text = "🔴 진행 불가", "#FFEBEE", "연체 또는 체납 정보 해결이 시급합니다."
-        elif low_score: status, color, text = "🟡 진행 주의", "#FFF3E0", "신용 보완 또는 정밀 심사가 권장됩니다."
-        elif vk == 0: status, color, text = "⚪ 대기 중", "#F8F9FA", "신용 점수를 입력해 주세요."
+        if has_issue: status, color, text = "🔴 진행 불가", "#FFEBEE", "연체/체납 해소가 선행되어야 합니다."
+        elif low_score: status, color, text = "🟡 진행 주의", "#FFF3E0", "신용 보완책 검토가 필요합니다."
+        elif vk == 0: status, color, text = "⚪ 대기 중", "#F8F9FA", "정보를 입력해 주세요."
         else: status, color, text = "🟢 진행 원활", "#E8F5E9", "양호한 신용 상태입니다."
         st.markdown(f"<div style='background-color:{color}; padding:20px; border-radius:10px; height:185px;'><p style='font-weight:700;'>금융 상태 요약</p><p style='font-size:1.2em; font-weight:700;'>{status}</p><p>{text}</p></div>", unsafe_allow_html=True)
     with c3_col3:
@@ -228,7 +246,7 @@ if st.session_state["view_mode"] == "INPUT":
             ec[i].number_input(f"{t} (만원)", value=st.session_state.get(k, None), key=k, placeholder=GUIDE_STR, step=1)
     st.markdown("---")
 
-    # --- 5. 기대출 현황 (복구됨) ---
+    # --- 5. 기대출 현황 ---
     st.header("5. 기대출 현황")
     debt_items = [("중진공 (만원)", "in_debt_kosme"), ("소진공 (만원)", "in_debt_semas"), ("신보 (만원)", "in_debt_kodit"), ("기보 (만원)", "in_debt_kibo"), ("재단 (만원)", "in_debt_foundation"), ("회사담보 (만원)", "in_debt_corp_coll"), ("대표신용 (만원)", "in_debt_rep_cred"), ("대표담보 (만원)", "in_debt_rep_coll")]
     for row in range(0, 8, 4):
@@ -238,7 +256,7 @@ if st.session_state["view_mode"] == "INPUT":
             cols[i].number_input(title, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, step=1)
     st.markdown("---")
 
-    # --- 6. 보유 인증 (복구됨) ---
+    # --- 6. 보유 인증 ---
     st.header("6. 보유 인증")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
     for i in range(0, 8, 4):
@@ -247,7 +265,7 @@ if st.session_state["view_mode"] == "INPUT":
             if i+j < len(cert_list): cols[j].checkbox(cert_list[i+j], key=f"in_cert_{i+j}")
     st.markdown("---")
 
-    # --- 7. 특허 및 정부지원 (복구됨) ---
+    # --- 7. 특허 및 정부지원 ---
     st.header("7. 특허 및 정부지원")
     c7 = st.columns(2)
     with c7[0]:
@@ -276,7 +294,7 @@ if st.session_state["view_mode"] == "INPUT":
     with r8_4[1]: st.text_area("앞으로의 계획", key="in_future_plan")
     st.markdown("---")
 
-    # --- 9. 자금 계획 (디자인 고수) ---
+    # --- 9. 자금 계획 ---
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
@@ -287,10 +305,16 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%) 등", label_visibility="collapsed")
 
 # ==========================================
-# 3. 리포트 (데이터 확인)
+# 3. 리포트 출력
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"): st.session_state["view_mode"] = "INPUT"; st.rerun()
-    st.subheader("📑 입력 정보 요약")
-    data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-    st.json(data)
+    current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+    st.subheader(f"📊 {current_data.get('in_company_name', '미입력')} 분석 리포트")
+    with st.status("🚀 분석 진행 중..."):
+        if not st.session_state.get("api_key"): st.error("API Key를 입력하세요.")
+        else:
+            genai.configure(api_key=st.session_state["api_key"])
+            model = genai.GenerativeModel(get_best_model_name())
+            res = model.generate_content(f"기업 정보: {current_data} 를 바탕으로 {st.session_state['view_mode']} 성격에 맞는 리포트를 작성하라.").text
+            st.markdown(res)
