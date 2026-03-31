@@ -5,7 +5,7 @@ import time
 import plotly.graph_objects as go
 import google.generativeai as genai
 
-# [중요] 대표님이 업로드하신 엔진 파일들을 불러옵니다
+# [엔진 연결] 업로드하신 엔진 파일들을 호출합니다
 import engine_analysis
 import engine_matching
 import engine_loan
@@ -18,7 +18,7 @@ st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
 st.markdown("""
 <style>
-    /* 1. 일반 위젯 라벨 설정 (14px) */
+    /* 1. 일반 위젯 라벨 설정 (표준 14px) */
     [data-testid="stWidgetLabel"] p {
         font-weight: 400 !important;
         font-size: 14px !important;
@@ -32,9 +32,10 @@ st.markdown("""
     input::placeholder { font-size: 0.85em !important; color: #888 !important; }
     
     /* 4. 숫자 입력창 우측 증감 버튼 제거 */
-    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     
-    /* 5. 라디오 버튼 수직 정렬 (자가/임대, 없음/있음 위치 동일화) */
+    /* [정렬 해결] 5. 라디오 버튼 수직 정렬 (자가/임대, 없음/있음 위치 동일화) */
     div[data-testid="stHorizontalRadio"] div[role="radiogroup"] > label {
         min-width: 100px !important; 
         margin-right: 0px !important;
@@ -45,6 +46,14 @@ st.markdown("""
         color: #1E88E5 !important;
         font-size: 16px !important;
         font-weight: 700 !important;
+        display: inline-block;
+        margin-bottom: 12px !important;
+    }
+    
+    /* 7. 상세 자금 집행 계획 라벨 높이 조정용 */
+    .std-label-14 {
+        font-size: 14px !important;
+        font-weight: 400 !important;
         display: inline-block;
         margin-bottom: 12px !important;
     }
@@ -82,7 +91,6 @@ def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_
 if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
 
-# --- 사이드바 ---
 st.sidebar.header("⚙️ AI 엔진 설정")
 api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
 if st.sidebar.button("💾 API KEY 저장", use_container_width=True):
@@ -154,8 +162,8 @@ if st.session_state["view_mode"] == "INPUT":
     c1r3 = st.columns([1, 1, 1, 1])
     with c1r3[0]: st.text_input("사업장 전화번호", placeholder="000-0000-0000", key="in_biz_tel")
     with c1r3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
-    with c1r3[2]: st.number_input("보증금 (만원)", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE_STR, step=1)
-    with c1r3[3]: st.number_input("월임대료 (만원)", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE_STR, step=1)
+    with c1r3[2]: st.number_input("보증금 (만원)", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", step=1)
+    with c1r3[3]: st.number_input("월임대료 (만원)", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", step=1)
     
     c1r4 = st.columns([1, 1, 2])
     with c1r4[0]: st.text_input("이메일 주소", placeholder="example@email.com", key="in_email_addr")
@@ -206,37 +214,71 @@ if st.session_state["view_mode"] == "INPUT":
         v_cols[1].plotly_chart(create_gauge(vn, "NICE", "#1E88E5"), use_container_width=True, config={'displayModeBar': False})
     st.markdown("---")
 
-    # --- 4. 매출현황 ---
+    # --- 4. 매출현황 (복구 완료) ---
     st.header("4. 매출현황")
-    exp_r = st.columns([1, 1, 2])
-    with exp_r[0]: has_exp = st.radio("수출매출 여부", ["없음", "있음"], horizontal=True, key="in_export_revenue")
-    with exp_r[1]: plan_exp = st.radio("수출예정 여부", ["없음", "있음"], horizontal=True, key="in_planned_export")
+    exp_cols = st.columns([1, 1, 2])
+    with exp_cols[0]: has_exp = st.radio("수출매출 여부", ["없음", "있음"], horizontal=True, key="in_export_revenue")
+    with exp_cols[1]: plan_exp = st.radio("수출예정 여부", ["없음", "있음"], horizontal=True, key="in_planned_export")
+    
     mc = st.columns(4)
     m_keys = [("금년 매출", "in_sales_cur"), ("25년 매출", "in_sales_25"), ("24년 매출", "in_sales_24"), ("23년 매출", "in_sales_23")]
-    for i, (t, k) in enumerate(m_keys): mc[i].number_input(f"{t} (만원)", value=st.session_state.get(k, None), key=k, step=1)
+    for i, (t, k) in enumerate(m_keys):
+        mc[i].number_input(f"{t} (만원)", value=st.session_state.get(k, None), key=k, placeholder=GUIDE_STR, step=1)
+    
+    if has_exp == "있음":
+        ec = st.columns(4)
+        e_keys = [("금년 수출", "in_exp_cur"), ("25년 수출", "in_exp_25"), ("24년 수출", "in_exp_24"), ("23년 수출", "in_exp_23")]
+        for i, (t, k) in enumerate(e_keys):
+            ec[i].number_input(f"{t} (만원)", value=st.session_state.get(k, None), key=k, placeholder=GUIDE_STR, step=1)
     st.markdown("---")
 
-    # --- 5~9번 섹션 ---
+    # --- 5. 기대출 현황 ---
     st.header("5. 기대출 현황")
     debt_items = [("중진공", "in_debt_kosme"), ("소진공", "in_debt_semas"), ("신보", "in_debt_kodit"), ("기보", "in_debt_kibo"), ("재단", "in_debt_foundation"), ("회사담보", "in_debt_corp_coll"), ("대표신용", "in_debt_rep_cred"), ("대표담보", "in_debt_rep_coll")]
     for row in range(0, 8, 4):
         cols = st.columns(4)
-        for i in range(4): cols[i].number_input(f"{debt_items[row+i][0]} (만원)", key=debt_items[row+i][1], step=1)
+        for i in range(4): cols[i].number_input(f"{debt_items[row+i][0]} (만원)", value=st.session_state.get(debt_items[row+i][1], None), key=debt_items[row+i][1], step=1)
     st.markdown("---")
 
+    # --- 6. 보유 인증 (복구 완료) ---
+    st.header("6. 보유 인증")
+    cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
+    for i in range(0, 8, 4):
+        cols = st.columns(4)
+        for j in range(4):
+            if i+j < len(cert_list): cols[j].checkbox(cert_list[i+j], key=f"in_cert_{i+j}")
+    st.markdown("---")
+
+    # --- 7. 특허 및 정부지원 (복구 완료) ---
+    st.header("7. 특허 및 정부지원")
+    c7 = st.columns(2)
+    with c7[0]:
+        st.radio("특허 보유 여부", ["없음", "있음"], horizontal=True, key="in_has_patent")
+        st.number_input("보유 건수", value=st.session_state.get("in_pat_cnt", None), key="in_pat_cnt", step=1)
+        st.text_area("특허 상세 내용", key="in_pat_desc")
+    with c7[1]:
+        st.radio("정부지원 수혜이력", ["없음", "있음"], horizontal=True, key="in_has_gov")
+        st.number_input("수혜 건수", value=st.session_state.get("in_gov_cnt", None), key="in_gov_cnt", step=1)
+        st.text_area("수혜 사업명 상세", key="in_gov_desc")
+    st.markdown("---")
+
+    # --- 8. 비즈니스 상세 정보 (8개 항목 전체 복구) ---
     st.header("8. 비즈니스 상세 정보")
-    r8_1 = st.columns(2); r8_1[0].text_area("핵심 아이템", key="in_item_desc", height=100); r8_1[1].text_area("판매 루트", key="in_sales_route", height=100)
-    r8_2 = st.columns(2); r8_2[0].text_area("경쟁력", key="in_item_diff"); r8_2[1].text_area("시장 현황", key="in_market_status")
+    r8_1 = st.columns(2); r8_1[0].text_area("핵심 아이템", key="in_item_desc", height=100); r8_1[1].text_area("판매 루트(유통망)", key="in_sales_route", height=100)
+    r8_2 = st.columns(2); r8_2[0].text_area("경쟁력 및 차별성", key="in_item_diff", height=100); r8_2[1].text_area("시장 현황", key="in_market_status", height=100)
+    r8_3 = st.columns(2); r8_3[0].text_area("제품생산/서비스 공정도", key="in_process_desc", height=100); r8_3[1].text_area("구체적인 타겟 고객", key="in_target_cust", height=100)
+    r8_4 = st.columns(2); r8_4[0].text_area("수익 모델", key="in_revenue_model", height=100); r8_4[1].text_area("앞으로의 계획", key="in_future_plan", height=100)
     st.markdown("---")
 
+    # --- 9. 자금 계획 ---
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
         st.markdown('<p class="blue-bold-label-16">이번 조달 필요 자금 (만원)</p>', unsafe_allow_html=True)
-        st.number_input("조달금액", key="in_req_funds", label_visibility="collapsed", step=1)
+        st.number_input("조달금액", key="in_req_funds", value=st.session_state.get("in_req_funds", None), label_visibility="collapsed", step=1)
     with c9[1]:
-        st.markdown('<p style="font-size:14px;">상세 자금 집행 계획</p>', unsafe_allow_html=True)
-        st.text_area("자금집행", key="in_fund_plan", label_visibility="collapsed")
+        st.markdown('<p class="std-label-14">상세 자금 집행 계획</p>', unsafe_allow_html=True)
+        st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%) 등", label_visibility="collapsed")
 
 # ==========================================
 # 3. 리포트 출력 (각 엔진 파일 호출)
