@@ -15,19 +15,25 @@ st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
 st.markdown("""
 <style>
+    /* 모든 위젯 라벨 설정: 일반 굵기(400), 폰트 크기 복구 */
     [data-testid="stWidgetLabel"] p {
         font-weight: 400 !important;
         font-size: 14px !important;
         color: #31333F !important;
-        margin-bottom: 2px !important;
+        margin-bottom: 5px !important;
     }
     h2 { font-weight: 700 !important; }
     input::placeholder { font-size: 0.8em !important; color: #888 !important; }
     
-    .blue-text {
+    /* 9번 섹션 전용 파란색 라벨 */
+    .blue-label {
         color: #1E88E5 !important;
         font-size: 14px !important;
+        font-weight: 400 !important;
+        display: inline-block;
     }
+    
+    /* 입력창 증감 버튼 제거 */
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button {
         -webkit-appearance: none;
@@ -59,7 +65,7 @@ def clean_html(text):
 def get_best_model_name():
     return 'gemini-1.5-flash'
 
-# --- 신용 등급 판정 로직 (저신용 삭제 -> N등급 표기) ---
+# --- 신용 등급 판정 로직 (N등급 표기) ---
 def get_kcb_info(score):
     s = safe_int(score)
     if s >= 942: return "1등급", "#43A047"
@@ -101,7 +107,7 @@ def create_gauge(score, title, color):
     return fig
 
 # ==========================================
-# 1. 파일 및 모드 관리
+# 1. 파일 및 데이터 관리
 # ==========================================
 DB_FILE = "company_db.json"
 def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path.exists(DB_FILE) else {}
@@ -109,6 +115,7 @@ def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_
 
 if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 
+# 사이드바
 st.sidebar.header("⚙️ AI 엔진 설정")
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
 api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
@@ -131,7 +138,7 @@ if st.sidebar.button("💡 AI 정책자금 매칭"): st.session_state["view_mode
 if st.sidebar.button("📝 융자/사업계획서"): st.session_state["view_mode"] = "PLAN"; st.rerun()
 
 # ==========================================
-# 2. 메인 대시보드
+# 2. 메인 화면
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
 t_cols = st.columns(4)
@@ -140,16 +147,15 @@ with t_cols[0]:
 with t_cols[1]: 
     if st.button("💡 AI 정책자금 매칭", use_container_width=True, type="primary"): st.session_state["view_mode"] = "MATCHING"; st.rerun()
 with t_cols[2]: 
-    if st.button("📝 AI 사업계획서", use_container_width=True, type="primary"): st.session_state["view_mode"] = "PLAN"; st.rerun()
+    if st.button("📝 융자/사업계획서", use_container_width=True, type="primary"): st.session_state["view_mode"] = "PLAN"; st.rerun()
 with t_cols[3]: 
-    if st.button("💾 현재 정보 저장", use_container_width=True):
+    if st.button("💾 정보 저장", use_container_width=True):
         cn = st.session_state.get("in_company_name", "").strip()
         if cn: db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}; save_db(db); st.success("저장 완료!")
 
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
 GUIDE_STR = "1억=10000으로 입력"
-LABEL_SPAN = "<span style='font-weight:normal;'>(만원)</span>"
 
 if st.session_state["view_mode"] == "INPUT":
     # --- 1. 기업현황 ---
@@ -165,15 +171,12 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r2[1]: st.text_input("사업장 주소", key="in_biz_addr")
     with c1r2[2]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
 
+    # [복구] 표준 라벨 시스템으로 통합하여 수평 라인 일치
     c1r3 = st.columns([1, 1, 1, 1])
     with c1r3[0]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
     with c1r3[1]: st.text_input("전화번호", placeholder="010-0000-0000", key="in_biz_tel")
-    with c1r3[2]: 
-        st.markdown(f"보증금 {LABEL_SPAN}", unsafe_allow_html=True)
-        st.number_input("보증금", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE_STR, label_visibility="collapsed", step=1, format="%d")
-    with c1r3[3]: 
-        st.markdown(f"월임대료 {LABEL_SPAN}", unsafe_allow_html=True)
-        st.number_input("월임대료", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE_STR, label_visibility="collapsed", step=1, format="%d")
+    with c1r3[2]: st.number_input("보증금 (만원)", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE_STR, step=1, format="%d")
+    with c1r3[3]: st.number_input("월임대료 (만원)", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE_STR, step=1, format="%d")
 
     # --- 2. 대표자 정보 ---
     st.markdown("<br>", unsafe_allow_html=True)
@@ -183,12 +186,13 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r1[1]: st.text_input("생년월일", placeholder="YYYY.MM.DD", key="in_rep_dob")
     with c2r1[2]: st.text_input("연락처", placeholder="010-0000-0000", key="in_rep_phone")
     with c2r1[3]: st.selectbox("최종학력", ["선택", "중학교 졸업", "고등학교 졸업", "대학교 졸업", "석사 수료", "박사 수료"], key="in_edu_school")
+    
     c2r2 = st.columns([1.5, 1, 1.5])
     with c2r2[0]: st.text_input("거주지 주소", key="in_home_addr")
     with c2r2[1]: st.radio("거주지 임대여부", ["자가", "임대"], horizontal=True, key="in_home_status")
     with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate")
 
-    # --- 3. 대표자 신용정보 (정렬 및 등급 표기 수정) ---
+    # --- 3. 대표자 신용정보 (정렬 및 등급 표기 완결) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
@@ -199,22 +203,22 @@ if st.session_state["view_mode"] == "INPUT":
         tax_delin = r1[1].radio("t_d", ["무", "유"], horizontal=True, key="in_tax_delinquency", label_visibility="collapsed")
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         t2 = st.columns(2); t2[0].markdown("KCB 점수"); t2[1].markdown("NICE 점수")
-        r2 = st.columns(2); s_kcb = r2[0].number_input("k_i", value=st.session_state.get("in_kcb_score", None), key="in_kcb_score", label_visibility="collapsed", placeholder="점수입력", step=1, format="%d")
-        s_nice = r2[1].number_input("n_i", value=st.session_state.get("in_nice_score", None), key="in_nice_score", label_visibility="collapsed", placeholder="점수입력", step=1, format="%d")
+        r2 = st.columns(2); s_kcb = r2[0].number_input("k_i", value=st.session_state.get("in_kcb_score", None), key="in_kcb_score", label_visibility="collapsed", placeholder="점수", step=1, format="%d")
+        s_nice = r2[1].number_input("n_i", value=st.session_state.get("in_nice_score", None), key="in_nice_score", label_visibility="collapsed", placeholder="점수", step=1, format="%d")
     with c3_col2:
         st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
         if delinquency == "유" or tax_delin == "유":
-            box_html = "<div style='background-color:#FFEBEE; padding:20px; border-radius:10px; height:185px;'><p style='color:#B71C1C; font-weight:700;'>⚠️ 연체/체납 확인</p><p style='font-size:0.9em;'>즉시 해결이 필요합니다.</p></div>"
+            box_html = "<div style='background-color:#FFEBEE; padding:20px; border-radius:10px; height:185px;'><p style='color:#B71C1C; font-weight:700;'>⚠️ 연체/체납 확인</p><p style='font-size:0.9em;'>자금 신청 전 반드시 해결이 필요합니다.</p></div>"
         else:
-            box_html = "<div style='background-color:#E8F5E9; padding:20px; border-radius:10px; height:185px;'><p style='color:#1B5E20; font-weight:700;'>✅ 신용 양호</p><p style='font-size:0.9em;'>기초 요건을 충족하고 있습니다.</p></div>"
+            box_html = "<div style='background-color:#E8F5E9; padding:20px; border-radius:10px; height:185px;'><p style='color:#1B5E20; font-weight:700;'>✅ 신용 양호</p><p style='font-size:0.9em;'>기초 신용 요건을 충족하고 있습니다.</p></div>"
         st.markdown(box_html, unsafe_allow_html=True)
     with c3_col3:
         v_cols = st.columns(2); k_grade, k_color = get_kcb_info(s_kcb); n_grade, n_color = get_nice_info(s_nice)
         with v_cols[0]: 
-            st.plotly_chart(create_gauge(s_kcb, "KCB", k_color), use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(create_gauge(s_kcb, "KCB Score", k_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{k_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'>KCB: {k_grade}</div>", unsafe_allow_html=True)
         with v_cols[1]: 
-            st.plotly_chart(create_gauge(s_nice, "NICE", n_color), use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(create_gauge(s_nice, "NICE Score", n_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'>NICE: {n_grade}</div>", unsafe_allow_html=True)
 
     # --- 4. 매출현황 ---
@@ -228,9 +232,7 @@ if st.session_state["view_mode"] == "INPUT":
     m_keys = ["in_sales_cur", "in_sales_25", "in_sales_24", "in_sales_23"]
     ic = st.columns(4)
     for i, key in enumerate(m_keys): 
-        with ic[i]:
-            st.markdown(f"{m_titles[i]} {LABEL_SPAN}", unsafe_allow_html=True)
-            st.number_input(m_titles[i], value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, label_visibility="collapsed", step=1, format="%d")
+        ic[i].number_input(f"{m_titles[i]} (만원)", value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, step=1, format="%d")
 
     # --- 5. 기대출 현황 ---
     st.markdown("<br>", unsafe_allow_html=True)
@@ -240,9 +242,7 @@ if st.session_state["view_mode"] == "INPUT":
         cols = st.columns(4)
         for i in range(4):
             idx = row + i; name, key = debt_items[idx]
-            with cols[i]:
-                st.markdown(f"{name} {LABEL_SPAN}", unsafe_allow_html=True)
-                st.number_input(name, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, label_visibility="collapsed", step=1, format="%d")
+            cols[i].number_input(f"{name} 대출금 (만원)", value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, step=1, format="%d")
 
     # --- 7. 특허 및 정부지원 ---
     st.markdown("<br>", unsafe_allow_html=True)
@@ -251,43 +251,40 @@ if st.session_state["view_mode"] == "INPUT":
     with c7[0]:
         st.radio("특허 보유 여부", ["무", "유"], horizontal=True, key="in_has_patent")
         st.number_input("특허 보유 건수", key="in_pat_cnt", step=1, format="%d")
-        st.text_area("특허 명칭 및 상세 내용", key="in_pat_desc")
+        st.text_area("특허 명칭 및 상세", key="in_pat_desc")
     with c7[1]:
         st.radio("정부지원 수혜이력", ["무", "유"], horizontal=True, key="in_has_gov")
-        st.number_input("정부지원 수혜 건수", key="in_gov_cnt", step=1, format="%d")
-        st.text_area("사업명 및 수혜 상세", key="in_gov_desc")
+        st.number_input("수혜 건수", key="in_gov_cnt", step=1, format="%d")
+        st.text_area("수혜 사업명 상세", key="in_gov_desc")
 
-    # --- 8. 비즈니스 상세 정보 (레이아웃 수정) ---
+    # --- 8. 비즈니스 상세 정보 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("8. 비즈니스 상세 정보")
     
     if st.button("🪄 핵심아이템 기반 AI 자동 초안 생성", type="secondary"):
-        if not st.session_state.get("in_item_desc"): st.warning("먼저 '핵심 아이템' 내용을 입력해주세요.")
-        elif not st.session_state.get("api_key"): st.error("API Key를 저장해주세요.")
+        if not st.session_state.get("in_item_desc"): st.warning("먼저 '핵심 아이템'을 입력해주세요.")
+        elif not st.session_state.get("api_key"): st.error("API Key를 먼저 저장해주세요.")
         else:
-            with st.spinner("AI 분석 중..."):
+            with st.spinner("AI가 비즈니스 전략을 구상 중입니다..."):
                 try:
                     model = genai.GenerativeModel(get_best_model_name())
-                    fill_prompt = f"아이템: {st.session_state['in_item_desc']}에 대한 차별성, 공정도, 시장현황, 타겟고객, 수익모델, 판매루트, 계획을 JSON 형식으로 작성하라."
+                    fill_prompt = f"아이템: {st.session_state['in_item_desc']}에 대해 차별성, 공정도, 시장현황, 타겟고객, 수익모델, 판매루트, 앞으로의계획을 JSON으로 작성하라."
                     response = model.generate_content(fill_prompt)
                     cleaned_txt = response.text.strip().replace("```json", "").replace("```", "")
                     res_json = json.loads(cleaned_txt)
                     st.session_state["in_item_diff"] = res_json.get('차별성', '')
-                    st.session_state["in_process_desc"] = res_json.get('공정도', '')
                     st.session_state["in_market_status"] = res_json.get('시장현황', '')
-                    st.session_state["in_target_cust"] = res_json.get('타겟고객', '')
                     st.session_state["in_revenue_model"] = res_json.get('수익모델', '')
                     st.session_state["in_sales_route"] = res_json.get('판매루트', '')
-                    st.session_state["in_future_plan"] = res_json.get('계획', '')
+                    st.session_state["in_process_desc"] = res_json.get('공정도', '')
+                    st.session_state["in_target_cust"] = res_json.get('타겟고객', '')
+                    st.session_state["in_future_plan"] = res_json.get('앞으로의계획', '')
                     st.rerun()
-                except: st.error("AI 초안 생성에 실패했습니다.")
+                except: st.error("AI 초안 생성 실패. 핵심 아이템을 구체적으로 적어주세요.")
 
-    # 핵심 아이템과 판매 루트를 1열 상단에 나란히 배치
-    c8_top = st.columns([1, 1])
-    with c8_top[0]:
-        st.text_area("핵심 아이템", key="in_item_desc", height=100)
-    with c8_top[1]:
-        st.text_area("판매 루트(유통망)", key="in_sales_route", height=100)
+    c8_top = st.columns(2)
+    with c8_top[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100)
+    with c8_top[1]: st.text_area("판매 루트(유통망)", key="in_sales_route", height=100)
 
     c8_1, c8_2 = st.columns(2)
     with c8_1:
@@ -304,13 +301,13 @@ if st.session_state["view_mode"] == "INPUT":
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
-        st.markdown(f'<p class="blue-text">이번 조달 필요 자금 {LABEL_SPAN}</p>', unsafe_allow_html=True)
+        st.markdown('<p class="blue-label">이번 조달 필요 자금 (만원)</p>', unsafe_allow_html=True)
         st.number_input("조달금액", value=st.session_state.get("in_req_funds", None), key="in_req_funds", placeholder=GUIDE_STR, step=1, format="%d", label_visibility="collapsed")
     with c9[1]:
         st.markdown('상세 자금 집행 계획', unsafe_allow_html=True)
-        st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%), 시제품 제작(30%), 마케팅 집행(30%) 등", label_visibility="collapsed")
+        st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%), 마케팅 집행(30%) 등", label_visibility="collapsed")
 
-    st.success("✅ [수정 완료] 신용 등급 표기 방식 변경 및 8번 비즈니스 섹션 재배치가 완료되었습니다.")
+    st.success("✅ [정렬 복구 완료] 기업현황 라인 및 신용등급 표기가 정상화되었습니다.")
 
 # ==========================================
 # 3. 리포트 출력
@@ -322,5 +319,5 @@ else:
     st.subheader(f"📊 {cn} 분석 리포트")
     with st.status("🚀 AI 분석 진행 중..."):
         model = genai.GenerativeModel(get_best_model_name())
-        res = model.generate_content(f"기업 정보: {d} 를 바탕으로 정책자금용 사업계획서를 HTML로 작성하라.").text
+        res = model.generate_content(f"기업 정보: {d} 를 바탕으로 리포트를 HTML로 작성하라.").text
     st.markdown(clean_html(res), unsafe_allow_html=True)
