@@ -165,10 +165,8 @@ with sb_col2:
 
 if st.sidebar.button("🧹 전체 데이터 초기화", use_container_width=True):
     keys_to_delete = [k for k in st.session_state.keys() if k.startswith("in_")]
-    for key in keys_to_delete:
-        del st.session_state[key]
-    st.session_state["view_mode"] = "INPUT"
-    st.rerun()
+    for key in keys_to_delete: del st.session_state[key]
+    st.session_state["view_mode"] = "INPUT"; st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 리포트 생성")
@@ -254,33 +252,26 @@ if st.session_state["view_mode"] == "INPUT":
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'>NICE: {n_grade}</div>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # --- 4. 매출현황 ---
+    # --- 4~7번 매출/기대출/인증/특허 ---
     st.header("4. 매출현황")
     exp_r = st.columns([1, 1, 2])
     with exp_r[0]: has_export = st.radio("수출매출 여부", ["무", "유"], horizontal=True, key="in_export_revenue")
     with exp_r[1]: plan_export = st.radio("수출예정 여부", ["무", "유"], horizontal=True, key="in_planned_export")
     mc = st.columns(4)
-    m_keys = [("금년 매출 (만원)", "in_sales_cur"), ("25년 매출 (만원)", "in_sales_25"), ("24년 매출 (만원)", "in_sales_24"), ("23년 매출 (만원)", "in_sales_23")]
-    for i, (title, key) in enumerate(m_keys):
-        mc[i].number_input(title, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, step=1, format="%d")
-    if has_export == "유":
-        ec = st.columns(4)
-        e_keys = [("금년 수출 (만원)", "in_exp_cur"), ("25년 수출 (만원)", "in_exp_25"), ("24년 수출 (만원)", "in_exp_24"), ("23년 수출 (만원)", "in_exp_23")]
-        for i, (title, key) in enumerate(e_keys):
-            ec[i].number_input(title, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, step=1, format="%d")
+    m_titles = ["금년 매출 (만원)", "25년 매출 (만원)", "24년 매출 (만원)", "23년 매출 (만원)"]
+    m_keys = ["in_sales_cur", "in_sales_25", "in_sales_24", "in_sales_23"]
+    for i, key in enumerate(m_keys): mc[i].number_input(m_titles[i], value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, step=1, format="%d")
     st.markdown("---")
 
-    # --- 5. 기대출 현황 ---
     st.header("5. 기대출 현황")
     debt_items = [("중진공 (만원)", "in_debt_kosme"), ("소진공 (만원)", "in_debt_semas"), ("신보 (만원)", "in_debt_kodit"), ("기보 (만원)", "in_debt_kibo"), ("재단 (만원)", "in_debt_foundation"), ("회사담보 (만원)", "in_debt_corp_coll"), ("대표신용 (만원)", "in_debt_rep_cred"), ("대표담보 (만원)", "in_debt_rep_coll")]
     for row in range(0, 8, 4):
         cols = st.columns(4)
         for i in range(4):
-            idx = row + i; title, key = debt_items[idx]
-            cols[i].number_input(title, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, step=1, format="%d")
+            idx = row + i; name, key = debt_items[idx]
+            cols[i].number_input(name, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_STR, step=1, format="%d")
     st.markdown("---")
 
-    # --- 6. 보유 인증 ---
     st.header("6. 보유 인증")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
     for i in range(0, 8, 4):
@@ -289,7 +280,6 @@ if st.session_state["view_mode"] == "INPUT":
             if i+j < len(cert_list): cols[j].checkbox(cert_list[i+j], key=f"in_cert_{i+j}")
     st.markdown("---")
 
-    # --- 7. 특허 및 정부지원 ---
     st.header("7. 특허 및 정부지원")
     c7 = st.columns(2)
     with c7[0]:
@@ -302,8 +292,36 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("수혜 사업명 상세", key="in_gov_desc")
     st.markdown("---")
 
-    # --- 8. 비즈니스 상세 정보 (4단 레이아웃) ---
+    # --- 8. 비즈니스 상세 정보 (AI 복구) ---
     st.header("8. 비즈니스 상세 정보")
+    
+    # [복구] AI 초안 생성 버튼
+    if st.button("🪄 미기재 항목 AI 자동 채우기", type="secondary"):
+        if not st.session_state.get("in_item_desc"): st.warning("최소한 '핵심 아이템' 내용을 입력하셔야 AI가 전략을 구성할 수 있습니다.")
+        elif not st.session_state.get("api_key"): st.error("API Key를 먼저 저장하세요.")
+        else:
+            with st.spinner("AI가 비즈니스 전략을 구상 중입니다..."):
+                try:
+                    model = genai.GenerativeModel(get_best_model_name())
+                    prompt = f"""
+                    핵심아이템: {st.session_state.get('in_item_desc', '')}
+                    판매루트: {st.session_state.get('in_sales_route', '')}
+                    위 정보를 바탕으로 다음 6개 항목을 전문 사업계획서 수준으로 작성하라.
+                    반드시 JSON 형식으로만 답하라:
+                    {{"diff": "경쟁력", "market": "시장현황", "process": "공정도", "target": "타겟고객", "revenue": "수익모델", "future": "앞으로의계획"}}
+                    """
+                    response = model.generate_content(prompt)
+                    res_json = json.loads(response.text.strip().replace("```json", "").replace("```", ""))
+                    # 비어있는 칸만 채우기 로직
+                    if not st.session_state.get("in_item_diff"): st.session_state["in_item_diff"] = res_json['diff']
+                    if not st.session_state.get("in_market_status"): st.session_state["in_market_status"] = res_json['market']
+                    if not st.session_state.get("in_process_desc"): st.session_state["in_process_desc"] = res_json['process']
+                    if not st.session_state.get("in_target_cust"): st.session_state["in_target_cust"] = res_json['target']
+                    if not st.session_state.get("in_revenue_model"): st.session_state["in_revenue_model"] = res_json['revenue']
+                    if not st.session_state.get("in_future_plan"): st.session_state["in_future_plan"] = res_json['future']
+                    st.rerun()
+                except: st.error("AI 초안 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+
     row1 = st.columns(2)
     with row1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100)
     with row1[1]: st.text_area("판매 루트(유통망)", key="in_sales_route", height=100)
@@ -322,11 +340,9 @@ if st.session_state["view_mode"] == "INPUT":
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
-        # 빨간선에 맞춘 16px 라벨 및 상단 라인 정렬
         st.markdown('<p class="blue-bold-label-16">이번 조달 필요 자금 (만원)</p>', unsafe_allow_html=True)
         st.number_input("조달금액", value=st.session_state.get("in_req_funds", None), key="in_req_funds", placeholder=GUIDE_STR, step=1, format="%d", label_visibility="collapsed")
     with c9[1]:
-        # 옆 입력창과 윗선 높이 정밀 동기화
         st.markdown('<p class="std-label-14">상세 자금 집행 계획</p>', unsafe_allow_html=True)
         st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%), 시제품 제작(30%), 마케팅 집행(30%) 등", label_visibility="collapsed")
 
