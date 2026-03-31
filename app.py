@@ -90,7 +90,7 @@ def change_mode(target):
     st.rerun()
 
 # ==========================================
-# 1. 보안 및 DB 설정
+# 1. 파일 및 보안 설정
 # ==========================================
 if "password_correct" not in st.session_state:
     st.title("🔐 AI 컨설팅 시스템")
@@ -107,7 +107,7 @@ def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path
 def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
 # ==========================================
-# 2. 사이드바 관리
+# 2. 사이드바 및 업체 관리
 # ==========================================
 st.sidebar.header("⚙️ AI 엔진 설정")
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
@@ -119,7 +119,7 @@ if st.session_state["api_key"]: genai.configure(api_key=st.session_state["api_ke
 st.sidebar.markdown("---")
 st.sidebar.header("📂 업체 관리")
 db = load_db()
-if st.sidebar.button("💾 현재 업체 정보 저장", use_container_width=True):
+if st.sidebar.button("💾 현재 정보 저장", use_container_width=True):
     cn = st.session_state.get("in_company_name", "").strip()
     if cn:
         db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
@@ -137,7 +137,7 @@ if st.sidebar.button("💡 AI 정책자금 매칭리포트"): change_mode("MATCH
 if st.sidebar.button("📝 기관별 융자/사업계획서"): change_mode("PLAN")
 
 # ==========================================
-# 3. 메인 대시보드 화면
+# 3. 메인 대시보드
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
 t1, t2, t3, t4 = st.columns(4)
@@ -175,14 +175,7 @@ if st.session_state["view_mode"] == "INPUT":
             with ls_cols[1]: st.number_input("보증금(만원)", value=0, key="in_lease_deposit")
             with ls_cols[2]: st.number_input("월임대료(만원)", value=0, key="in_lease_rent")
 
-    c1r4 = st.columns([1, 3])
-    with c1r4[0]: st.number_input("상시근로자수(명)", value=0, key="in_employee_count")
-    with c1r4[1]:
-        ac_cols = st.columns([1, 2.3])
-        if ac_cols[0].radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_add") == "유":
-            ac_cols[1].text_input("추가 사업장명", key="in_add_info")
-
-    # --- 2. 대표자 정보 (유지) ---
+    # --- 2. 대표자 정보 (3단 경력 유지) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("2. 대표자 정보")
     c2r1 = st.columns(4)
@@ -206,7 +199,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r4[2]: st.text_input("주요경력 2", key="in_career_2")
     with c2r4[3]: st.text_input("주요경력 3", key="in_career_3")
 
-    # --- 3. 신용 정보 시각화 (유지) ---
+    # --- 3. 신용 정보 시각화 (칼정렬 유지) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("3. 신용 정보 시각화")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
@@ -243,18 +236,22 @@ if st.session_state["view_mode"] == "INPUT":
             st.plotly_chart(create_gauge(s_nice, "NICE Score", n_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'><b>NICE: {n_grade}</b></div>", unsafe_allow_html=True)
 
-    # --- 4. 매출현황 (수정: 수출 관련 간격 초밀착 정렬) ---
+    # --- 4. 매출현황 (수출현황 레이아웃 고도화) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("4. 매출현황")
     
-    # 컬럼 비율을 더 세밀하게 쪼개서 라벨 옆에 라디오를 바짝 붙임
-    # [수출현황제목 | 라벨1 | 라디오1 | 라벨2 | 라디오2 | 나머지공간]
-    exp_line = st.columns([0.5, 0.7, 0.4, 0.9, 0.4, 1.5])
-    with exp_line[0]: st.markdown("**수출현황**")
-    with exp_line[1]: st.markdown("수출매출 여부")
-    with exp_line[2]: has_export = st.radio("rev", ["무", "유"], horizontal=True, key="in_export_revenue", label_visibility="collapsed")
-    with exp_line[3]: st.markdown("수출진행예정 여부")
-    with exp_line[4]: plan_export = st.radio("plan", ["무", "유"], horizontal=True, key="in_planned_export", label_visibility="collapsed")
+    # [수정] 3번 섹션 스타일을 적용한 3단 구조 수출현황
+    st.markdown("**수출현황**")
+    
+    # 2층: 라벨층
+    exp_labels = st.columns([1, 1, 2])
+    with exp_labels[0]: st.markdown("<p style='font-size:0.9em; font-weight:bold;'>수출매출 여부</p>", unsafe_allow_html=True)
+    with exp_labels[1]: st.markdown("<p style='font-size:0.9em; font-weight:bold;'>수출진행예정 여부</p>", unsafe_allow_html=True)
+    
+    # 3층: 선택층 (라디오)
+    exp_radios = st.columns([1, 1, 2])
+    with exp_radios[0]: has_export = st.radio("ex_rev_r", ["무", "유"], horizontal=True, key="in_export_revenue", label_visibility="collapsed")
+    with exp_radios[1]: plan_export = st.radio("ex_plan_r", ["무", "유"], horizontal=True, key="in_planned_export", label_visibility="collapsed")
     
     st.markdown("---")
     
@@ -266,7 +263,7 @@ if st.session_state["view_mode"] == "INPUT":
     ic = st.columns(4)
     for i, key in enumerate(m_keys): ic[i].number_input(label=m_labels[i], value=0, key=key, label_visibility="collapsed")
     
-    # 수출매출 현황 (조건부 활성화)
+    # 수출매출 현황 (유 체크 시 활성화)
     if has_export == "유":
         st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
         e_labels = ["금년 수출매출(만원)", "25년도 수출매출합계(만원)", "24년도 수출매출합계(만원)", "23년도 수출매출합계(만원)"]
@@ -276,7 +273,7 @@ if st.session_state["view_mode"] == "INPUT":
         eic = st.columns(4)
         for i, key in enumerate(e_keys): eic[i].number_input(label=e_labels[i], value=0, key=key, label_visibility="collapsed")
 
-    # --- 5. 기대출 현황 (유지) ---
+    # --- 5. 기대출 현황 (8종 세팅 유지) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("5. 기대출 현황")
     debt_items = [
@@ -315,7 +312,7 @@ if st.session_state["view_mode"] == "INPUT":
     st.text_input("제품 생산 공정도 상세", key="in_process_desc")
     st.text_area("시장 현황 및 계획", key="in_future_plan")
 
-    st.success("✅ [정렬 완성] 수출현황 항목이 초밀착 정렬되었습니다.")
+    st.success("✅ [정렬 완성] 수출현황 레이아웃 및 모든 데이터 세팅이 완료되었습니다.")
 
 # ==========================================
 # 4. 리포트 출력 화면
@@ -333,6 +330,6 @@ else:
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
         with st.status("🚀분석 중..."):
-            pr = f"{cn} 분석 HTML 리포트. 수출매출여부:{d.get('in_export_revenue')} 반영."
+            pr = f"{cn} 기업분석 HTML 리포트. 매출:{d.get('in_sales_cur',0)}, 수출상태:{d.get('in_export_revenue')} 반영."
             res = clean_html(model.generate_content(pr).text)
         st.markdown(res, unsafe_allow_html=True)
