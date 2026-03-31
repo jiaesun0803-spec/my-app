@@ -44,13 +44,21 @@ st.markdown("""
         font-weight: 450 !important;
     }
 
-    /* 6. 9번 섹션 강조 라벨: 폰트 1pt 상향 (16px) */
+    /* 6. 9번 섹션 강조 라벨: 16px + 볼드 + 파란색 */
     .blue-bold-label-16 {
         color: #1E88E5 !important;
         font-size: 16px !important;
         font-weight: 700 !important;
-        margin-bottom: 5px !important;
         display: inline-block;
+        margin-bottom: 12px !important; /* 옆 라벨과 높이 맞춤용 */
+    }
+    
+    /* 7. 상세 자금 집행 계획 라벨 높이 조정용 */
+    .std-label-14 {
+        font-size: 14px !important;
+        font-weight: 400 !important;
+        display: inline-block;
+        margin-bottom: 12px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -178,7 +186,6 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r2[1]: st.text_input("사업장 주소", key="in_biz_addr")
     with c1r2[2]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
 
-    # [배치] 전화번호(0), 임대여부(1), 보증금(2), 월임대료(3)
     c1r3 = st.columns([1, 1, 1, 1])
     with c1r3[0]: st.text_input("사업장 전화번호", placeholder="010-0000-0000", key="in_biz_tel")
     with c1r3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
@@ -215,7 +222,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c3_col2:
         st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
         box_color = "#FFEBEE" if delinquency == "유" or tax_delin == "유" else "#E8F5E9"
-        st.markdown(f"<div style='background-color:{box_color}; padding:20px; border-radius:10px; height:185px;'><p style='font-weight:700;'>분석 코멘트</p><p style='font-size:0.9em;'>입력된 신용 지표를 기반으로 조달 가능 한도를 산출합니다.</p></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color:{box_color}; padding:20px; border-radius:10px; height:185px;'><p style='font-weight:700;'>분석 코멘트</p><p style='font-size:0.9em;'>입력된 수치를 바탕으로 정책자금 승인 가능성을 진단합니다.</p></div>", unsafe_allow_html=True)
     with c3_col3:
         v_cols = st.columns(2); k_grade, k_color = get_kcb_info(s_kcb); n_grade, n_color = get_nice_info(s_nice)
         with v_cols[0]: 
@@ -274,7 +281,7 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("수혜 사업명 상세", key="in_gov_desc")
     st.markdown("---")
 
-    # --- 8. 비즈니스 상세 정보 (4단 레이아웃) ---
+    # --- 8. 비즈니스 상세 정보 ---
     st.header("8. 비즈니스 상세 정보")
     row1 = st.columns(2)
     with row1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100)
@@ -290,17 +297,17 @@ if st.session_state["view_mode"] == "INPUT":
     with row4[1]: st.text_area("앞으로의 계획", key="in_future_plan")
     st.markdown("---")
 
-    # --- 9. 자금 계획 (라벨 16px 반영) ---
+    # --- 9. 자금 계획 (수평 라인 정밀 정렬) ---
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
+        # 빨간선에 맞춘 16px 라벨 및 마진 적용
         st.markdown('<p class="blue-bold-label-16">이번 조달 필요 자금 (만원)</p>', unsafe_allow_html=True)
         st.number_input("조달금액", value=st.session_state.get("in_req_funds", None), key="in_req_funds", placeholder=GUIDE_STR, step=1, format="%d", label_visibility="collapsed")
     with c9[1]:
-        st.markdown('상세 자금 집행 계획', unsafe_allow_html=True)
+        # 옆 입력창과 윗선 높이 동기화
+        st.markdown('<p class="std-label-14">상세 자금 집행 계획</p>', unsafe_allow_html=True)
         st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%), 시제품 제작(30%), 마케팅 집행(30%) 등", label_visibility="collapsed")
-
-    st.success("✅ 대시보드 폰트 및 정렬 업데이트가 완료되었습니다.")
 
 # ==========================================
 # 3. 리포트 출력
@@ -310,7 +317,7 @@ else:
     d = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     cn = d.get('in_company_name', '미입력').strip()
     
-    st.subheader(f"📊 {cn} 리포트")
+    st.subheader(f"📊 {cn} 분석 리포트")
     with st.status("🚀 분석 진행 중..."):
         if not st.session_state.get("api_key"): st.error("API Key를 설정하세요.")
         else:
