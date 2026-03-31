@@ -48,35 +48,51 @@ def get_best_model_name():
     except: return 'models/gemini-1.5-flash'
 
 # --- 신용 등급 판정 로직 ---
-def get_kcb_grade(score):
+def get_kcb_info(score):
     s = safe_int(score)
-    if s == 0: return "-"
-    if s >= 942: return "1등급"
-    if s >= 891: return "2등급"
-    if s >= 832: return "3등급"
-    if s >= 768: return "4등급"
-    if s >= 698: return "5등급"
-    if s >= 630: return "6등급"
-    if s >= 530: return "7등급"
-    if s >= 454: return "8등급"
-    if s >= 335: return "9등급"
-    return "10등급"
+    if s >= 942: return "1등급", "#1E88E5" # 파랑
+    if s >= 891: return "2등급", "#1E88E5"
+    if s >= 832: return "3등급", "#43A047" # 초록
+    if s >= 768: return "4등급", "#43A047"
+    if s >= 698: return "5등급", "#FB8C00" # 주황
+    if s >= 630: return "6등급", "#FB8C00"
+    if s >= 530: return "7등급", "#E53935" # 빨강
+    return "저신용", "#E53935"
 
-def get_nice_grade(score):
+def get_nice_info(score):
     s = safe_int(score)
-    if s == 0: return "-"
-    if s >= 900: return "1등급"
-    if s >= 870: return "2등급"
-    if s >= 840: return "3등급"
-    if s >= 805: return "4등급"
-    if s >= 750: return "5등급"
-    if s >= 665: return "6등급"
-    if s >= 600: return "7등급"
-    if s >= 515: return "8등급"
-    if s >= 445: return "9등급"
-    return "10등급"
+    if s >= 900: return "1등급", "#1E88E5"
+    if s >= 870: return "2등급", "#1E88E5"
+    if s >= 840: return "3등급", "#43A047"
+    if s >= 805: return "4등급", "#43A047"
+    if s >= 750: return "5등급", "#FB8C00"
+    if s >= 665: return "6등급", "#FB8C00"
+    if s >= 600: return "7등급", "#E53935"
+    return "저신용", "#E53935"
 
-# --- 탭 이동 시 데이터 보존 로직 ---
+# --- 게이지 그래프 생성 함수 ---
+def create_gauge(score, title, color):
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = score,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': title, 'font': {'size': 18}},
+        gauge = {
+            'axis': {'range': [None, 1000], 'tickwidth': 1, 'tickcolor': "darkblue"},
+            'bar': {'color': color},
+            'bgcolor': "white",
+            'borderwidth': 2,
+            'bordercolor': "gray",
+            'steps': [
+                {'range': [0, 500], 'color': '#FFEBEE'},
+                {'range': [500, 800], 'color': '#FFF3E0'},
+                {'range': [800, 1000], 'color': '#E8F5E9'}],
+        }
+    ))
+    fig.update_layout(height=250, margin=dict(l=30, r=30, t=50, b=20))
+    return fig
+
+# --- 탭 이동 데이터 보존 ---
 if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 
 def change_mode(target):
@@ -102,37 +118,7 @@ def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path
 def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
 # ==========================================
-# 2. 사이드바 관리
-# ==========================================
-st.sidebar.header("⚙️ AI 엔진 설정")
-if "api_key" not in st.session_state: st.session_state["api_key"] = ""
-api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
-if st.sidebar.button("💾 API KEY 저장"):
-    st.session_state["api_key"] = api_key_input; st.sidebar.success("저장 완료!")
-if st.session_state["api_key"]: genai.configure(api_key=st.session_state["api_key"])
-
-st.sidebar.markdown("---")
-st.sidebar.header("📂 업체 관리")
-db = load_db()
-if st.sidebar.button("💾 현재 정보 저장"):
-    cn = st.session_state.get("in_company_name", "").strip()
-    if cn:
-        db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        save_db(db); st.sidebar.success(f"✅ 저장 완료!")
-
-selected_company = st.sidebar.selectbox("저장된 업체 목록", ["선택 안 함"] + list(db.keys()))
-c_s1, c_s2 = st.sidebar.columns(2)
-with c_s1:
-    if st.button("📂 불러오기") and selected_company != "선택 안 함":
-        for k, v in db[selected_company].items(): st.session_state[k] = v
-        st.session_state["view_mode"] = "INPUT"; st.rerun()
-with c_s2:
-    if st.button("🔄 초기화"):
-        for k in [k for k in st.session_state.keys() if k.startswith("in_")]: del st.session_state[k]
-        st.session_state.pop("permanent_data", None); st.session_state["view_mode"] = "INPUT"; st.cache_data.clear(); st.rerun()
-
-# ==========================================
-# 3. 메인 화면 로직 (데이터 보존 유지)
+# 2. 메인 대시보드
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
 t1, t2, t3, t4 = st.columns(4)
@@ -167,15 +153,8 @@ if st.session_state["view_mode"] == "INPUT":
         ls_cols = st.columns([1, 1, 1])
         with ls_cols[0]: lease_status = st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
         if lease_status == "임대":
-            with ls_cols[1]: st.number_input("보증금(만원)", value=0, step=1, key="in_lease_deposit")
-            with ls_cols[2]: st.number_input("월임대료(만원)", value=0, step=1, key="in_lease_rent")
-
-    r4c1, r4c2 = st.columns([1, 3])
-    with r4c1: st.number_input("상시근로자수(명)", value=0, key="in_employee_count")
-    with r4c2:
-        add_cols = st.columns([1, 2])
-        if add_cols[0].radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_add") == "유":
-            add_cols[1].text_input("추가 사업장명", key="in_add_info")
+            with ls_cols[1]: st.number_input("보증금(만원)", value=0, key="in_lease_deposit")
+            with ls_cols[2]: st.number_input("월임대료(만원)", value=0, key="in_lease_rent")
 
     # --- 2. 대표자 정보 (유지) ---
     st.markdown("<br>", unsafe_allow_html=True)
@@ -191,61 +170,62 @@ if st.session_state["view_mode"] == "INPUT":
     with rep_r2_cols[1]: st.selectbox("최종학력", ["중학교 졸업", "고등학교 졸업", "대학교 졸업", "석사 수료", "박사 수료"], key="in_edu_school")
     with rep_r2_cols[2]: st.text_input("전공", key="in_edu_major")
 
-    rep_r3_cols = st.columns([1, 1])
-    with rep_r3_cols[0]: st.text_input("이메일 주소", key="in_rep_email")
-    with rep_r3_cols[1]: st.text_area("경력사항", key="in_career", height=68)
-
     rep_r4_cols = st.columns([1.5, 2.5])
     with rep_r4_cols[0]: st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status")
     with rep_r4_cols[1]: st.multiselect("부동산 소유현황", ["아파트", "빌라", "토지", "임야", "공장", "기타"], key="in_real_estate")
 
-    # --- 3. 신용 정보 (수정: 자동 등급 판정) ---
+    # --- 3. 신용 정보 (수정: 시각화 강화) ---
     st.markdown("<br>", unsafe_allow_html=True)
-    st.header("3. 신용 정보")
+    st.header("3. 신용 정보 시각화")
     
-    # 1행: 금융연체 / 세금체납
-    c_r1_cols = st.columns(2)
-    with c_r1_cols[0]: st.radio("금융연체 여부", ["무", "유"], horizontal=True, key="in_fin_delinquency")
-    with c_r1_cols[1]: st.radio("세금체납 여부", ["무", "유"], horizontal=True, key="in_tax_delinquency")
+    credit_input_col, credit_viz_col = st.columns([1.2, 1])
     
-    # 2행: 점수 입력 및 자동 등급 표시
-    c_r2_cols = st.columns(2)
-    with c_r2_cols[0]:
-        score_kcb = st.number_input("KCB 점수", value=0, step=1, key="in_kcb_score")
-        st.markdown(f"**판정 결과:** <span style='color: #1E88E5; font-size: 1.1em;'>{get_kcb_grade(score_kcb)}</span>", unsafe_allow_html=True)
-    with c_r2_cols[1]:
-        score_nice = st.number_input("NICE 점수", value=0, step=1, key="in_nice_score")
-        st.markdown(f"**판정 결과:** <span style='color: #1E88E5; font-size: 1.1em;'>{get_nice_grade(score_nice)}</span>", unsafe_allow_html=True)
+    with credit_input_col:
+        st.markdown("**신용 상태 입력**")
+        c_r1_1, c_r1_2 = st.columns(2)
+        with c_r1_1: delinquency = st.radio("금융연체 여부", ["무", "유"], horizontal=True, key="in_fin_delinquency")
+        with c_r1_2: tax_delin = st.radio("세금체납 여부", ["무", "유"], horizontal=True, key="in_tax_delinquency")
+        
+        c_r2_1, c_r2_2 = st.columns(2)
+        with c_r2_1: s_kcb = st.number_input("KCB 점수", value=0, max_value=1000, key="in_kcb_score")
+        with c_r2_2: s_nice = st.number_input("NICE 점수", value=0, max_value=1000, key="in_nice_score")
+        
+    with credit_viz_col:
+        # 상태 경고창
+        if delinquency == "유" or tax_delin == "유":
+            st.error("🚨 **연체/체납 주의:** 자금 신청 시 제한이 있을 수 있습니다.")
+        else:
+            st.success("✅ **신용 양호:** 현재 연체 및 체납 내역이 없습니다.")
+        
+        v_k1, v_k2 = st.columns(2)
+        k_grade, k_color = get_kcb_info(s_kcb)
+        n_grade, n_color = get_nice_info(s_nice)
+        
+        with v_k1:
+            st.plotly_chart(create_gauge(s_kcb, "KCB Score", k_color), use_container_width=True)
+            st.markdown(f"<div style='text-align:center; padding:5px; background-color:{k_color}; color:white; border-radius:5px;'><b>KCB: {k_grade}</b></div>", unsafe_allow_html=True)
+        with v_k2:
+            st.plotly_chart(create_gauge(s_nice, "NICE Score", n_color), use_container_width=True)
+            st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px;'><b>NICE: {n_grade}</b></div>", unsafe_allow_html=True)
 
     # --- 나머지 정보 유지 ---
     st.markdown("<br>", unsafe_allow_html=True)
-    st.header("4. 매출 현황 (만원)")
+    st.header("4. 매출 및 필요자금 (만원)")
     m_cols = st.columns(2)
-    with m_cols[0]:
-        st.number_input("금년 매출합계", value=0, key="in_sales_cur")
-        st.number_input("24년 매출합계", value=0, key="in_sales_24")
-    with m_cols[1]:
-        st.number_input("25년 예상매출", value=0, key="in_sales_25")
-        st.number_input("23년 매출합계", value=0, key="in_sales_23")
+    with m_cols[0]: st.number_input("금년 매출", value=0, key="in_sales_cur"); st.number_input("24년 매출", value=0, key="in_sales_24")
+    with m_cols[1]: st.number_input("중진공 기대출", value=0, key="in_debt_kosme"); st.number_input("필요자금", value=0, key="in_req_amount")
 
-    st.header("5. 기대출 및 필요자금 (만원)")
-    d_cols = st.columns(4)
-    with d_cols[0]: st.number_input("중진공", value=0, key="in_debt_kosme")
-    with d_cols[1]: st.number_input("소진공", value=0, key="in_debt_semas")
-    with d_cols[2]: st.number_input("보증기금(신/기)", value=0, key="in_debt_guarantee")
-    with d_cols[3]: st.number_input("필요자금", value=0, key="in_req_amount")
-
-    st.header("6. 보유 인증 (4열 배치)")
+    st.header("5. 보유 인증 (4열 배치)")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
     for i in range(0, len(cert_list), 4):
         cols = st.columns(4)
         for j in range(4):
             if i + j < len(cert_list): cols[j].checkbox(cert_list[i + j], key=f"in_cert_{cert_list[i + j]}")
 
-    st.success("✅ 신용 정보 설정 완료! 상단 버튼을 클릭하여 리포트를 생성하세요.")
+    st.success("✅ 신용 시각화 설정 완료! 상단 버튼을 클릭하세요.")
 
 # ==========================================
-# 5. 리포트 출력 화면 (데이터 연동)
+# 5. 리포트 출력
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"):
@@ -260,8 +240,8 @@ else:
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
         with st.status("🚀분석 중..."):
-            k_grade = get_kcb_grade(d.get('in_kcb_score', 0))
-            n_grade = get_nice_grade(d.get('in_nice_score', 0))
-            pr = f"{cn} 기업분석 HTML. 현황표에 대표자:{d.get('in_rep_name')}, 신용등급(KCB:{k_grade}, NICE:{n_grade}) 포함."
+            k_grade, _ = get_kcb_info(d.get('in_kcb_score', 0))
+            n_grade, _ = get_nice_info(d.get('in_nice_score', 0))
+            pr = f"{cn} 기업분석 HTML. 대표자:{d.get('in_rep_name')}, KCB:{k_grade}, NICE:{n_grade} 연동 리포트."
             res = clean_html(model.generate_content(pr).text)
         st.markdown(res, unsafe_allow_html=True)
