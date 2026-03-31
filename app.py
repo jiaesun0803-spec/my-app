@@ -38,7 +38,7 @@ st.markdown("""
         margin: 0;
     }
     
-    /* 5. 6번 보유인증 폰트 설정 */
+    /* 5. 6번 보유인증 폰트 설정 (15px) */
     [data-testid="stCheckbox"] label p {
         font-size: 15px !important;
         font-weight: 450 !important;
@@ -78,20 +78,32 @@ def clean_html(text):
 def get_best_model_name():
     return 'gemini-1.5-flash'
 
-# --- 신용 등급 판정 로직 ---
+# --- 신용 등급 판정 로직 (모든 구간 등급으로 표기) ---
 def get_kcb_info(score):
     s = safe_int(score)
     if s >= 942: return "1등급", "#43A047"
-    if s >= 832: return "3등급", "#43A047"
-    if s >= 630: return "6등급", "#FB8C00"
-    return "저신용", "#E53935"
+    elif s >= 891: return "2등급", "#43A047"
+    elif s >= 832: return "3등급", "#43A047"
+    elif s >= 768: return "4등급", "#FB8C00"
+    elif s >= 698: return "5등급", "#FB8C00"
+    elif s >= 630: return "6등급", "#FB8C00"
+    elif s >= 530: return "7등급", "#E53935"
+    elif s >= 454: return "8등급", "#E53935"
+    elif s >= 335: return "9등급", "#E53935"
+    else: return "10등급", "#E53935"
 
 def get_nice_info(score):
     s = safe_int(score)
     if s >= 900: return "1등급", "#1E88E5"
-    if s >= 840: return "3등급", "#43A047"
-    if s >= 665: return "6등급", "#FB8C00"
-    return "저신용", "#E53935"
+    elif s >= 870: return "2등급", "#1E88E5"
+    elif s >= 840: return "3등급", "#43A047"
+    elif s >= 805: return "4등급", "#43A047"
+    elif s >= 750: return "5등급", "#FB8C00"
+    elif s >= 665: return "6등급", "#FB8C00"
+    elif s >= 600: return "7등급", "#E53935"
+    elif s >= 515: return "8등급", "#E53935"
+    elif s >= 445: return "9등급", "#E53935"
+    else: return "10등급", "#E53935"
 
 def create_gauge(score, title, color):
     fig = go.Figure(go.Indicator(
@@ -144,7 +156,6 @@ with sb_col1:
         if selected_company != "선택 안 함":
             for k, v in db[selected_company].items(): st.session_state[k] = v
             st.session_state["view_mode"] = "INPUT"; st.rerun()
-
 with sb_col2:
     if st.button("💾 정보 저장", use_container_width=True):
         cn = st.session_state.get("in_company_name", "").strip()
@@ -152,7 +163,6 @@ with sb_col2:
             db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
             save_db(db); st.sidebar.success("저장 완료!")
 
-# [해결] 전체 데이터 초기화 로직 보완
 if st.sidebar.button("🧹 전체 데이터 초기화", use_container_width=True):
     keys_to_delete = [k for k in st.session_state.keys() if k.startswith("in_")]
     for key in keys_to_delete:
@@ -198,7 +208,6 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r2[2]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
 
     c1r3 = st.columns([1, 1, 1, 1])
-    # [수정] 사업장 전화번호 예시문구 '000-0000-0000'
     with c1r3[0]: st.text_input("사업장 전화번호", placeholder="000-0000-0000", key="in_biz_tel")
     with c1r3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
     with c1r3[2]: st.number_input("보증금 (만원)", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE_STR, step=1, format="%d")
@@ -234,7 +243,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c3_col2:
         st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
         box_color = "#FFEBEE" if delinquency == "유" or tax_delin == "유" else "#E8F5E9"
-        st.markdown(f"<div style='background-color:{box_color}; padding:20px; border-radius:10px; height:185px;'><p style='font-weight:700;'>금융 분석 리포트</p><p style='font-size:0.9em;'>입력된 신용 데이터를 기반으로 자금 조달 전략을 수립합니다.</p></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color:{box_color}; padding:20px; border-radius:10px; height:185px;'><p style='font-weight:700;'>금융 분석 리포트</p><p style='font-size:0.9em;'>입력된 신용 지표를 바탕으로 한도 및 가능 여부를 진단합니다.</p></div>", unsafe_allow_html=True)
     with c3_col3:
         v_cols = st.columns(2); k_grade, k_color = get_kcb_info(s_kcb); n_grade, n_color = get_nice_info(s_nice)
         with v_cols[0]: 
@@ -293,7 +302,7 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("수혜 사업명 상세", key="in_gov_desc")
     st.markdown("---")
 
-    # --- 8. 비즈니스 상세 정보 ---
+    # --- 8. 비즈니스 상세 정보 (4단 레이아웃) ---
     st.header("8. 비즈니스 상세 정보")
     row1 = st.columns(2)
     with row1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100)
@@ -309,13 +318,15 @@ if st.session_state["view_mode"] == "INPUT":
     with row4[1]: st.text_area("앞으로의 계획", key="in_future_plan")
     st.markdown("---")
 
-    # --- 9. 자금 계획 (수평 라인 및 16px 라벨) ---
+    # --- 9. 자금 계획 ---
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
+        # 빨간선에 맞춘 16px 라벨 및 상단 라인 정렬
         st.markdown('<p class="blue-bold-label-16">이번 조달 필요 자금 (만원)</p>', unsafe_allow_html=True)
         st.number_input("조달금액", value=st.session_state.get("in_req_funds", None), key="in_req_funds", placeholder=GUIDE_STR, step=1, format="%d", label_visibility="collapsed")
     with c9[1]:
+        # 옆 입력창과 윗선 높이 정밀 동기화
         st.markdown('<p class="std-label-14">상세 자금 집행 계획</p>', unsafe_allow_html=True)
         st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%), 시제품 제작(30%), 마케팅 집행(30%) 등", label_visibility="collapsed")
 
@@ -332,5 +343,5 @@ else:
         if not st.session_state.get("api_key"): st.error("API Key를 설정하세요.")
         else:
             model = genai.GenerativeModel(get_best_model_name())
-            res = model.generate_content(f"기업 정보: {d} 를 바탕으로 리포트를 작성하라.").text
+            res = model.generate_content(f"기업 정보: {d} 를 바탕으로 정책자금 보고서를 작성하라.").text
             st.markdown(clean_html(res), unsafe_allow_html=True)
