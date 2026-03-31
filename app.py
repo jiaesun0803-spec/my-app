@@ -7,7 +7,7 @@ import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
 
-# [리포트 엔진 연결] 외부 엔진 파일 호출
+# [리포트 엔진 연결]
 import engine_analysis
 import engine_matching
 import engine_loan
@@ -78,7 +78,7 @@ def create_gauge(score, title, color):
             'steps': [{'range': [0, 600], 'color': '#FFEBEE'}, {'range': [600, 850], 'color': '#FFF3E0'}, {'range': [850, 1000], 'color': '#E8F5E9'}],
         }
     ))
-    fig.update_layout(height=165, margin=dict(l=10, r=10, t=40, b=10), paper_bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(height=160, margin=dict(l=10, r=10, t=40, b=10), paper_bgcolor="rgba(0,0,0,0)")
     return fig
 
 # ==========================================
@@ -169,7 +169,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r4[2]: st.text_input("추가사업장 정보입력", placeholder="사업장명/사업자등록번호 기재", key="in_extra_biz_info")
     st.markdown("---")
 
-    # --- 2. 대표자 정보 ---
+    # --- 2. 대표자 정보 (디테일 수정본) ---
     st.header("2. 대표자 정보")
     c2r1 = st.columns([1, 1, 1, 1])
     with c2r1[0]: st.text_input("대표자명", key="in_rep_name")
@@ -189,46 +189,48 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r3[3]: st.text_input("경력사항 2", placeholder="기타 경력 기재", key="in_rep_career_2")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (정렬 복구본) ---
+    # --- 3. 대표자 신용정보 (3구간 복구 완료) ---
     st.header("3. 대표자 신용정보")
-    c3_col1, c3_col2 = st.columns([2.5, 1.5])
+    c3_col1, c3_col2, c3_col3 = st.columns([1.5, 1.3, 1.5])
     
+    # [좌측: 입력]
     with c3_col1:
-        # 상단: 연체 여부 2분할
+        st.markdown("<p style='margin-bottom:10px;'>연체 및 체납 여부</p>", unsafe_allow_html=True)
         r1c1, r1c2 = st.columns(2)
-        r1c1.markdown("금융연체 여부")
-        r1c2.markdown("세금체납 여부")
+        with r1c1: delinquency = st.radio("금융연체 여부", ["없음", "있음"], horizontal=True, key="in_fin_delinquency")
+        with r1c2: tax_delin = st.radio("세금체납 여부", ["없음", "있음"], horizontal=True, key="in_tax_delinquency")
+        
+        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
+        st.markdown("<p style='margin-bottom:10px;'>신용 점수 입력</p>", unsafe_allow_html=True)
         r2c1, r2c2 = st.columns(2)
-        with r2c1: delinquency = st.radio("f_d", ["없음", "있음"], horizontal=True, key="in_fin_delinquency", label_visibility="collapsed")
-        with r2c2: tax_delin = st.radio("t_d", ["없음", "있음"], horizontal=True, key="in_tax_delinquency", label_visibility="collapsed")
-        
-        st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
-        
-        # 하단: 점수 입력 2분할
-        r3c1, r3c2 = st.columns(2)
-        r3c1.markdown("KCB 점수")
-        r3c2.markdown("NICE 점수")
-        r4c1, r4c2 = st.columns(2)
-        with r4c1: s_kcb = st.number_input("k_i", value=st.session_state.get("in_kcb_score", None), key="in_kcb_score", label_visibility="collapsed", step=1)
-        with r4c2: s_nice = st.number_input("n_i", value=st.session_state.get("in_nice_score", None), key="in_nice_score", label_visibility="collapsed", step=1)
+        with r2c1: s_kcb = st.number_input("KCB 점수", value=st.session_state.get("in_kcb_score", None), key="in_kcb_score", step=1)
+        with r2c2: s_nice = st.number_input("NICE 점수", value=st.session_state.get("in_nice_score", None), key="in_nice_score", step=1)
 
+    # [가운데: 요약]
     with c3_col2:
         vk, vn = safe_int(s_kcb), safe_int(s_nice)
         has_issue = (delinquency == "있음" or tax_delin == "있음")
         if has_issue: status, color, text = "🔴 진행 불가", "#FFEBEE", "연체/체납 기록이 감지되었습니다."
-        elif (vk > 0 and vk < 630): status, color, text = "🟡 진행 주의", "#FFF3E0", "신용 점수 보완이 권장됩니다."
-        elif vk == 0: status, color, text = "⚪ 정보 대기", "#F8F9FA", "신용 정보를 입력해 주세요."
-        else: status, color, text = "🟢 진행 원활", "#E8F5E9", "양호한 신용 등급을 보유 중입니다."
+        elif (vk > 0 and vk < 630): status, color, text = "🟡 진행 주의", "#FFF3E0", "신용 보완이 필요합니다."
+        elif vk == 0: status, color, text = "⚪ 정보 대기", "#F8F9FA", "정보를 입력해 주세요."
+        else: status, color, text = "🟢 진행 원활", "#E8F5E9", "양호한 신용 등급입니다."
         
-        st.markdown(f"<div style='background-color:{color}; padding:20px; border-radius:10px; height:185px; border:1px solid #ddd;'><p style='font-weight:700; margin-bottom:10px;'>금융 상태 요약</p><p style='font-size:1.4em; font-weight:700; color:#333; margin-bottom:5px;'>{status}</p><p style='font-size:0.9em; color:#666;'>{text}</p></div>", unsafe_allow_html=True)
-    
-    # 게이지 차트 (하단에 깔끔하게 배치)
-    gv_c1, gv_c2, gv_c3 = st.columns([1.25, 1.25, 1.5])
-    with gv_c1: st.plotly_chart(create_gauge(vk, "KCB Score", "#43A047"), use_container_width=True, config={'displayModeBar': False})
-    with gv_c2: st.plotly_chart(create_gauge(vn, "NICE Score", "#1E88E5"), use_container_width=True, config={'displayModeBar': False})
+        st.markdown(f"""
+            <div style='background-color:{color}; padding:25px; border-radius:12px; height:215px; border:1px solid #ddd; text-align:center;'>
+                <p style='font-weight:700; color:#555;'>금융 상태 요약</p>
+                <p style='font-size:1.6em; font-weight:800; color:#333; margin:15px 0;'>{status}</p>
+                <p style='font-size:0.95em; color:#666;'>{text}</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # [우측: 그래프]
+    with c3_col3:
+        g_c1, g_c2 = st.columns(2)
+        with g_c1: st.plotly_chart(create_gauge(vk, "KCB", "#43A047"), use_container_width=True, config={'displayModeBar': False})
+        with g_c2: st.plotly_chart(create_gauge(vn, "NICE", "#1E88E5"), use_container_width=True, config={'displayModeBar': False})
     st.markdown("---")
 
-    # --- 4~9번 섹션 (완벽 복구 상태 유지) ---
+    # --- 4~9번 섹션 (완벽 복구) ---
     st.header("4. 매출현황")
     exp_c1, exp_c2, exp_c3 = st.columns([1, 1, 2])
     with exp_c1: has_exp = st.radio("수출매출 여부", ["없음", "있음"], horizontal=True, key="in_export_revenue")
@@ -260,12 +262,10 @@ if st.session_state["view_mode"] == "INPUT":
     c7 = st.columns(2)
     with c7[0]:
         st.radio("특허 보유 여부", ["없음", "있음"], horizontal=True, key="in_has_patent")
-        st.number_input("보유 건수", value=st.session_state.get("in_pat_cnt", None), key="in_pat_cnt", step=1)
-        st.text_area("특허 상세 내용", key="in_pat_desc")
+        st.number_input("보유 건수", value=st.session_state.get("in_pat_cnt", None), key="in_pat_cnt", step=1); st.text_area("특허 상세 내용", key="in_pat_desc")
     with c7[1]:
         st.radio("정부지원 수혜이력", ["없음", "있음"], horizontal=True, key="in_has_gov")
-        st.number_input("수혜 건수", value=st.session_state.get("in_gov_cnt", None), key="in_gov_cnt", step=1)
-        st.text_area("수혜 사업명 상세", key="in_gov_desc")
+        st.number_input("수혜 건수", value=st.session_state.get("in_gov_cnt", None), key="in_gov_cnt", step=1); st.text_area("수혜 사업명 상세", key="in_gov_desc")
     st.markdown("---")
 
     st.header("8. 비즈니스 상세 정보")
@@ -288,17 +288,12 @@ if st.session_state["view_mode"] == "INPUT":
 # 3. 리포트 출력
 # ==========================================
 else:
-    if st.button("⬅️ 입력 화면으로 돌아가기"): 
-        st.session_state["view_mode"] = "INPUT"; st.rerun()
-
+    if st.button("⬅️ 입력 화면으로 돌아가기"): st.session_state["view_mode"] = "INPUT"; st.rerun()
     current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     mode = st.session_state["view_mode"]
     v_titles = {"REPORT": "AI 기업분석리포트", "MATCHING": "AI 정책자금 매칭", "LOAN_PLAN": "기관별 융자/사업계획서", "AI_PLAN": "AI 사업계획서"}
-    
     st.subheader(f"📊 {current_data.get('in_company_name', '미입력')} - {v_titles.get(mode)}")
-
-    if not st.session_state.get("api_key"):
-        st.error("사이드바에서 API Key를 먼저 저장해 주세요.")
+    if not st.session_state.get("api_key"): st.error("사이드바에서 API Key를 먼저 저장해 주세요.")
     else:
         with st.status("🚀 AI 분석 진행 중..."):
             try:
@@ -307,5 +302,4 @@ else:
                 elif mode == "LOAN_PLAN": res = engine_loan.run_report(st.session_state["api_key"], current_data)
                 elif mode == "AI_PLAN": res = engine_ai_plan.run_report(st.session_state["api_key"], current_data)
                 st.markdown(res)
-            except Exception as e:
-                st.error(f"리포트 생성 중 오류 발생: {e}")
+            except Exception as e: st.error(f"리포트 생성 중 오류 발생: {e}")
