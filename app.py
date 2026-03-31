@@ -206,7 +206,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r2[2]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
 
     c1r3 = st.columns([1, 1, 1, 1])
-    with c1r3[0]: st.text_input("사업장 전화번호", placeholder="000-0000-0000", key="in_biz_tel")
+    with c1r3[0]: st.text_input("사업장 전화번호", placeholder="000-00-00000", key="in_biz_tel")
     with c1r3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
     with c1r3[2]: st.number_input("보증금 (만원)", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE_STR, step=1, format="%d")
     with c1r3[3]: st.number_input("월임대료 (만원)", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE_STR, step=1, format="%d")
@@ -239,9 +239,34 @@ if st.session_state["view_mode"] == "INPUT":
         s_kcb = r2[0].number_input("k_i", value=st.session_state.get("in_kcb_score", None), key="in_kcb_score", label_visibility="collapsed", placeholder="점수", step=1, format="%d")
         s_nice = r2[1].number_input("n_i", value=st.session_state.get("in_nice_score", None), key="in_nice_score", label_visibility="collapsed", placeholder="점수", step=1, format="%d")
     with c3_col2:
+        # --- 수정된 분석 리포트 로직 (표기 위주) ---
         st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
-        box_color = "#FFEBEE" if delinquency == "유" or tax_delin == "유" else "#E8F5E9"
-        st.markdown(f"<div style='background-color:{box_color}; padding:20px; border-radius:10px; height:185px;'><p style='font-weight:700;'>분석 리포트</p><p style='font-size:0.9em;'>입력된 신용 데이터를 기반으로 조달 가능성을 실시간 진단합니다.</p></div>", unsafe_allow_html=True)
+        
+        # 간단 로직 판정
+        has_issue = (delinquency == "유" or tax_delin == "유")
+        low_score = (s_kcb > 0 and s_kcb < 630) or (s_nice > 0 and s_nice < 665)
+        
+        if has_issue:
+            status_text = "🔴 진행 불가 (위험)"
+            comment_text = "연체 또는 체납 정보가 확인됩니다. 해당 사항 해결 전까지는 대부분의 정책자금 신청이 제한될 수 있습니다."
+            bg_color = "#FFEBEE"
+        elif low_score:
+            status_text = "🟡 진행 검토 필요 (주의)"
+            comment_text = "신용 점수가 다소 낮습니다. 보증서 발급 시 추가 담보 요구나 한도 제한이 있을 수 있으니 정밀 검토가 필요합니다."
+            bg_color = "#FFF3E0"
+        else:
+            status_text = "🟢 진행 원활 (양호)"
+            comment_text = "금융 이력 및 신용 점수가 양호합니다. 매출액 및 고용 현황에 따라 원활한 자금 조달이 가능할 것으로 보입니다."
+            bg_color = "#E8F5E9"
+
+        st.markdown(f"""
+            <div style='background-color:{bg_color}; padding:20px; border-radius:10px; height:185px;'>
+                <p style='font-weight:700; margin-bottom:10px;'>금융 상태 요약</p>
+                <p style='font-size:1.1em; font-weight:700; color:#333;'>{status_text}</p>
+                <p style='font-size:0.9em; line-height:1.4;'>{comment_text}</p>
+            </div>
+        """, unsafe_allow_html=True)
+
     with c3_col3:
         v_cols = st.columns(2); k_grade, k_color = get_kcb_info(s_kcb); n_grade, n_color = get_nice_info(s_nice)
         with v_cols[0]: 
@@ -252,7 +277,7 @@ if st.session_state["view_mode"] == "INPUT":
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'>NICE: {n_grade}</div>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # --- 4. 매출현황 (수출 입력창 완벽 복구) ---
+    # --- 4. 매출현황 ---
     st.header("4. 매출현황")
     exp_r = st.columns([1, 1, 2])
     with exp_r[0]: has_export = st.radio("수출매출 여부", ["무", "유"], horizontal=True, key="in_export_revenue")
@@ -303,26 +328,10 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("수혜 사업명 상세", key="in_gov_desc")
     st.markdown("---")
 
-    # --- 8. 비즈니스 상세 정보 (AI 자동 채우기) ---
+    # --- 8. 비즈니스 상세 정보 ---
     st.header("8. 비즈니스 상세 정보")
-    if st.button("🪄 미기재 항목 AI 자동 채우기", type="secondary"):
-        if not st.session_state.get("in_item_desc"): st.warning("최소한 '핵심 아이템' 내용을 입력하셔야 AI가 전략을 구성할 수 있습니다.")
-        elif not st.session_state.get("api_key"): st.error("API Key를 먼저 저장하세요.")
-        else:
-            with st.spinner("AI가 비즈니스 전략을 구상 중입니다..."):
-                try:
-                    model = genai.GenerativeModel(get_best_model_name())
-                    prompt = f"""핵심아이템: {st.session_state.get('in_item_desc', '')}, 판매루트: {st.session_state.get('in_sales_route', '')} 바탕으로 차별성, 시장현황, 공정도, 타겟고객, 수익모델, 앞으로의계획을 JSON으로 작성하라. JSON Key: diff, market, process, target, revenue, future"""
-                    response = model.generate_content(prompt)
-                    res_json = json.loads(response.text.strip().replace("```json", "").replace("```", ""))
-                    if not st.session_state.get("in_item_diff"): st.session_state["in_item_diff"] = res_json['diff']
-                    if not st.session_state.get("in_market_status"): st.session_state["in_market_status"] = res_json['market']
-                    if not st.session_state.get("in_process_desc"): st.session_state["in_process_desc"] = res_json['process']
-                    if not st.session_state.get("in_target_cust"): st.session_state["in_target_cust"] = res_json['target']
-                    if not st.session_state.get("in_revenue_model"): st.session_state["in_revenue_model"] = res_json['revenue']
-                    if not st.session_state.get("in_future_plan"): st.session_state["in_future_plan"] = res_json['future']
-                    st.rerun()
-                except: st.error("AI 초안 생성 오류 발생.")
+    
+    # [수정] AI 자동 채우기 버튼 삭제됨
 
     row1 = st.columns(2)
     with row1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100)
