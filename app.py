@@ -15,7 +15,8 @@ st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
 def safe_int(value):
     try:
-        clean_val = str(value or 0).replace(',', '').strip()
+        if value is None: return 0
+        clean_val = str(value).replace(',', '').strip()
         return int(float(clean_val))
     except: return 0
 
@@ -65,7 +66,7 @@ def get_nice_info(score):
 def create_gauge(score, title, color):
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
-        value = score,
+        value = score if score else 0,
         domain = {'x': [0, 1], 'y': [0, 1]},
         title = {'text': title, 'font': {'size': 14, 'color': '#666'}},
         gauge = {
@@ -90,7 +91,7 @@ def change_mode(target):
     st.rerun()
 
 # ==========================================
-# 1. 보안 및 파일 DB 설정
+# 1. 파일 및 보안 설정
 # ==========================================
 if "password_correct" not in st.session_state:
     st.title("🔐 AI 컨설팅 시스템")
@@ -123,18 +124,18 @@ if st.sidebar.button("💾 현재 업체 정보 저장", use_container_width=Tru
     cn = st.session_state.get("in_company_name", "").strip()
     if cn:
         db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        save_db(db); st.sidebar.success(f"✅ '{cn}' 저장 완료!")
+        save_db(db); st.sidebar.success(f"✅ '{cn}' 저장!")
 
-selected_company = st.sidebar.selectbox("저장된 업체 목록", ["선택 안 함"] + list(db.keys()))
+selected_company = st.sidebar.selectbox("불러올 업체 선택", ["선택 안 함"] + list(db.keys()))
 if st.sidebar.button("📂 불러오기", use_container_width=True) and selected_company != "선택 안 함":
     for k, v in db[selected_company].items(): st.session_state[k] = v
     st.session_state["view_mode"] = "INPUT"; st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 빠른 리포트 생성")
-if st.sidebar.button("📊 AI기업분석리포트 생성"): change_mode("REPORT")
-if st.sidebar.button("💡 AI 정책자금 매칭리포트"): change_mode("MATCHING")
-if st.sidebar.button("📝 기관별 융자/사업계획서"): change_mode("PLAN")
+if st.sidebar.button("📊 AI기업분석리포트 생성", use_container_width=True): change_mode("REPORT")
+if st.sidebar.button("💡 AI 정책자금 매칭리포트", use_container_width=True): change_mode("MATCHING")
+if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): change_mode("PLAN")
 
 # ==========================================
 # 3. 메인 대시보드 화면 (1~4번 유지)
@@ -243,9 +244,9 @@ if st.session_state["view_mode"] == "INPUT":
     exp_labels = st.columns([1, 1, 2])
     exp_labels[0].markdown("<p style='font-size:0.9em; font-weight:bold;'>수출매출 여부</p>", unsafe_allow_html=True)
     exp_labels[1].markdown("<p style='font-size:0.9em; font-weight:bold;'>수출진행예정 여부</p>", unsafe_allow_html=True)
-    exp_radios = st.columns([1, 1, 2])
-    with exp_radios[0]: has_export = st.radio("ex_rev_r", ["무", "유"], horizontal=True, key="in_export_revenue", label_visibility="collapsed")
-    with exp_radios[1]: plan_export = st.radio("ex_plan_r", ["무", "유"], horizontal=True, key="in_planned_export", label_visibility="collapsed")
+    exp_radios = st.columns([0.5, 0.7, 0.4, 0.9, 0.4, 1.5])
+    with exp_radios[1]: has_export = st.radio("rev_r", ["무", "유"], horizontal=True, key="in_export_revenue", label_visibility="collapsed")
+    with exp_radios[3]: plan_export = st.radio("plan_r", ["무", "유"], horizontal=True, key="in_planned_export", label_visibility="collapsed")
     st.markdown("---")
     m_labels = ["금년 매출합계(만원)", "25년도 매출합계(만원)", "24년도 매출합계(만원)", "23년도 매출합계(만원)"]
     m_keys = ["in_sales_cur", "in_sales_25", "in_sales_24", "in_sales_23"]
@@ -262,7 +263,7 @@ if st.session_state["view_mode"] == "INPUT":
         eic = st.columns(4)
         for i, key in enumerate(e_keys): eic[i].number_input(label=e_labels[i], value=0, key=key, label_visibility="collapsed")
 
-    # --- 5. 기대출 현황 (수정: 단위 명시 및 예시 Placeholder 추가) ---
+    # --- 5. 기대출 현황 (Placeholder 보완 완료) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("5. 기대출 현황")
     
@@ -273,8 +274,6 @@ if st.session_state["view_mode"] == "INPUT":
         ("대표 신용 대출금(만원)", "in_debt_rep_credit"), ("대표 담보 대출금(만원)", "in_debt_rep_collateral")
     ]
     
-    guide_text = "1억=10000으로 입력"
-    
     # 4열 2행 구조 배치
     for row_idx in range(0, len(debt_items), 4):
         cols = st.columns(4)
@@ -282,10 +281,18 @@ if st.session_state["view_mode"] == "INPUT":
             item_idx = row_idx + col_idx
             if item_idx < len(debt_items):
                 label, key = debt_items[item_idx]
-                # number_input의 placeholder는 value가 None이거나 비어있을 때 표시되지만 가이드용으로 삽입
-                cols[col_idx].number_input(label, value=0, key=key, placeholder=guide_text, help=guide_text)
+                # value=None으로 설정하여 placeholder가 보이게 함
+                # 세션에 이미 값이 있다면 해당 값을, 없다면 None을 할당
+                current_val = st.session_state.get(key, None)
+                cols[col_idx].number_input(
+                    label, 
+                    value=current_val, 
+                    key=key, 
+                    placeholder="1억=10000으로 입력", 
+                    help="숫자만 입력하세요 (단위: 만원)"
+                )
 
-    # --- 6, 7, 8번 (유지) ---
+    # --- 6, 7, 8번 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("6. 보유 인증")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
@@ -308,7 +315,7 @@ if st.session_state["view_mode"] == "INPUT":
     st.text_input("제품 생산 공정도 상세", key="in_process_desc")
     st.text_area("시장 현황 및 계획", key="in_future_plan")
 
-    st.success("✅ [5번 가이드 추가 완료] 모든 섹션 정렬 및 데이터 세팅이 완료되었습니다.")
+    st.success("✅ [Placeholder 반영 완료] 모든 섹션의 정렬 및 보완이 완료되었습니다.")
 
 # ==========================================
 # 4. 리포트 출력 화면
@@ -327,6 +334,6 @@ else:
         st.subheader(f"📊 AI기업분석리포트: {cn}")
         with st.status("🚀정밀 분석 중..."):
             k_grade, _ = get_kcb_info(d.get('in_kcb_score', 0))
-            pr = f"{cn} 기업분석 HTML 리포트. 매출:{d.get('in_sales_cur',0)}, 기대출 합계 반영 리포트."
+            pr = f"{cn} 기업분석 HTML 리포트. 매출:{d.get('in_sales_cur',0)} 반영 리포트."
             res = clean_html(model.generate_content(pr).text)
         st.markdown(res, unsafe_allow_html=True)
