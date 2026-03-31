@@ -109,7 +109,7 @@ def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path
 def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
 # ==========================================
-# 2. 사이드바 및 업체 관리
+# 2. 사이드바 관리
 # ==========================================
 st.sidebar.header("⚙️ AI 엔진 설정")
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
@@ -134,9 +134,9 @@ if st.sidebar.button("📂 불러오기", use_container_width=True) and selected
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 빠른 리포트 생성")
-if st.sidebar.button("📊 AI기업분석리포트 생성"): change_mode("REPORT")
-if st.sidebar.button("💡 AI 정책자금 매칭리포트"): change_mode("MATCHING")
-if st.sidebar.button("📝 기관별 융자/사업계획서"): change_mode("PLAN")
+if st.sidebar.button("📊 AI기업분석리포트 생성", use_container_width=True): change_mode("REPORT")
+if st.sidebar.button("💡 AI 정책자금 매칭리포트", use_container_width=True): change_mode("MATCHING")
+if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): change_mode("PLAN")
 
 # ==========================================
 # 3. 메인 대시보드 화면
@@ -153,9 +153,9 @@ with t4:
     if st.button("📑 AI 사업계획서", use_container_width=True, type="primary"): change_mode("FULL_PLAN")
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
-# 공통 안내 문구 가이드
-GUIDE = "1억=10000으로 입력"
-LABEL_SUFFIX = " <span style='font-weight:normal;'>(만원-1억=10000으로 입력)</span>"
+# 공통 안내 문구 가이드 (폰트 1pt 낮게 처리)
+GUIDE_VAL = "1억=10000으로 입력"
+LABEL_SUFFIX = f" <span style='font-size:0.85em; font-weight:normal;'>(만원-{GUIDE_VAL})</span>"
 
 if st.session_state["view_mode"] == "INPUT":
     # --- 1. 기업현황 ---
@@ -180,10 +180,10 @@ if st.session_state["view_mode"] == "INPUT":
         if ls == "임대":
             with ls_cols[1]: 
                 st.markdown(f"**보증금**{LABEL_SUFFIX}", unsafe_allow_html=True)
-                st.number_input("보증금", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE, label_visibility="collapsed")
+                st.number_input("보증금", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE_VAL, label_visibility="collapsed")
             with ls_cols[2]: 
                 st.markdown(f"**월임대료**{LABEL_SUFFIX}", unsafe_allow_html=True)
-                st.number_input("월임대료", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE, label_visibility="collapsed")
+                st.number_input("월임대료", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE_VAL, label_visibility="collapsed")
 
     # --- 2. 대표자 정보 ---
     st.markdown("<br>", unsafe_allow_html=True)
@@ -246,25 +246,28 @@ if st.session_state["view_mode"] == "INPUT":
             st.plotly_chart(create_gauge(s_nice, "NICE Score", n_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'><b>NICE: {n_grade}</b></div>", unsafe_allow_html=True)
 
-    # --- 4. 매출현황 (라벨 고도화) ---
+    # --- 4. 매출현황 (무/유 위치 복구 및 폰트 조정) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("4. 매출현황")
     st.markdown("**수출현황**")
+    
     exp_labels = st.columns([1, 1, 2])
-    exp_labels[0].markdown("<p style='font-size:0.9em; font-weight:bold;'>수출매출 여부</p>", unsafe_allow_html=True)
-    exp_labels[1].markdown("<p style='font-size:0.9em; font-weight:bold;'>수출진행예정 여부</p>", unsafe_allow_html=True)
-    exp_radios = st.columns([0.5, 0.7, 0.4, 0.9, 0.4, 1.5])
-    with exp_radios[1]: has_export = st.radio("rev_r", ["무", "유"], horizontal=True, key="in_export_revenue", label_visibility="collapsed")
-    with exp_radios[3]: plan_export = st.radio("plan_r", ["무", "유"], horizontal=True, key="in_planned_export", label_visibility="collapsed")
+    with exp_labels[0]: st.markdown("<p style='font-size:0.9em; font-weight:bold;'>수출매출 여부</p>", unsafe_allow_html=True)
+    with exp_labels[1]: st.markdown("<p style='font-size:0.9em; font-weight:bold;'>수출진행예정 여부</p>", unsafe_allow_html=True)
+    
+    exp_radios = st.columns([1, 1, 2])
+    with exp_radios[0]: has_export = st.radio("ex_rev_r", ["무", "유"], horizontal=True, key="in_export_revenue", label_visibility="collapsed")
+    with exp_radios[1]: plan_export = st.radio("ex_plan_r", ["무", "유"], horizontal=True, key="in_planned_export", label_visibility="collapsed")
     
     st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+    
     m_titles = ["금년 매출합계", "25년도 매출합계", "24년도 매출합계", "23년도 매출합계"]
     m_keys = ["in_sales_cur", "in_sales_25", "in_sales_24", "in_sales_23"]
     
     lc = st.columns(4)
     for i, title in enumerate(m_titles): lc[i].markdown(f"**{title}**{LABEL_SUFFIX}", unsafe_allow_html=True)
     ic = st.columns(4)
-    for i, key in enumerate(m_keys): ic[i].number_input(label=m_titles[i], value=st.session_state.get(key, None), key=key, placeholder=GUIDE, label_visibility="collapsed")
+    for i, key in enumerate(m_keys): ic[i].number_input(label=m_titles[i], value=st.session_state.get(key, None), key=key, placeholder=GUIDE_VAL, label_visibility="collapsed")
     
     if has_export == "유":
         st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
@@ -273,9 +276,9 @@ if st.session_state["view_mode"] == "INPUT":
         elc = st.columns(4)
         for i, title in enumerate(e_titles): elc[i].markdown(f"<p style='color:#1E88E5;'><b>{title}</b>{LABEL_SUFFIX}</p>", unsafe_allow_html=True)
         eic = st.columns(4)
-        for i, key in enumerate(e_keys): eic[i].number_input(label=e_titles[i], value=st.session_state.get(key, None), key=key, placeholder=GUIDE, label_visibility="collapsed")
+        for i, key in enumerate(e_keys): eic[i].number_input(label=e_titles[i], value=st.session_state.get(key, None), key=key, placeholder=GUIDE_VAL, label_visibility="collapsed")
 
-    # --- 5. 기대출 현황 (라벨 고도화 적용) ---
+    # --- 5. 기대출 현황 (폰트 조정) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("5. 기대출 현황")
     debt_items = [
@@ -292,7 +295,7 @@ if st.session_state["view_mode"] == "INPUT":
                 title, key = debt_items[item_idx]
                 with cols[col_idx]:
                     st.markdown(f"**{title}**{LABEL_SUFFIX}", unsafe_allow_html=True)
-                    st.number_input(title, value=st.session_state.get(key, None), key=key, placeholder=GUIDE, label_visibility="collapsed")
+                    st.number_input(title, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_VAL, label_visibility="collapsed")
 
     # --- 6, 7, 8번 (유지) ---
     st.markdown("<br>", unsafe_allow_html=True)
@@ -315,9 +318,9 @@ if st.session_state["view_mode"] == "INPUT":
     st.header("8. 비즈니스 정보")
     st.text_area("핵심 아이템 설명", key="in_item_desc")
     st.text_input("제품 생산 공정도 상세", key="in_process_desc")
-    st.text_area("시장 현황 및 계획", key="in_future_plan")
+    st.text_area("시장 현황 및 미래 계획", key="in_future_plan")
 
-    st.success("✅ [수정 완료] 모든 금액창에 수정한 단위 및 입력 가이드 문구가 적용되었습니다.")
+    st.success("✅ [수정 완료] 수출현황 위치 복구 및 안내 문구 폰트 축소가 적용되었습니다.")
 
 # ==========================================
 # 4. 리포트 출력 화면
@@ -335,5 +338,5 @@ else:
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
         with st.status("🚀정밀 분석 중..."):
-            res = clean_html(model.generate_content(f"{cn} 기업 정보 통합 리포트 HTML 작성").text)
+            res = clean_html(model.generate_content(f"{cn} 분석 HTML 리포트").text)
         st.markdown(res, unsafe_allow_html=True)
