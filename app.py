@@ -33,37 +33,44 @@ st.markdown("""
     /* 3. 숫자 입력창 우측 버튼 제거 */
     input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     
-    /* [정렬] 4. 라디오 버튼 폭 조정 */
+    /* 4. 라디오 버튼 폭 조정 */
     div[data-testid="stHorizontalRadio"] div[role="radiogroup"] > label {
         min-width: 85px !important; 
         margin-right: 0px !important;
     }
 
-    /* 5. 3번 섹션 전용 - 하단 빨간선 맞춤 박스 스타일 */
+    /* 5. 3번 섹션 - 바닥 라인 맞춤 박스 스타일 (높이 145px 고정) */
     .summary-box-compact {
         background-color: #E8F5E9; 
-        padding: 15px; 
+        padding: 12px; 
         border-radius: 10px; 
-        height: 155px; /* 좌측 2x2 입력칸과 높이 일치 */
+        height: 145px; /* 좌측 입력단 바닥과 일치 */
         border: 1px solid #ddd; 
         text-align: center; 
         display: flex; 
         flex-direction: column; 
         justify-content: center;
-        margin-top: 25px; /* 라벨 높이 고려 */
+        margin-top: 25px;
     }
     
     .score-result-box {
         background-color: #F1F8E9;
-        padding: 10px;
+        padding: 12px;
         border-radius: 10px;
-        height: 155px;
+        height: 145px; /* 좌측 입력단 바닥과 일치 */
         border: 1px solid #C8E6C9;
         text-align: center;
         display: flex;
         flex-direction: column;
         justify-content: center;
         margin-top: 25px;
+    }
+    
+    .result-title {
+        font-size: 17px !important; /* 제목 폰트 확대 */
+        font-weight: 700 !important;
+        color: #2E7D32;
+        margin-bottom: 5px !important;
     }
 
     /* 6. 9번 섹션 강조 라벨 */
@@ -81,20 +88,32 @@ def safe_int(value):
         return int(float(str(value).replace(',', '').strip()))
     except: return 0
 
-# 신용 등급 판정 로직
-def get_kcb_info(score):
+# 신용 등급 판정 로직 (저신용 판단 삭제, 등급만 표시)
+def get_kcb_grade(score):
     s = safe_int(score)
     if s >= 942: return "1등급", "#43A047"
+    elif s >= 891: return "2등급", "#43A047"
     elif s >= 832: return "3등급", "#66BB6A"
+    elif s >= 768: return "4등급", "#FFA726"
+    elif s >= 698: return "5등급", "#FB8C00"
     elif s >= 630: return "6등급", "#EF6C00"
-    else: return "저신용", "#E53935"
+    elif s >= 530: return "7등급", "#E64A19"
+    elif s >= 454: return "8등급", "#D84315"
+    elif s >= 335: return "9등급", "#BF360C"
+    else: return "10등급", "#E53935"
 
-def get_nice_info(score):
+def get_nice_grade(score):
     s = safe_int(score)
     if s >= 900: return "1등급", "#1E88E5"
+    elif s >= 870: return "2등급", "#1E88E5"
     elif s >= 840: return "3등급", "#42A5F5"
+    elif s >= 805: return "4등급", "#FFA726"
+    elif s >= 750: return "5등급", "#FB8C00"
     elif s >= 665: return "6등급", "#EF6C00"
-    else: return "저신용", "#E53935"
+    elif s >= 600: return "7등급", "#E64A19"
+    elif s >= 515: return "8등급", "#D84315"
+    elif s >= 445: return "9등급", "#BF360C"
+    else: return "10등급", "#E53935"
 
 # ==========================================
 # 1. 상태 관리 및 사이드바
@@ -139,6 +158,8 @@ if st.sidebar.button("📑 AI 사업계획서", use_container_width=True): st.se
 st.title("📊 AI 컨설팅 대시보드")
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
+GUIDE_STR = "1억=10000으로 입력"
+
 if st.session_state["view_mode"] == "INPUT":
     # --- 1. 기업현황 ---
     st.header("1. 기업현황")
@@ -169,8 +190,8 @@ if st.session_state["view_mode"] == "INPUT":
     st.header("2. 대표자 정보")
     c2r1 = st.columns([1, 1, 1, 1])
     with c2r1[0]: st.text_input("대표자명", key="in_rep_name")
-    with c2r1[1]: st.text_input("생년월일", key="in_rep_dob")
-    with c2r1[2]: st.text_input("연락처", key="in_rep_phone")
+    with c2r1[1]: st.text_input("생년월일", placeholder="YYYY.MM.DD", key="in_rep_dob")
+    with c2r1[2]: st.text_input("연락처", placeholder="010-0000-0000", key="in_rep_phone")
     with c2r1[3]: st.selectbox("통신사", ["선택", "SKT", "KT", "LGU+", "알뜰폰"], key="in_rep_carrier")
     
     c2r2 = st.columns([2, 1, 1]) 
@@ -185,7 +206,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r3[3]: st.text_input("경력사항 2", key="in_rep_career_2")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (수정 핵심: 2x2 입력 + 요약박스 + 등급박스) ---
+    # --- 3. 대표자 신용정보 (정렬 최적화) ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.5, 1.3, 1.8])
     
@@ -198,7 +219,7 @@ if st.session_state["view_mode"] == "INPUT":
         with l_r2_c1: s_kcb = st.number_input("KCB 점수", value=st.session_state.get("in_kcb_score", 0), key="in_kcb_score", step=1)
         with l_r2_c2: s_nice = st.number_input("NICE 점수", value=st.session_state.get("in_nice_score", 0), key="in_nice_score", step=1)
 
-    # [중앙: 신용상태요약 (높이 줄임)]
+    # [중앙: 신용상태요약 (바닥 라인 맞춤)]
     with c3_col2:
         vk, vn = safe_int(s_kcb), safe_int(s_nice)
         has_issue = (delinquency == "있음" or tax_delin == "있음")
@@ -215,45 +236,56 @@ if st.session_state["view_mode"] == "INPUT":
             </div>
         """, unsafe_allow_html=True)
 
-    # [우측: 점수/등급 결과 박스 (그래프 대신)]
+    # [우측: 점수/등급 결과 박스 (제목 확대 및 바닥 라인 맞춤)]
     with c3_col3:
         res_c1, res_c2 = st.columns(2)
-        kg, kc = get_kcb_info(vk); ng, nc = get_nice_info(vn)
+        kg, kc = get_kcb_grade(vk); ng, nc = get_nice_grade(vn)
         with res_c1:
             st.markdown(f"""
                 <div class="score-result-box">
-                    <p style='font-weight:700; color:#444; font-size:0.9em;'>KCB 결과</p>
-                    <p style='font-size:1.8em; font-weight:800; color:{kc}; margin:10px 0;'>{vk}점</p>
-                    <p style='font-weight:700; color:#333;'>{kg}</p>
+                    <p class="result-title">KCB 결과</p>
+                    <p style='font-size:1.8em; font-weight:800; color:{kc}; margin:5px 0;'>{vk}점</p>
+                    <p style='font-weight:700; color:#333; font-size:1.1em;'>{kg}</p>
                 </div>
             """, unsafe_allow_html=True)
         with res_c2:
             st.markdown(f"""
                 <div class="score-result-box">
-                    <p style='font-weight:700; color:#444; font-size:0.9em;'>NICE 결과</p>
-                    <p style='font-size:1.8em; font-weight:800; color:{nc}; margin:10px 0;'>{vn}점</p>
-                    <p style='font-weight:700; color:#333;'>{ng}</p>
+                    <p class="result-title">NICE 결과</p>
+                    <p style='font-size:1.8em; font-weight:800; color:{nc}; margin:5px 0;'>{vn}점</p>
+                    <p style='font-weight:700; color:#333; font-size:1.1em;'>{ng}</p>
                 </div>
             """, unsafe_allow_html=True)
     st.markdown("---")
 
-    # --- 4~9번 섹션 (완벽 복구) ---
+    # --- 4. 매출현황 (수출 항목 복구) ---
     st.header("4. 매출현황")
     exp_c1, exp_c2 = st.columns([1, 1])
     with exp_c1: has_exp = st.radio("수출매출 여부", ["없음", "있음"], horizontal=True, key="in_export_revenue")
     with exp_c2: plan_exp = st.radio("수출예정 여부", ["없음", "있음"], horizontal=True, key="in_planned_export")
+    
     mc = st.columns(4)
     m_keys = [("금년 매출", "in_sales_cur"), ("25년 매출", "in_sales_25"), ("24년 매출", "in_sales_24"), ("23년 매출", "in_sales_23")]
-    for i, (t, k) in enumerate(m_keys): mc[i].number_input(f"{t} (만원)", value=st.session_state.get(k, 0), key=k, step=1)
+    for i, (t, k) in enumerate(m_keys):
+        mc[i].number_input(f"{t} (만원)", value=st.session_state.get(k, 0), key=k, step=1)
+    
+    if has_exp == "있음":
+        st.markdown("<p style='font-size:14px; font-weight:600; margin-top:10px;'>[수출매출 상세역사]</p>", unsafe_allow_html=True)
+        ec = st.columns(4)
+        e_keys = [("금년 수출액", "in_exp_cur"), ("25년 수출액", "in_exp_25"), ("24년 수출액", "in_exp_24"), ("23년 수출액", "in_exp_23")]
+        for i, (t, k) in enumerate(e_keys):
+            ec[i].number_input(f"{t} (만원)", value=st.session_state.get(k, 0), key=k, step=1)
     st.markdown("---")
 
+    # --- 5. 부채현황 ---
     st.header("5. 부채현황")
     debt_items = [("중진공", "in_debt_kosme"), ("소진공", "in_debt_semas"), ("신보", "in_debt_kodit"), ("기보", "in_debt_kibo"), ("재단", "in_debt_foundation"), ("회사담보", "in_debt_corp_coll"), ("대표신용", "in_debt_rep_cred"), ("대표담보", "in_debt_rep_coll")]
     for r in range(0, 8, 4):
         cols = st.columns(4)
-        for i in range(4): cols[i].number_input(f"{debt_items[r+i][0]} (만원)", key=debt_items[r+i][1], step=1)
+        for i in range(4): cols[i].number_input(f"{debt_items[r+i][0]} (만원)", value=st.session_state.get(debt_items[r+i][1], 0), key=debt_items[r+i][1], step=1)
     st.markdown("---")
 
+    # --- 6~9번 섹션 (유지) ---
     st.header("6. 보유 인증")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
     for i in range(0, 8, 4):
@@ -295,7 +327,7 @@ else:
     current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     mode = st.session_state["view_mode"]; v_titles = {"REPORT":"분석리포트", "MATCHING":"정책자금매칭", "LOAN_PLAN":"융자계획서", "AI_PLAN":"사업계획서"}
     st.subheader(f"📊 {current_data.get('in_company_name', '미입력')} - {v_titles.get(mode)}")
-    if not st.session_state.get("api_key"): st.error("API Key를 먼저 저장해 주세요.")
+    if not st.session_state.get("api_key"): st.error("사이드바에서 API Key를 먼저 저장해 주세요.")
     else:
         with st.status("🚀 AI 분석 진행 중..."):
             try:
