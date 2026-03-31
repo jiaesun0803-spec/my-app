@@ -107,7 +107,7 @@ def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path
 def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
 # ==========================================
-# 2. 사이드바 및 업체 관리
+# 2. 사이드바 관리
 # ==========================================
 st.sidebar.header("⚙️ AI 엔진 설정")
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
@@ -125,19 +125,19 @@ if st.sidebar.button("💾 현재 업체 정보 저장", use_container_width=Tru
         db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         save_db(db); st.sidebar.success(f"✅ '{cn}' 저장!")
 
-selected_company = st.sidebar.selectbox("불러올 업체 선택", ["선택 안 함"] + list(db.keys()))
+selected_company = st.sidebar.selectbox("저장된 업체 선택", ["선택 안 함"] + list(db.keys()))
 if st.sidebar.button("📂 불러오기", use_container_width=True) and selected_company != "선택 안 함":
     for k, v in db[selected_company].items(): st.session_state[k] = v
     st.session_state["view_mode"] = "INPUT"; st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 빠른 리포트 생성")
-if st.sidebar.button("📊 AI기업분석리포트 생성"): change_mode("REPORT")
-if st.sidebar.button("💡 AI 정책자금 매칭리포트"): change_mode("MATCHING")
-if st.sidebar.button("📝 기관별 융자/사업계획서"): change_mode("PLAN")
+if st.sidebar.button("📊 AI기업분석리포트 생성", use_container_width=True): change_mode("REPORT")
+if st.sidebar.button("💡 AI 정책자금 매칭리포트", use_container_width=True): change_mode("MATCHING")
+if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): change_mode("PLAN")
 
 # ==========================================
-# 3. 메인 대시보드 화면
+# 3. 메인 대시보드
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
 t1, t2, t3, t4 = st.columns(4)
@@ -206,7 +206,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r4[2]: st.text_input("주요경력 2", key="in_career_2")
     with c2r4[3]: st.text_input("주요경력 3", key="in_career_3")
 
-    # --- 3. 신용 정보 시각화 (유지) ---
+    # --- 3. 신용 정보 시각화 (칼정렬 유지) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("3. 신용 정보 시각화")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
@@ -247,8 +247,8 @@ if st.session_state["view_mode"] == "INPUT":
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("4. 매출현황")
     
-    # [수정] 1층: 수출현황 정보 일렬 배치
-    exp_line = st.columns([1, 1.2, 1.2, 1.5, 1.2])
+    # [수정] 수출현황 일렬 배치 및 간격 축소
+    exp_line = st.columns([0.7, 0.8, 1, 1.2, 1])
     with exp_line[0]: st.markdown("**수출현황**")
     with exp_line[1]: st.markdown("수출매출 여부")
     with exp_line[2]: has_export = st.radio("exp_rev", ["무", "유"], horizontal=True, key="in_export_revenue", label_visibility="collapsed")
@@ -257,40 +257,34 @@ if st.session_state["view_mode"] == "INPUT":
     
     st.markdown("---")
     
-    # 2층/3층: 일반 매출 현황
+    # 일반 매출 현황
     m_labels = ["금년 매출합계(만원)", "25년도 매출합계(만원)", "24년도 매출합계(만원)", "23년도 매출합계(만원)"]
     m_keys = ["in_sales_cur", "in_sales_25", "in_sales_24", "in_sales_23"]
     
     lc = st.columns(4)
     for i, label in enumerate(m_labels): lc[i].markdown(f"<p style='font-size:0.9em; font-weight:bold;'>{label}</p>", unsafe_allow_html=True)
-    
     ic = st.columns(4)
     for i, key in enumerate(m_keys): ic[i].number_input(label=m_labels[i], value=0, key=key, label_visibility="collapsed")
     
-    # 4층/5층: 수출매출 현황 (조건부 활성화)
+    # 수출매출 현황 (조건부 활성화)
     if has_export == "유":
         st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
         e_labels = ["금년 수출매출(만원)", "25년도 수출매출합계(만원)", "24년도 수출매출합계(만원)", "23년도 수출매출합계(만원)"]
         e_keys = ["in_exp_cur", "in_exp_25", "in_exp_24", "in_exp_23"]
-        
         elc = st.columns(4)
         for i, label in enumerate(e_labels): elc[i].markdown(f"<p style='font-size:0.9em; font-weight:bold; color:#1E88E5;'>{label}</p>", unsafe_allow_html=True)
-        
         eic = st.columns(4)
         for i, key in enumerate(e_keys): eic[i].number_input(label=e_labels[i], value=0, key=key, label_visibility="collapsed")
 
-    # --- 5. 기대출 현황 (수정 적용) ---
+    # --- 5. 기대출 현황 (유지) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("5. 기대출 현황")
-    
     debt_items = [
         ("중진공 대출금", "in_debt_kosme"), ("소진공 대출금", "in_debt_semas"), 
         ("신용보증기금 대출금", "in_debt_kodit"), ("기술보증기금 대출금", "in_debt_kibo"),
         ("신용보증재단 대출금", "in_debt_foundation"), ("회사 담보 대출금", "in_debt_corp_collateral"),
         ("대표 신용 대출금", "in_debt_rep_credit"), ("대표 담보 대출금", "in_debt_rep_collateral")
     ]
-    
-    # 4열 2행 구조 배치
     for row in range(0, len(debt_items), 4):
         cols = st.columns(4)
         for i in range(4):
@@ -298,7 +292,7 @@ if st.session_state["view_mode"] == "INPUT":
                 label, key = debt_items[row + i]
                 cols[i].number_input(label, value=0, key=key)
 
-    # --- 6, 7, 8번 (복구 완료) ---
+    # --- 6, 7, 8번 (복구 및 유지) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("6. 보유 인증")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
@@ -311,17 +305,17 @@ if st.session_state["view_mode"] == "INPUT":
     c7r1 = st.columns(2)
     with c7r1[0]:
         if st.radio("특허 보유 여부", ["무", "유"], horizontal=True, key="in_has_patent") == "유":
-            st.number_input("특허 건수", value=0, key="in_pat_cnt"); st.text_area("특허 명칭 및 상세", key="in_pat_desc")
+            st.number_input("특허 건수", value=0, key="in_pat_cnt"); st.text_area("특허 명칭 상세", key="in_pat_desc")
     with c7r1[1]:
         if st.radio("정부지원 수혜이력", ["무", "유"], horizontal=True, key="in_has_gov") == "유":
-            st.number_input("지원 수혜 건수", value=0, key="in_gov_cnt"); st.text_area("지원 사업명 상세", key="in_gov_desc")
+            st.number_input("수혜 건수", value=0, key="in_gov_cnt"); st.text_area("사업명 상세", key="in_gov_desc")
 
     st.header("8. 비즈니스 정보")
-    st.text_area("핵심 아이템 상세 설명", key="in_item_desc")
+    st.text_area("핵심 아이템 설명", key="in_item_desc")
     st.text_input("제품 생산 공정도 상세", key="in_process_desc")
-    st.text_area("시장 현황 및 앞으로의 계획", key="in_future_plan")
+    st.text_area("시장 현황 및 미래 계획", key="in_future_plan")
 
-    st.success("✅ [최종 업데이트] 수출현황 일렬 정렬 및 모든 데이터 복구가 완료되었습니다.")
+    st.success("✅ [정렬 완료] 모든 데이터가 복구되었으며 수출현황 간격 최적화가 완료되었습니다.")
 
 # ==========================================
 # 4. 리포트 출력 화면
@@ -338,7 +332,7 @@ else:
 
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
-        with st.status("🚀정밀 분석 중..."):
-            pr = f"{cn} 기업분석 HTML 리포트. 매출:{d.get('in_sales_cur',0)}, 수출여부:{d.get('in_export_revenue')} 포함 필수."
+        with st.status("🚀분석 중..."):
+            pr = f"{cn} 리포트 HTML 작성. 최상단 현황표(사업자:{d.get('in_raw_biz_no')}, 대표:{d.get('in_rep_name')}) 포함 필수."
             res = clean_html(model.generate_content(pr).text)
         st.markdown(res, unsafe_allow_html=True)
