@@ -63,6 +63,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- 헬퍼 함수 ---
 def safe_int(value):
     try:
         if value is None or value == "": return 0
@@ -120,30 +121,35 @@ def create_gauge(score, title, color):
     return fig
 
 # ==========================================
-# 1. 초기화 및 세션 관리
+# 1. 초기화 및 세션 관리 (API KEY 유지 로직 포함)
 # ==========================================
 DB_FILE = "company_db.json"
 def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path.exists(DB_FILE) else {}
 def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
+# 페이지 뷰 모드 초기화
 if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 
 # ---------------- 사이드바 ----------------
 st.sidebar.header("⚙️ AI 엔진 설정")
-if "api_key_saved" not in st.session_state: st.session_state["api_key_saved"] = False
 
-if not st.session_state["api_key_saved"]:
-    api_key_input = st.sidebar.text_input("Gemini API Key", type="password")
-    if st.sidebar.button("💾 API KEY 저장"):
-        if api_key_input:
-            st.session_state["api_key"] = api_key_input
-            st.session_state["api_key_saved"] = True; st.rerun()
+# [수정] API KEY 입력 및 유지 로직
+if "api_key" not in st.session_state:
+    st.session_state["api_key"] = ""
+
+api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password")
+
+if st.sidebar.button("💾 API KEY 저장"):
+    st.session_state["api_key"] = api_key_input
+    st.sidebar.success("✅ 키가 저장되었습니다.")
+    time.sleep(0.5)
+    st.rerun()
+
+if st.session_state["api_key"]:
+    genai.configure(api_key=st.session_state["api_key"])
+    st.sidebar.info("🤖 AI 엔진이 활성화되었습니다.")
 else:
-    st.sidebar.success("✅ AI 엔진 연결됨")
-    if st.sidebar.button("🔄 API KEY 변경"):
-        st.session_state["api_key_saved"] = False; st.rerun()
-
-if st.session_state.get("api_key"): genai.configure(api_key=st.session_state["api_key"])
+    st.sidebar.warning("🔑 API Key를 입력해주세요.")
 
 st.sidebar.markdown("---")
 st.sidebar.header("📂 업체 관리")
@@ -163,10 +169,14 @@ with sb_col2:
             db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
             save_db(db); st.sidebar.success("저장 완료!")
 
+# [수정] 전체 데이터 초기화 (API Key 제외하고 모든 입력값 삭제)
 if st.sidebar.button("🧹 전체 데이터 초기화", use_container_width=True):
-    keys_to_delete = [k for k in st.session_state.keys() if k.startswith("in_")]
-    for key in keys_to_delete: del st.session_state[key]
-    st.session_state["view_mode"] = "INPUT"; st.rerun()
+    for key in list(st.session_state.keys()):
+        # 'in_'으로 시작하는 모든 입력 데이터 및 리포트 관련 상태 제거
+        if key.startswith("in_") or key == "view_mode":
+            del st.session_state[key]
+    st.session_state["view_mode"] = "INPUT"
+    st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 리포트 생성")
@@ -206,7 +216,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r2[2]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
 
     c1r3 = st.columns([1, 1, 1, 1])
-    with c1r3[0]: st.text_input("사업장 전화번호", placeholder="000-00-00000", key="in_biz_tel")
+    with c1r3[0]: st.text_input("사업장 전화번호", placeholder="000-0000-0000", key="in_biz_tel")
     with c1r3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
     with c1r3[2]: st.number_input("보증금 (만원)", value=st.session_state.get("in_lease_deposit", None), key="in_lease_deposit", placeholder=GUIDE_STR, step=1, format="%d")
     with c1r3[3]: st.number_input("월임대료 (만원)", value=st.session_state.get("in_lease_rent", None), key="in_lease_rent", placeholder=GUIDE_STR, step=1, format="%d")
@@ -225,7 +235,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 ---
+    # --- 3. 대표자 신용정보 (즉각 판단 로직) ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
     with c3_col1:
@@ -239,10 +249,8 @@ if st.session_state["view_mode"] == "INPUT":
         s_kcb = r2[0].number_input("k_i", value=st.session_state.get("in_kcb_score", None), key="in_kcb_score", label_visibility="collapsed", placeholder="점수", step=1, format="%d")
         s_nice = r2[1].number_input("n_i", value=st.session_state.get("in_nice_score", None), key="in_nice_score", label_visibility="collapsed", placeholder="점수", step=1, format="%d")
     with c3_col2:
-        # --- 수정된 분석 리포트 로직 (표기 위주) ---
         st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
-        
-        # 간단 로직 판정
+        # 즉각 판단 로직
         has_issue = (delinquency == "유" or tax_delin == "유")
         low_score = (s_kcb > 0 and s_kcb < 630) or (s_nice > 0 and s_nice < 665)
         
@@ -330,9 +338,6 @@ if st.session_state["view_mode"] == "INPUT":
 
     # --- 8. 비즈니스 상세 정보 ---
     st.header("8. 비즈니스 상세 정보")
-    
-    # [수정] AI 자동 채우기 버튼 삭제됨
-
     row1 = st.columns(2)
     with row1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100)
     with row1[1]: st.text_area("판매 루트(유통망)", key="in_sales_route", height=100)
@@ -347,7 +352,7 @@ if st.session_state["view_mode"] == "INPUT":
     with row4[1]: st.text_area("앞으로의 계획", key="in_future_plan")
     st.markdown("---")
 
-    # --- 9. 자금 계획 (수평 상단 정렬 및 16px) ---
+    # --- 9. 자금 계획 ---
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
@@ -366,7 +371,7 @@ else:
     cn = d.get('in_company_name', '미입력').strip()
     st.subheader(f"📊 {cn} 분석 리포트")
     with st.status("🚀 분석 진행 중..."):
-        if not st.session_state.get("api_key"): st.error("API Key를 설정하세요.")
+        if not st.session_state["api_key"]: st.error("사이드바에서 API Key를 먼저 저장하세요.")
         else:
             model = genai.GenerativeModel(get_best_model_name())
             res = model.generate_content(f"기업 정보: {d} 를 바탕으로 리포트를 작성하라.").text
