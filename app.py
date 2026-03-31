@@ -134,9 +134,9 @@ if st.sidebar.button("📂 불러오기", use_container_width=True) and selected
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 빠른 리포트 생성")
-if st.sidebar.button("📊 AI기업분석리포트 생성", use_container_width=True): change_mode("REPORT")
-if st.sidebar.button("💡 AI 정책자금 매칭리포트", use_container_width=True): change_mode("MATCHING")
-if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): change_mode("PLAN")
+if st.sidebar.button("📊 AI기업분석리포트 생성"): change_mode("REPORT")
+if st.sidebar.button("💡 AI 정책자금 매칭리포트"): change_mode("MATCHING")
+if st.sidebar.button("📝 기관별 융자/사업계획서"): change_mode("PLAN")
 
 # ==========================================
 # 3. 메인 대시보드 화면
@@ -153,9 +153,9 @@ with t4:
     if st.button("📑 AI 사업계획서", use_container_width=True, type="primary"): change_mode("FULL_PLAN")
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
-# 공통 안내 문구 가이드 (폰트 1pt 낮게 처리)
+# 공통 안내 문구 가이드 (폰트 크기 0.75em으로 추가 축소)
 GUIDE_VAL = "1억=10000으로 입력"
-LABEL_SUFFIX = f" <span style='font-size:0.85em; font-weight:normal;'>(만원-{GUIDE_VAL})</span>"
+LABEL_SUFFIX = f" <span style='font-size:0.75em; font-weight:normal; color:#666;'>(만원-{GUIDE_VAL})</span>"
 
 if st.session_state["view_mode"] == "INPUT":
     # --- 1. 기업현황 ---
@@ -209,7 +209,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r4[2]: st.text_input("주요경력 2", key="in_career_2")
     with c2r4[3]: st.text_input("주요경력 3", key="in_career_3")
 
-    # --- 3. 신용 정보 시각화 (정렬 유지) ---
+    # --- 3. 신용 정보 시각화 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("3. 신용 정보 시각화")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
@@ -246,21 +246,18 @@ if st.session_state["view_mode"] == "INPUT":
             st.plotly_chart(create_gauge(s_nice, "NICE Score", n_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'><b>NICE: {n_grade}</b></div>", unsafe_allow_html=True)
 
-    # --- 4. 매출현황 (무/유 위치 복구 및 폰트 조정) ---
+    # --- 4. 매출현황 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("4. 매출현황")
     st.markdown("**수출현황**")
-    
     exp_labels = st.columns([1, 1, 2])
     with exp_labels[0]: st.markdown("<p style='font-size:0.9em; font-weight:bold;'>수출매출 여부</p>", unsafe_allow_html=True)
     with exp_labels[1]: st.markdown("<p style='font-size:0.9em; font-weight:bold;'>수출진행예정 여부</p>", unsafe_allow_html=True)
-    
     exp_radios = st.columns([1, 1, 2])
     with exp_radios[0]: has_export = st.radio("ex_rev_r", ["무", "유"], horizontal=True, key="in_export_revenue", label_visibility="collapsed")
     with exp_radios[1]: plan_export = st.radio("ex_plan_r", ["무", "유"], horizontal=True, key="in_planned_export", label_visibility="collapsed")
     
     st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-    
     m_titles = ["금년 매출합계", "25년도 매출합계", "24년도 매출합계", "23년도 매출합계"]
     m_keys = ["in_sales_cur", "in_sales_25", "in_sales_24", "in_sales_23"]
     
@@ -278,7 +275,7 @@ if st.session_state["view_mode"] == "INPUT":
         eic = st.columns(4)
         for i, key in enumerate(e_keys): eic[i].number_input(label=e_titles[i], value=st.session_state.get(key, None), key=key, placeholder=GUIDE_VAL, label_visibility="collapsed")
 
-    # --- 5. 기대출 현황 (폰트 조정) ---
+    # --- 5. 기대출 현황 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("5. 기대출 현황")
     debt_items = [
@@ -297,7 +294,7 @@ if st.session_state["view_mode"] == "INPUT":
                     st.markdown(f"**{title}**{LABEL_SUFFIX}", unsafe_allow_html=True)
                     st.number_input(title, value=st.session_state.get(key, None), key=key, placeholder=GUIDE_VAL, label_visibility="collapsed")
 
-    # --- 6, 7, 8번 (유지) ---
+    # --- 6, 7, 8번 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("6. 보유 인증")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
@@ -320,7 +317,7 @@ if st.session_state["view_mode"] == "INPUT":
     st.text_input("제품 생산 공정도 상세", key="in_process_desc")
     st.text_area("시장 현황 및 미래 계획", key="in_future_plan")
 
-    st.success("✅ [수정 완료] 수출현황 위치 복구 및 안내 문구 폰트 축소가 적용되었습니다.")
+    st.success("✅ [수정 완료] 안내 문구 폰트가 추가로 축소되었으며 모든 정렬이 완료되었습니다.")
 
 # ==========================================
 # 4. 리포트 출력 화면
@@ -338,5 +335,5 @@ else:
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
         with st.status("🚀정밀 분석 중..."):
-            res = clean_html(model.generate_content(f"{cn} 분석 HTML 리포트").text)
+            res = clean_html(model.generate_content(f"{cn} 기업 정보 통합 리포트 HTML 작성").text)
         st.markdown(res, unsafe_allow_html=True)
