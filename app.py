@@ -7,7 +7,7 @@ import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
 
-# [리포트 엔진 연결]
+# [리포트 엔진 연결] 
 import engine_analysis
 import engine_matching
 import engine_loan
@@ -20,17 +20,36 @@ st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
 st.markdown("""
 <style>
-    [data-testid="stWidgetLabel"] p { font-size: 14px !important; color: #31333F !important; margin-bottom: 5px !important; }
+    /* 1. 일반 위젯 라벨 설정 (14px) */
+    [data-testid="stWidgetLabel"] p {
+        font-weight: 400 !important;
+        font-size: 14px !important;
+        color: #31333F !important;
+        margin-bottom: 5px !important;
+    }
+    /* 2. 섹션 헤더 스타일 */
     h2 { font-weight: 700 !important; margin-top: 25px !important; }
-    input::placeholder { font-size: 0.85em !important; color: #888 !important; }
     
-    /* [정렬] 라디오 버튼 수직 라인 맞춤 */
+    /* 3. 입력창 내부 Placeholder 크기 조절 */
+    input::placeholder {
+        font-size: 0.85em !important;
+        color: #888 !important;
+    }
+    
+    /* 4. 숫자 입력창 우측 증감 버튼 제거 */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    
+    /* 5. 라디오 버튼 수직 정렬 (자가/임대, 없음/있음 위치 동일화) */
     div[data-testid="stHorizontalRadio"] div[role="radiogroup"] > label {
         min-width: 100px !important; 
         margin-right: 0px !important;
     }
     
-    /* 9번 섹션 강조 라벨 */
+    /* 6. 9번 섹션 강조 라벨: 16px + 볼드 + 파란색 */
     .blue-bold-label-16 {
         color: #1E88E5 !important;
         font-size: 16px !important;
@@ -86,29 +105,40 @@ st.sidebar.header("📂 업체 관리")
 db = load_db()
 selected_company = st.sidebar.selectbox("불러올 업체 선택", ["선택 안 함"] + list(db.keys()))
 
-if st.sidebar.button("📂 불러오기", use_container_width=True):
-    if selected_company != "선택 안 함":
-        for k, v in db[selected_company].items(): st.session_state[k] = v
-        st.rerun()
-
-if st.sidebar.button("💾 정보 저장", use_container_width=True):
-    name = st.session_state.get("in_company_name", "").strip()
-    if name:
-        current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        db[name] = current_data
-        save_db(db); st.sidebar.success("저장 완료!")
+sb_col1, sb_col2 = st.sidebar.columns(2)
+with sb_col1:
+    if st.button("📂 불러오기", use_container_width=True):
+        if selected_company != "선택 안 함":
+            for k, v in db[selected_company].items(): st.session_state[k] = v
+            st.rerun()
+with sb_col2:
+    if st.button("💾 정보 저장", use_container_width=True):
+        name = st.session_state.get("in_company_name", "").strip()
+        if name:
+            current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            db[name] = current_data
+            save_db(db); st.sidebar.success("저장 완료!")
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 리포트 생성")
-if st.sidebar.button("📊 AI 기업분석리포트", use_container_width=True): st.session_state["view_mode"] = "REPORT"; st.rerun()
-if st.sidebar.button("💡 AI 정책자금 매칭", use_container_width=True): st.session_state["view_mode"] = "MATCHING"; st.rerun()
-if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): st.session_state["view_mode"] = "LOAN_PLAN"; st.rerun()
-if st.sidebar.button("📑 AI 사업계획서", use_container_width=True): st.session_state["view_mode"] = "AI_PLAN"; st.rerun()
+if st.sidebar.button("📊 AI 기업분석리포트", key="sb_r1", use_container_width=True): st.session_state["view_mode"] = "REPORT"; st.rerun()
+if st.sidebar.button("💡 AI 정책자금 매칭", key="sb_r2", use_container_width=True): st.session_state["view_mode"] = "MATCHING"; st.rerun()
+if st.sidebar.button("📝 기관별 융자/사업계획서", key="sb_r3", use_container_width=True): st.session_state["view_mode"] = "LOAN_PLAN"; st.rerun()
+if st.sidebar.button("📑 AI 사업계획서", key="sb_r4", use_container_width=True): st.session_state["view_mode"] = "AI_PLAN"; st.rerun()
 
 # ==========================================
 # 2. 메인 대시보드
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
+t_cols = st.columns(4)
+with t_cols[0]: 
+    if st.button("📊 AI 기업분석리포트", use_container_width=True, type="primary", key="m_b1"): st.session_state["view_mode"] = "REPORT"; st.rerun()
+with t_cols[1]: 
+    if st.button("💡 AI 정책자금 매칭", use_container_width=True, type="primary", key="m_b2"): st.session_state["view_mode"] = "MATCHING"; st.rerun()
+with t_cols[2]: 
+    if st.button("📝 기관별 융자/사업계획서", use_container_width=True, type="primary", key="m_b3"): st.session_state["view_mode"] = "LOAN_PLAN"; st.rerun()
+with t_cols[3]: 
+    if st.button("📑 AI 사업계획서", use_container_width=True, type="primary", key="m_b4"): st.session_state["view_mode"] = "AI_PLAN"; st.rerun()
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
 GUIDE_STR = "1억=10000으로 입력"
@@ -139,23 +169,26 @@ if st.session_state["view_mode"] == "INPUT":
     with c1r4[2]: st.text_input("추가사업장 정보입력", placeholder="사업장명/사업자등록번호 기재", key="in_extra_biz_info")
     st.markdown("---")
 
-    # --- 2. 대표자 정보 (완벽 복구) ---
+    # --- 2. 대표자 정보 (교정 완료) ---
     st.header("2. 대표자 정보")
-    c2r1 = st.columns(4)
+    c2r1 = st.columns([1, 1, 1, 1])
     with c2r1[0]: st.text_input("대표자명", key="in_rep_name")
     with c2r1[1]: st.text_input("생년월일", placeholder="YYYY.MM.DD", key="in_rep_dob")
     with c2r1[2]: st.text_input("연락처", placeholder="010-0000-0000", key="in_rep_phone")
-    with c2r1[3]: st.text_input("통신사", placeholder="SKT/KT/LGU+ 등", key="in_rep_carrier")
+    with c2r1[3]: st.selectbox("통신사", ["선택", "SKT", "KT", "LGU+", "알뜰폰"], key="in_rep_carrier") # 드롭박스로 수정
     
-    c2r2 = st.columns([2, 1, 2])
-    with c2r2[0]: st.text_input("거주지 주소", key="in_home_addr")
+    # 거주지 주소를 생년월일 너비까지 길게 (2:1:1 비율 조정)
+    c2r2 = st.columns([2, 1, 1]) 
+    with c2r2[0]: st.text_input("거주지 주소", key="in_home_addr") # 너비 확장
     with c2r2[1]: st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status")
-    with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate")
+    with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate") # 폭 축소
     
-    c2r3 = st.columns(3)
-    with c2r3[0]: st.selectbox("최종학력", ["선택", "중학교 졸업", "고등학교 졸업", "대학교 졸업", "석사 수료", "박사 수료"], key="in_edu_level")
+    # 최종학력/전공 줄이고 경력사항 2개로 분리
+    c2r3 = st.columns([0.8, 0.8, 1.2, 1.2]) 
+    with c2r3[0]: st.selectbox("최종학력", ["선택", "중졸", "고졸", "대졸", "석사", "박사"], key="in_edu_level")
     with c2r3[1]: st.text_input("전공", key="in_rep_major")
-    with c2r3[2]: st.text_input("경력사항", key="in_rep_career")
+    with c2r3[2]: st.text_input("경력사항 1", placeholder="주요 경력 기재", key="in_rep_career_1")
+    with c2r3[3]: st.text_input("경력사항 2", placeholder="기타 경력 기재", key="in_rep_career_2")
     st.markdown("---")
 
     # --- 3. 대표자 신용정보 ---
@@ -233,10 +266,10 @@ if st.session_state["view_mode"] == "INPUT":
 
     # --- 8. 비즈니스 상세 정보 ---
     st.header("8. 비즈니스 상세 정보")
-    r8_1 = st.columns(2); r8_1[0].text_area("핵심 아이템", key="in_item_desc", height=100); r8_1[1].text_area("판매 루트", key="in_sales_route", height=100)
+    r8_1 = st.columns(2); r8_1[0].text_area("핵심 아이템", key="in_item_desc", height=100); r8_1[1].text_area("판매 루트(유통망)", key="in_sales_route", height=100)
     r8_2 = st.columns(2); r8_2[0].text_area("경쟁력 및 차별성", key="in_item_diff", height=100); r8_2[1].text_area("시장 현황", key="in_market_status", height=100)
-    r8_3 = st.columns(2); r8_3[0].text_area("공정도", key="in_process_desc", height=100); r8_3[1].text_area("타겟 고객", key="in_target_cust", height=100)
-    r8_4 = st.columns(2); r8_4[0].text_area("수익 모델", key="in_revenue_model", height=100); r8_4[1].text_area("미래 계획", key="in_future_plan", height=100)
+    r8_3 = st.columns(2); r8_3[0].text_area("제품생산/서비스 공정도", key="in_process_desc", height=100); r8_3[1].text_area("구체적인 타겟 고객", key="in_target_cust", height=100)
+    r8_4 = st.columns(2); r8_4[0].text_area("수익 모델", key="in_revenue_model", height=100); r8_4[1].text_area("앞으로의 계획", key="in_future_plan", height=100)
     st.markdown("---")
 
     # --- 9. 자금 계획 ---
@@ -247,10 +280,10 @@ if st.session_state["view_mode"] == "INPUT":
         st.number_input("조달금액", value=st.session_state.get("in_req_funds", None), key="in_req_funds", label_visibility="collapsed", step=1)
     with c9[1]:
         st.markdown('<p style="font-size:14px;">상세 자금 집행 계획</p>', unsafe_allow_html=True)
-        st.text_area("자금집행", key="in_fund_plan", label_visibility="collapsed")
+        st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%) 등", label_visibility="collapsed")
 
 # ==========================================
-# 3. 리포트 출력 (엔진 연결)
+# 3. 리포트 출력 (각 엔진 파일 호출)
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"): 
@@ -267,6 +300,7 @@ else:
     else:
         with st.status("🚀 AI 분석 진행 중..."):
             try:
+                # [엔진 연결]
                 if mode == "REPORT": res = engine_analysis.run_report(st.session_state["api_key"], current_data)
                 elif mode == "MATCHING": res = engine_matching.run_report(st.session_state["api_key"], current_data)
                 elif mode == "LOAN_PLAN": res = engine_loan.run_report(st.session_state["api_key"], current_data)
