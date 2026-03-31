@@ -12,7 +12,7 @@ import engine_loan
 import engine_ai_plan
 
 # ==========================================
-# 0. 핵심 설정 및 디자인 커스텀 (수정 금지 - 대표님 원본 유지)
+# 0. 핵심 설정 및 디자인 커스텀 (원본 그대로 유지)
 # ==========================================
 st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
@@ -51,11 +51,12 @@ def get_nice_grade(score):
     else: return f"{s}점(등급외)", "#E53935"
 
 # ==========================================
-# 1. 상태 관리 및 사이드바 (저장/불러오기 완벽 구현)
+# 1. 상태 관리 및 사이드바 (저장/불러오기 탭 완벽 복구)
 # ==========================================
 if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
-if "saved_companies" not in st.session_state: st.session_state["saved_companies"] = {}
+# 저장된 업체 데이터를 담을 큰 바구니
+if "company_list" not in st.session_state: st.session_state["company_list"] = {}
 
 st.sidebar.header("⚙️ AI 엔진 설정")
 api_key_input = st.sidebar.text_input("Gemini API Key", value=st.session_state["api_key"], type="password", placeholder="API Key 입력")
@@ -63,33 +64,37 @@ if st.sidebar.button("💾 API KEY 저장", use_container_width=True):
     st.session_state["api_key"] = api_key_input; st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.header("📁 저장된 기업 목록")
+st.sidebar.header("📁 업체 관리")
 
-# [저장 버튼]
-if st.sidebar.button("💾 현재 기업 정보 저장", use_container_width=True):
-    c_name = st.session_state.get("in_company_name", "").strip()
-    if c_name:
-        # 입력된 모든 'in_' 데이터를 추출하여 저장
-        current_save = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        st.session_state["saved_companies"][c_name] = current_save
-        st.sidebar.success(f"'{c_name}' 저장 완료!")
-        time.sleep(0.5)
-        st.rerun()
-    else:
-        st.sidebar.warning("기업명을 입력해야 저장 가능합니다.")
+# [저장하기/불러오기 탭 구성]
+save_tab, load_tab = st.sidebar.tabs(["💾 저장하기", "📂 불러오기"])
 
-# [목록 및 불러오기 버튼]
-if st.session_state["saved_companies"]:
-    target_c = st.sidebar.selectbox("불러올 업체 선택", options=["목록 선택"] + list(st.session_state["saved_companies"].keys()))
-    if target_c != "목록 선택":
-        if st.sidebar.button("📂 데이터 불러오기", use_container_width=True):
-            data_to_load = st.session_state["saved_companies"][target_c]
-            for key, val in data_to_load.items():
-                st.session_state[key] = val
-            st.sidebar.info(f"'{target_c}' 데이터를 로드했습니다.")
+with save_tab:
+    if st.button("현재 기업 정보 저장", use_container_width=True, key="save_current"):
+        # 입력창(st.session_state)에서 기업명을 가져옵니다.
+        name_to_save = st.session_state.get("in_company_name", "").strip()
+        if name_to_save:
+            # "in_"으로 시작하는 모든 입력 데이터 수집
+            current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+            st.session_state["company_list"][name_to_save] = current_data
+            st.success(f"'{name_to_save}' 저장 완료!")
+            time.sleep(0.5)
             st.rerun()
-else:
-    st.sidebar.write("저장된 기업이 없습니다.")
+        else:
+            st.error("기업명을 먼저 입력해 주세요.")
+
+with load_tab:
+    if st.session_state["company_list"]:
+        selected_target = st.selectbox("저장된 업체 목록", options=list(st.session_state["company_list"].keys()))
+        if st.button("데이터 불러오기", use_container_width=True):
+            # 선택한 업체의 데이터를 다시 세션 상태로 복사
+            loaded_data = st.session_state["company_list"][selected_target]
+            for key, val in loaded_data.items():
+                st.session_state[key] = val
+            st.info(f"'{selected_target}' 정보를 불러왔습니다.")
+            st.rerun()
+    else:
+        st.write("저장된 기업이 없습니다.")
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 리포트 생성")
@@ -99,7 +104,7 @@ if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_widt
 if st.sidebar.button("📑 AI 사업계획서", use_container_width=True): st.session_state["view_mode"] = "AI_PLAN"; st.rerun()
 
 # ==========================================
-# 2. 메인 대시보드 상단
+# 2. 메인 대시보드 상단 (고정 탭)
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
 t_cols = st.columns(4)
@@ -116,7 +121,7 @@ st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 GUIDE_STR = "1억=10000으로 입력"
 
 # ==========================================
-# 3. 화면 분기 (입력 vs 리포트) - 디자인 100% 복구
+# 3. 화면 분기 (입력 vs 리포트)
 # ==========================================
 if st.session_state["view_mode"] == "INPUT":
     st.header("1. 기업현황")
@@ -134,7 +139,7 @@ if st.session_state["view_mode"] == "INPUT":
     c1r3 = st.columns([1, 1, 1, 1])
     with c1r3[0]: st.text_input("사업장 전화번호", key="in_biz_tel", placeholder="000-00-0000")
     with c1r3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
-    # [수정] value=None을 주어야 placeholder가 보입니다.
+    # [수정] value=None을 주어야 placeholder(가이드 문구)가 보입니다.
     with c1r3[2]: st.number_input("보증금 (만원)", key="in_lease_deposit", step=1, placeholder=GUIDE_STR, value=None)
     with c1r3[3]: st.number_input("월임대료 (만원)", key="in_lease_rent", step=1, placeholder=GUIDE_STR, value=None)
     
@@ -238,13 +243,12 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%) 등", label_visibility="collapsed")
 
 # ==========================================
-# 4. 리포트 출력 모드 (데이터 유지 보장)
+# 4. 리포트 출력 모드 (기존 유지)
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"): 
         st.session_state["view_mode"] = "INPUT"; st.rerun()
 
-    # 입력된 모든 데이터 수집
     current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     mode = st.session_state["view_mode"]
     
@@ -258,7 +262,6 @@ else:
     else:
         with st.status(f"🚀 {biz_name} AI 분석 및 리포트 생성 중..."):
             try:
-                # API 호출 시 모델명을 engine 파일 내부에서 처리하도록 api_key 전달
                 if mode == "REPORT": res_html = engine_analysis.run_report(st.session_state["api_key"], current_data)
                 elif mode == "MATCHING": res_html = engine_matching.run_report(st.session_state["api_key"], current_data)
                 elif mode == "LOAN_PLAN": res_html = engine_loan.run_report(st.session_state["api_key"], current_data)
