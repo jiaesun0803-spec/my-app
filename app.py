@@ -107,7 +107,7 @@ def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path
 def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
 # ==========================================
-# 2. 사이드바 (모든 기능 복구 완료)
+# 2. 사이드바 관리
 # ==========================================
 st.sidebar.header("⚙️ AI 엔진 설정")
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
@@ -152,7 +152,7 @@ with t4:
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
 if st.session_state["view_mode"] == "INPUT":
-    # --- 1. 기업현황 (복구 및 유지) ---
+    # --- 1. 기업현황 ---
     st.header("1. 기업현황")
     c1r1 = st.columns([2, 1, 1.5, 1.5])
     with c1r1[0]: st.text_input("기업명", key="in_company_name")
@@ -182,7 +182,7 @@ if st.session_state["view_mode"] == "INPUT":
         if ac_cols[0].radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_add") == "유":
             ac_cols[1].text_input("추가 사업장명", key="in_add_info")
 
-    # --- 2. 대표자 정보 (복구 및 유지) ---
+    # --- 2. 대표자 정보 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("2. 대표자 정보")
     c2r1 = st.columns(4)
@@ -206,33 +206,39 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r4[2]: st.text_input("주요경력 2", key="in_career_2")
     with c2r4[3]: st.text_input("주요경력 3", key="in_career_3")
 
-    # --- 3. 신용 정보 시각화 (요청하신 균등 줄간격 정렬 적용) ---
+    # --- 3. 신용 정보 시각화 (요청하신 줄간격 균등 및 하단 칼정렬) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("3. 신용 정보 시각화")
     
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
     
     with c3_col1:
-        # 균등 배치를 위한 수직 마진 설정
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        # 하단 라인을 중앙 박스와 맞추기 위한 상단 조정
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         
-        # [1층] 제목 (컬럼 분할로 정렬)
+        # [1층] 제목 (컬럼 분할로 정확한 수평 위치 고정)
         t1_c1, t1_c2 = st.columns(2)
-        t1_c1.markdown("<p style='font-size:0.9em; font-weight:bold; margin-bottom:-10px;'>금융연체 여부</p>", unsafe_allow_html=True)
-        t1_c2.markdown("<p style='font-size:0.9em; font-weight:bold; margin-bottom:-10px;'>세금체납 여부</p>", unsafe_allow_html=True)
+        t1_c1.markdown("<p style='font-size:0.9em; font-weight:bold; margin-bottom: 0;'>금융연체 여부</p>", unsafe_allow_html=True)
+        t1_c2.markdown("<p style='font-size:0.9em; font-weight:bold; margin-bottom: 0;'>세금체납 여부</p>", unsafe_allow_html=True)
+        
+        # [Gap 1: 15px]
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         
         # [2층] 라디오 버튼
         r1_c1, r1_c2 = st.columns(2)
         with r1_c1: delinquency = st.radio("f_delin", ["무", "유"], horizontal=True, key="in_fin_delinquency", label_visibility="collapsed")
         with r1_c2: tax_delin = st.radio("t_delin", ["무", "유"], horizontal=True, key="in_tax_delinquency", label_visibility="collapsed")
         
-        # 층간 균등 간격
-        st.markdown("<div style='margin-top: 22px;'></div>", unsafe_allow_html=True)
+        # [Gap 2: 15px]
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         
         # [3층] 제목
         t2_c1, t2_c2 = st.columns(2)
-        t2_c1.markdown("<p style='font-size:0.9em; font-weight:bold; margin-bottom:-10px;'>KCB 점수</p>", unsafe_allow_html=True)
-        t2_c2.markdown("<p style='font-size:0.9em; font-weight:bold; margin-bottom:-10px;'>NICE 점수</p>", unsafe_allow_html=True)
+        t2_c1.markdown("<p style='font-size:0.9em; font-weight:bold; margin-bottom: 0;'>KCB 점수</p>", unsafe_allow_html=True)
+        t2_c2.markdown("<p style='font-size:0.9em; font-weight:bold; margin-bottom: 0;'>NICE 점수</p>", unsafe_allow_html=True)
+        
+        # [Gap 3: 15px]
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         
         # [4층] 점수 입력창
         r2_c1, r2_c2 = st.columns(2)
@@ -240,25 +246,24 @@ if st.session_state["view_mode"] == "INPUT":
         with r2_c2: s_nice = st.number_input("n_in", value=0, max_value=1000, key="in_nice_score", label_visibility="collapsed")
         
     with c3_col2:
-        # 중앙 코멘트 박스: 높이 175px 고정으로 우측 그래프와 하단 라인 일치
-        st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
+        # 코멘트 박스: 높이 180px 고정하여 좌측 NICE 입력칸 하단과 칼정렬
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         if delinquency == "유" or tax_delin == "유":
             st.markdown(f"""
-            <div style='background-color: #FFEBEE; padding: 20px; border-radius: 10px; border-left: 5px solid #E53935; height: 175px;'>
+            <div style='background-color: #FFEBEE; padding: 20px; border-radius: 10px; border-left: 5px solid #E53935; height: 180px; overflow: hidden;'>
                 <h3 style='color: #B71C1C; margin-top: 0;'>⚠️ 연체/체납 주의</h3>
-                <p style='color: #D32F2F; font-size: 0.9em; line-height: 1.5;'>현재 연체 또는 체납 정보가 확인됩니다. 자금 신청 시 결격사유가 될 수 있으므로 즉시 해결이 필요합니다.</p>
+                <p style='color: #D32F2F; font-size: 0.9em; line-height: 1.5;'>현재 연체 또는 체납 정보가 확인됩니다. 정책자금 신청 시 결격사유가 될 수 있으므로 즉시 소명 또는 해결이 필요합니다.</p>
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
-            <div style='background-color: #E8F5E9; padding: 20px; border-radius: 10px; border-left: 5px solid #43A047; height: 175px;'>
+            <div style='background-color: #E8F5E9; padding: 20px; border-radius: 10px; border-left: 5px solid #43A047; height: 180px; overflow: hidden;'>
                 <h3 style='color: #1B5E20; margin-top: 0;'>✅ 신용 양호</h3>
                 <p style='color: #2E7D32; font-size: 0.9em; line-height: 1.5;'>현재 금융연체 및 세금체납 내역이 없습니다. 정책자금 신청을 위한 기초 신용 요건을 충족한 상태입니다.</p>
             </div>
             """, unsafe_allow_html=True)
         
     with c3_col3:
-        # 우측 게이지 그래프
         v_cols = st.columns(2)
         k_grade, k_color = get_kcb_info(s_kcb)
         n_grade, n_color = get_nice_info(s_nice)
@@ -269,7 +274,7 @@ if st.session_state["view_mode"] == "INPUT":
             st.plotly_chart(create_gauge(s_nice, "NICE Score", n_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'><b>NICE: {n_grade}</b></div>", unsafe_allow_html=True)
 
-    # --- 4. 매출 현황 (복구) ---
+    # --- 4. 매출 현황 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("4. 매출 현황 (만원)")
     c4r1 = st.columns(2)
@@ -280,7 +285,7 @@ if st.session_state["view_mode"] == "INPUT":
         st.number_input("25년 예상매출", value=0, key="in_sales_25")
         st.number_input("23년 매출합계", value=0, key="in_sales_23")
 
-    # --- 5. 기대출 및 필요자금 (복구) ---
+    # --- 5. 기대출 및 필요자금 ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("5. 기대출 및 필요자금 (만원)")
     c5r1 = st.columns(4)
@@ -289,7 +294,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c5r1[2]: st.number_input("보증기금 기대출", value=0, key="in_debt_guarantee")
     with c5r1[3]: st.number_input("필요자금 금액", value=0, key="in_req_amount")
 
-    # --- 6. 보유 인증 (복구) ---
+    # --- 6. 보유 인증 ---
     st.header("6. 보유 인증 (4열 배치)")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
     for i in range(0, len(cert_list), 4):
@@ -297,7 +302,7 @@ if st.session_state["view_mode"] == "INPUT":
         for j in range(4):
             if i + j < len(cert_list): cols[j].checkbox(cert_list[i + j], key=f"in_cert_{cert_list[i + j]}")
 
-    # --- 7. 특허 및 정부지원 (복구) ---
+    # --- 7. 특허 및 정부지원 ---
     st.header("7. 특허 및 정부지원")
     c7r1 = st.columns(2)
     with c7r1[0]:
@@ -309,13 +314,13 @@ if st.session_state["view_mode"] == "INPUT":
             st.number_input("지원 수혜 건수", value=0, key="in_gov_cnt")
             st.text_area("지원 사업명 상세", key="in_gov_desc")
 
-    # --- 8. 비즈니스 정보 (복구) ---
+    # --- 8. 비즈니스 정보 ---
     st.header("8. 비즈니스 정보")
     st.text_area("핵심 아이템 설명", key="in_item_desc")
     st.text_input("제품 생산 공정도 상세", key="in_process_desc")
     st.text_area("시장 현황 및 미래 계획", key="in_future_plan")
 
-    st.success("✅ [정렬 최적화 완성] 신용 정보의 모든 요소가 수평 균등 정렬되었습니다.")
+    st.success("✅ [정렬 최적화 완성] 제목과 위젯 간격 균등화 및 하단 라인 칼정렬이 완료되었습니다.")
 
 # ==========================================
 # 4. 리포트 출력 화면
@@ -332,7 +337,7 @@ else:
 
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
-        with st.status("🚀정밀 분석 중..."):
-            pr = f"{cn} 분석 HTML 리포트. 기업정보 연동 필수."
+        with st.status("🚀데이터 정밀 분석 중..."):
+            pr = f"{cn} 분석 HTML 리포트. 현황표(대표:{d.get('in_rep_name')}, 사업자:{d.get('in_raw_biz_no')}) 필수 포함."
             res = clean_html(model.generate_content(pr).text)
         st.markdown(res, unsafe_allow_html=True)
