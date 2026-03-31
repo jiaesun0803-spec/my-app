@@ -47,7 +47,7 @@ def get_best_model_name():
         return 'models/gemini-pro'
     except: return 'models/gemini-1.5-flash'
 
-# --- 신용 등급 판정 로직 ---
+# --- 신용 등급 판정 및 시각화 로직 ---
 def get_kcb_info(score):
     s = safe_int(score)
     if s >= 942: return "1등급", "#1E88E5"
@@ -90,7 +90,7 @@ def change_mode(target):
     st.rerun()
 
 # ==========================================
-# 1. 파일 및 보안 설정
+# 1. 보안 및 DB 설정
 # ==========================================
 if "password_correct" not in st.session_state:
     st.title("🔐 AI 컨설팅 시스템")
@@ -125,19 +125,19 @@ if st.sidebar.button("💾 현재 업체 정보 저장", use_container_width=Tru
         db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         save_db(db); st.sidebar.success(f"✅ '{cn}' 저장!")
 
-selected_company = st.sidebar.selectbox("저장된 업체 선택", ["선택 안 함"] + list(db.keys()))
+selected_company = st.sidebar.selectbox("불러올 업체 선택", ["선택 안 함"] + list(db.keys()))
 if st.sidebar.button("📂 불러오기", use_container_width=True) and selected_company != "선택 안 함":
     for k, v in db[selected_company].items(): st.session_state[k] = v
     st.session_state["view_mode"] = "INPUT"; st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 빠른 리포트 생성")
-if st.sidebar.button("📊 AI기업분석리포트 생성", use_container_width=True): change_mode("REPORT")
-if st.sidebar.button("💡 AI 정책자금 매칭리포트", use_container_width=True): change_mode("MATCHING")
-if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): change_mode("PLAN")
+if st.sidebar.button("📊 AI기업분석리포트 생성"): change_mode("REPORT")
+if st.sidebar.button("💡 AI 정책자금 매칭리포트"): change_mode("MATCHING")
+if st.sidebar.button("📝 기관별 융자/사업계획서"): change_mode("PLAN")
 
 # ==========================================
-# 3. 메인 대시보드
+# 3. 메인 대시보드 화면
 # ==========================================
 st.title("📊 AI 컨설팅 대시보드")
 t1, t2, t3, t4 = st.columns(4)
@@ -206,7 +206,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r4[2]: st.text_input("주요경력 2", key="in_career_2")
     with c2r4[3]: st.text_input("주요경력 3", key="in_career_3")
 
-    # --- 3. 신용 정보 시각화 (칼정렬 유지) ---
+    # --- 3. 신용 정보 시각화 (유지) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("3. 신용 정보 시각화")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
@@ -243,24 +243,24 @@ if st.session_state["view_mode"] == "INPUT":
             st.plotly_chart(create_gauge(s_nice, "NICE Score", n_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'><b>NICE: {n_grade}</b></div>", unsafe_allow_html=True)
 
-    # --- 4. 매출현황 (수정 적용) ---
+    # --- 4. 매출현황 (수정: 수출 관련 간격 초밀착 정렬) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("4. 매출현황")
     
-    # [수정] 수출현황 일렬 배치 및 간격 축소
-    exp_line = st.columns([0.7, 0.8, 1, 1.2, 1])
+    # 컬럼 비율을 더 세밀하게 쪼개서 라벨 옆에 라디오를 바짝 붙임
+    # [수출현황제목 | 라벨1 | 라디오1 | 라벨2 | 라디오2 | 나머지공간]
+    exp_line = st.columns([0.5, 0.7, 0.4, 0.9, 0.4, 1.5])
     with exp_line[0]: st.markdown("**수출현황**")
     with exp_line[1]: st.markdown("수출매출 여부")
-    with exp_line[2]: has_export = st.radio("exp_rev", ["무", "유"], horizontal=True, key="in_export_revenue", label_visibility="collapsed")
+    with exp_line[2]: has_export = st.radio("rev", ["무", "유"], horizontal=True, key="in_export_revenue", label_visibility="collapsed")
     with exp_line[3]: st.markdown("수출진행예정 여부")
-    with exp_line[4]: plan_export = st.radio("exp_plan", ["무", "유"], horizontal=True, key="in_planned_export", label_visibility="collapsed")
+    with exp_line[4]: plan_export = st.radio("plan", ["무", "유"], horizontal=True, key="in_planned_export", label_visibility="collapsed")
     
     st.markdown("---")
     
     # 일반 매출 현황
     m_labels = ["금년 매출합계(만원)", "25년도 매출합계(만원)", "24년도 매출합계(만원)", "23년도 매출합계(만원)"]
     m_keys = ["in_sales_cur", "in_sales_25", "in_sales_24", "in_sales_23"]
-    
     lc = st.columns(4)
     for i, label in enumerate(m_labels): lc[i].markdown(f"<p style='font-size:0.9em; font-weight:bold;'>{label}</p>", unsafe_allow_html=True)
     ic = st.columns(4)
@@ -313,9 +313,9 @@ if st.session_state["view_mode"] == "INPUT":
     st.header("8. 비즈니스 정보")
     st.text_area("핵심 아이템 설명", key="in_item_desc")
     st.text_input("제품 생산 공정도 상세", key="in_process_desc")
-    st.text_area("시장 현황 및 미래 계획", key="in_future_plan")
+    st.text_area("시장 현황 및 계획", key="in_future_plan")
 
-    st.success("✅ [정렬 완료] 모든 데이터가 복구되었으며 수출현황 간격 최적화가 완료되었습니다.")
+    st.success("✅ [정렬 완성] 수출현황 항목이 초밀착 정렬되었습니다.")
 
 # ==========================================
 # 4. 리포트 출력 화면
@@ -333,6 +333,6 @@ else:
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
         with st.status("🚀분석 중..."):
-            pr = f"{cn} 리포트 HTML 작성. 최상단 현황표(사업자:{d.get('in_raw_biz_no')}, 대표:{d.get('in_rep_name')}) 포함 필수."
+            pr = f"{cn} 분석 HTML 리포트. 수출매출여부:{d.get('in_export_revenue')} 반영."
             res = clean_html(model.generate_content(pr).text)
         st.markdown(res, unsafe_allow_html=True)
