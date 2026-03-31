@@ -107,7 +107,7 @@ def load_db(): return json.load(open(DB_FILE, "r", encoding="utf-8")) if os.path
 def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
 # ==========================================
-# 2. 사이드바 관리
+# 2. 사이드바 (업체 관리 및 빠른 이동)
 # ==========================================
 st.sidebar.header("⚙️ AI 엔진 설정")
 if "api_key" not in st.session_state: st.session_state["api_key"] = ""
@@ -119,22 +119,22 @@ if st.session_state["api_key"]: genai.configure(api_key=st.session_state["api_ke
 st.sidebar.markdown("---")
 st.sidebar.header("📂 업체 관리")
 db = load_db()
-if st.sidebar.button("💾 현재 업체 정보 저장"):
+if st.sidebar.button("💾 현재 정보 저장", use_container_width=True):
     cn = st.session_state.get("in_company_name", "").strip()
     if cn:
         db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
-        save_db(db); st.sidebar.success(f"✅ '{cn}' 저장 완료!")
+        save_db(db); st.sidebar.success(f"✅ '{cn}' 저장!")
 
-selected_company = st.sidebar.selectbox("저장된 업체 목록", ["선택 안 함"] + list(db.keys()))
-if st.sidebar.button("📂 불러오기") and selected_company != "선택 안 함":
+selected_company = st.sidebar.selectbox("불러올 업체 선택", ["선택 안 함"] + list(db.keys()))
+if st.sidebar.button("📂 불러오기", use_container_width=True) and selected_company != "선택 안 함":
     for k, v in db[selected_company].items(): st.session_state[k] = v
     st.session_state["view_mode"] = "INPUT"; st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 빠른 리포트 생성")
-if st.sidebar.button("📊 AI기업분석리포트 생성"): change_mode("REPORT")
-if st.sidebar.button("💡 AI 정책자금 매칭리포트"): change_mode("MATCHING")
-if st.sidebar.button("📝 기관별 융자/사업계획서"): change_mode("PLAN")
+if st.sidebar.button("📊 AI기업분석리포트 생성", use_container_width=True): change_mode("REPORT")
+if st.sidebar.button("💡 AI 정책자금 매칭리포트", use_container_width=True): change_mode("MATCHING")
+if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): change_mode("PLAN")
 
 # ==========================================
 # 3. 메인 대시보드
@@ -152,7 +152,7 @@ with t4:
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
 if st.session_state["view_mode"] == "INPUT":
-    # --- 1. 기업현황 (완벽 복구) ---
+    # --- 1. 기업현황 (복구) ---
     st.header("1. 기업현황")
     c1r1 = st.columns([2, 1, 1.5, 1.5])
     with c1r1[0]: st.text_input("기업명", key="in_company_name")
@@ -182,7 +182,7 @@ if st.session_state["view_mode"] == "INPUT":
         if ac_cols[0].radio("추가사업장현황", ["무", "유"], horizontal=True, key="in_has_add") == "유":
             ac_cols[1].text_input("추가 사업장명", key="in_add_info")
 
-    # --- 2. 대표자 정보 (수정 보완) ---
+    # --- 2. 대표자 정보 (복구) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("2. 대표자 정보")
     c2r1 = st.columns(4)
@@ -202,47 +202,47 @@ if st.session_state["view_mode"] == "INPUT":
 
     c2r4 = st.columns(4)
     with c2r4[0]: st.text_input("이메일 주소", key="in_rep_email")
-    with c2r4[1]: st.text_input("주요경력 1", key="in_career_1", placeholder="최근 경력")
-    with c2r4[2]: st.text_input("주요경력 2", key="in_career_2", placeholder="이전 경력")
-    with c2r4[3]: st.text_input("주요경력 3", key="in_career_3", placeholder="기타 경력")
+    with c2r4[1]: st.text_input("주요경력 1", key="in_career_1")
+    with c2r4[2]: st.text_input("주요경력 2", key="in_career_2")
+    with c2r4[3]: st.text_input("주요경력 3", key="in_career_3")
 
-    # --- 3. 신용 정보 시각화 (시안 반영 최종 정렬) ---
+    # --- 3. 신용 정보 시각화 (칼정렬 적용) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("3. 신용 정보 시각화")
     
-    # 시안의 3단 분할 레이아웃 (입력 | 상태창 | 그래프)
-    c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1, 1.8])
+    # [수정] 좌측 입력 섹션과 우측 결과 섹션의 수평 라인을 맞추기 위해 높이 정밀 조정
+    c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
     
     with c3_col1:
-        # 좌측 입력 섹션
-        rad_cols = st.columns(2)
-        with rad_cols[0]: delinquency = st.radio("금융연체 여부", ["무", "유"], horizontal=True, key="in_fin_delinquency")
-        with rad_cols[1]: tax_delin = st.radio("세금체납 여부", ["무", "유"], horizontal=True, key="in_tax_delinquency")
+        # 상단 라디오 버튼과 하단 점수 입력창의 간격을 최소화하여 위로 끌어올림
+        ci_r1 = st.columns(2)
+        with ci_r1[0]: delinquency = st.radio("금융연체 여부", ["무", "유"], horizontal=True, key="in_fin_delinquency")
+        with ci_r1[1]: tax_delin = st.radio("세금체납 여부", ["무", "유"], horizontal=True, key="in_tax_delinquency")
         
-        st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+        # 줄간격을 대폭 줄여 NICE 입력칸 하단을 우측 그래프와 일치시킴
+        st.markdown("<div style='margin-top: 2px;'></div>", unsafe_allow_html=True)
         s_kcb = st.number_input("KCB 점수", value=0, max_value=1000, key="in_kcb_score")
         s_nice = st.number_input("NICE 점수", value=0, max_value=1000, key="in_nice_score")
         
     with c3_col2:
-        # 중앙 상태 박스 (높이를 그래프와 최대한 맞춤)
+        # 상태 박스 높이를 그래프 세로 길이(180px)와 완벽히 일치시킴
         st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
         if delinquency == "유" or tax_delin == "유":
             st.markdown("""
-            <div style='background-color: #FFEBEE; padding: 20px; border-radius: 10px; border-left: 5px solid #E53935; height: 185px;'>
-                <h3 style='color: #B71C1C; margin-top: 0; display: flex; align-items: center;'>⚠️ 연체/체납 주의</h3>
-                <p style='color: #D32F2F; font-size: 0.95em; line-height: 1.6;'>현재 연체 또는 체납 정보가 확인됩니다. 자금 신청 시 결격사유가 될 수 있으므로 즉시 소명 또는 해소가 필요합니다.</p>
+            <div style='background-color: #FFEBEE; padding: 20px; border-radius: 10px; border-left: 5px solid #E53935; height: 180px; overflow: hidden;'>
+                <h3 style='color: #B71C1C; margin-top: 0;'>⚠️ 연체/체납 주의</h3>
+                <p style='color: #D32F2F; font-size: 0.9em; line-height: 1.5;'>현재 연체 또는 체납 정보가 확인됩니다. 자금 신청 시 결격사유가 될 수 있으므로 즉시 소명 또는 해소가 필요합니다.</p>
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown("""
-            <div style='background-color: #E8F5E9; padding: 20px; border-radius: 10px; border-left: 5px solid #43A047; height: 185px;'>
-                <h3 style='color: #1B5E20; margin-top: 0; display: flex; align-items: center;'><span style='margin-right:8px;'>✅</span> 신용 양호</h3>
-                <p style='color: #2E7D32; font-size: 0.95em; line-height: 1.6;'>현재 금융연체 및 세금체납 내역이 없습니다. 정책자금 신청을 위한 기초 신용 요건을 충족한 상태입니다.</p>
+            <div style='background-color: #E8F5E9; padding: 20px; border-radius: 10px; border-left: 5px solid #43A047; height: 180px; overflow: hidden;'>
+                <h3 style='color: #1B5E20; margin-top: 0;'>✅ 신용 양호</h3>
+                <p style='color: #2E7D32; font-size: 0.9em; line-height: 1.5;'>현재 금융연체 및 세금체납 내역이 없습니다. 정책자금 신청을 위한 기초 신용 요건을 충족한 상태입니다.</p>
             </div>
             """, unsafe_allow_html=True)
         
     with c3_col3:
-        # 우측 그래프 섹션
         v_cols = st.columns(2)
         k_grade, k_color = get_kcb_info(s_kcb)
         n_grade, n_color = get_nice_info(s_nice)
@@ -253,7 +253,7 @@ if st.session_state["view_mode"] == "INPUT":
             st.plotly_chart(create_gauge(s_nice, "NICE Score", n_color), use_container_width=True, config={'displayModeBar': False})
             st.markdown(f"<div style='text-align:center; padding:5px; background-color:{n_color}; color:white; border-radius:5px; font-size:0.9em; margin-top:-15px;'><b>NICE: {n_grade}</b></div>", unsafe_allow_html=True)
 
-    # --- 4. 매출 현황 ---
+    # --- 4. 매출 현황 (복구) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("4. 매출 현황 (만원)")
     c4r1 = st.columns(2)
@@ -264,17 +264,17 @@ if st.session_state["view_mode"] == "INPUT":
         st.number_input("25년 예상매출", value=0, key="in_sales_25")
         st.number_input("23년 매출합계", value=0, key="in_sales_23")
 
-    # --- 5. 기대출 및 필요자금 ---
+    # --- 5. 기대출 및 필요자금 (복구) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.header("5. 기대출 및 필요자금 (만원)")
     c5r1 = st.columns(4)
-    with c5r1[0]: st.number_input("중진공", value=0, key="in_debt_kosme")
-    with c5r1[1]: st.number_input("소진공", value=0, key="in_debt_semas")
-    with c5r1[2]: st.number_input("보증기금(신/기)", value=0, key="in_debt_guarantee")
-    with c5r1[3]: st.number_input("필요자금", value=0, key="in_req_amount")
-    st.text_input("자금 용도", placeholder="예: 원자재 구매 및 시설 확충", key="in_req_purpose")
+    with c5r1[0]: st.number_input("중진공 기대출", value=0, key="in_debt_kosme")
+    with c5r1[1]: st.number_input("소진공 기대출", value=0, key="in_debt_semas")
+    with c5r1[2]: st.number_input("보증기금 기대출", value=0, key="in_debt_guarantee")
+    with c5r1[3]: st.number_input("필요자금 금액", value=0, key="in_req_amount")
+    st.text_input("자금 구체적 용도", key="in_req_purpose")
 
-    # --- 6. 보유 인증 ---
+    # --- 6. 보유 인증 (복구) ---
     st.header("6. 보유 인증 (4열 배치)")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
     for i in range(0, len(cert_list), 4):
@@ -282,28 +282,28 @@ if st.session_state["view_mode"] == "INPUT":
         for j in range(4):
             if i + j < len(cert_list): cols[j].checkbox(cert_list[i + j], key=f"in_cert_{cert_list[i + j]}")
 
-    # --- 7. 특허 및 정부지원 ---
+    # --- 7. 특허 및 정부지원 (복구) ---
     st.header("7. 특허 및 정부지원")
     c7r1 = st.columns(2)
     with c7r1[0]:
         if st.radio("특허 보유 여부", ["무", "유"], horizontal=True, key="in_has_patent") == "유":
             st.number_input("특허 건수", value=0, key="in_pat_cnt")
-            st.text_area("특허 명칭/번호", key="in_pat_desc")
+            st.text_area("특허 명칭 및 상세", key="in_pat_desc")
     with c7r1[1]:
         if st.radio("정부지원 수혜이력", ["무", "유"], horizontal=True, key="in_has_gov") == "유":
-            st.number_input("수혜 건수", value=0, key="in_gov_cnt")
-            st.text_area("지원 사업명", key="in_gov_desc")
+            st.number_input("지원 수혜 건수", value=0, key="in_gov_cnt")
+            st.text_area("지원 사업명 상세", key="in_gov_desc")
 
-    # --- 8. 비즈니스 정보 ---
+    # --- 8. 비즈니스 정보 (복구) ---
     st.header("8. 비즈니스 정보")
-    st.text_area("핵심 아이템 상세 설명", key="in_item_desc")
-    st.text_input("제품 생산 공정도", key="in_process_desc")
-    st.text_area("시장 현황 및 앞으로의 계획", key="in_future_plan")
+    st.text_area("핵심 아이템 설명", key="in_item_desc")
+    st.text_input("제품 생산 공정도 상세", key="in_process_desc")
+    st.text_area("시장 현황 및 미래 계획", key="in_future_plan")
 
-    st.success("✅ 모든 대시보드 정렬 및 데이터 복구가 완료되었습니다.")
+    st.success("✅ 모든 섹션(1-8번) 복구 및 3번 섹션 칼정렬이 완료되었습니다.")
 
 # ==========================================
-# 4. 리포트 출력 화면
+# 4. 리포트 출력 화면 (Data Persist)
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"):
@@ -318,7 +318,6 @@ else:
     if st.session_state["view_mode"] == "REPORT":
         st.subheader(f"📊 AI기업분석리포트: {cn}")
         with st.status("🚀정밀 분석 중..."):
-            k_grade, _ = get_kcb_info(d.get('in_kcb_score', 0))
-            pr = f"{cn} 기업분석 리포트 HTML. 현황표(사업자:{d.get('in_raw_biz_no')}, 대표:{d.get('in_rep_name')}) 포함 필수."
+            pr = f"{cn} 기업분석 리포트 HTML. 현황표(사업자:{d.get('in_raw_biz_no')}, 대표:{d.get('in_rep_name')}, 부동산:{', '.join(d.get('in_real_estate', []))}) 필수 포함."
             res = clean_html(model.generate_content(pr).text)
         st.markdown(res, unsafe_allow_html=True)
