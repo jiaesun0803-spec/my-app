@@ -121,7 +121,7 @@ if st.session_state["api_key"]: genai.configure(api_key=st.session_state["api_ke
 st.sidebar.markdown("---")
 st.sidebar.header("📂 업체 관리")
 db = load_db()
-if st.sidebar.button("💾 현재 업체 정보 저장", use_container_width=True):
+if st.sidebar.button("💾 현재 정보 저장", use_container_width=True):
     cn = st.session_state.get("in_company_name", "").strip()
     if cn:
         db[cn] = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
@@ -134,9 +134,9 @@ if st.sidebar.button("📂 불러오기", use_container_width=True) and selected
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 빠른 리포트 생성")
-if st.sidebar.button("📊 AI기업분석리포트 생성"): change_mode("REPORT")
-if st.sidebar.button("💡 AI 정책자금 매칭리포트"): change_mode("MATCHING")
-if st.sidebar.button("📝 기관별 융자/사업계획서"): change_mode("PLAN")
+if st.sidebar.button("📊 AI기업분석리포트 생성", use_container_width=True): change_mode("REPORT")
+if st.sidebar.button("💡 AI 정책자금 매칭리포트", use_container_width=True): change_mode("MATCHING")
+if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): change_mode("PLAN")
 
 # ==========================================
 # 3. 메인 대시보드 화면
@@ -153,7 +153,7 @@ with t4:
     if st.button("📑 AI 사업계획서", use_container_width=True, type="primary"): change_mode("FULL_PLAN")
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
-# 공통 안내 문구 가이드 (폰트 크기 0.75em으로 추가 축소)
+# 공통 안내 문구 가이드 설정
 GUIDE_VAL = "1억=10000으로 입력"
 LABEL_SUFFIX = f" <span style='font-size:0.75em; font-weight:normal; color:#666;'>(만원-{GUIDE_VAL})</span>"
 
@@ -264,7 +264,8 @@ if st.session_state["view_mode"] == "INPUT":
     lc = st.columns(4)
     for i, title in enumerate(m_titles): lc[i].markdown(f"**{title}**{LABEL_SUFFIX}", unsafe_allow_html=True)
     ic = st.columns(4)
-    for i, key in enumerate(m_keys): ic[i].number_input(label=m_titles[i], value=st.session_state.get(key, None), key=key, placeholder=GUIDE_VAL, label_visibility="collapsed")
+    for i, key in enumerate(m_keys): 
+        ic[i].number_input(label=m_titles[i], value=st.session_state.get(key, None), key=key, placeholder=GUIDE_VAL, label_visibility="collapsed")
     
     if has_export == "유":
         st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
@@ -317,7 +318,7 @@ if st.session_state["view_mode"] == "INPUT":
     st.text_input("제품 생산 공정도 상세", key="in_process_desc")
     st.text_area("시장 현황 및 미래 계획", key="in_future_plan")
 
-    st.success("✅ [수정 완료] 안내 문구 폰트가 추가로 축소되었으며 모든 정렬이 완료되었습니다.")
+    st.success("✅ [Placeholder 전체 통일 완료] 모든 금액 입력창에 안내 문구가 적용되었습니다.")
 
 # ==========================================
 # 4. 리포트 출력 화면
