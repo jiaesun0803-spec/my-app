@@ -17,15 +17,15 @@ st.markdown("""
         font-weight: 400 !important;
         font-size: 14px !important;
         color: #31333F !important;
-        margin-bottom: 5px !important;
+        margin-bottom: 8px !important;
     }
     /* 2. 섹션 헤더 스타일 */
-    h2 { font-weight: 700 !important; margin-top: 25px !important; }
+    h2 { font-weight: 700 !important; margin-top: 30px !important; margin-bottom: 20px !important; }
     
     /* 3. 입력창 내부 Placeholder(흐릿한 글씨) 크기 조절 */
     input::placeholder {
-        font-size: 0.8em !important;
-        color: #888 !important;
+        font-size: 0.85em !important;
+        color: #999 !important;
     }
     
     /* 4. 숫자 입력창 우측 증감 버튼 제거 */
@@ -41,22 +41,27 @@ st.markdown("""
         font-weight: 450 !important;
     }
 
-    /* 6. 9번 섹션 강조 라벨: 16px + 볼드 + 파란색 */
+    /* 6. 9번 섹션 강조 라벨: 16px + 볼드 + 파란색 (정렬 최적화) */
     .blue-bold-label-16 {
         color: #1E88E5 !important;
         font-size: 16px !important;
         font-weight: 700 !important;
         display: inline-block;
-        margin-bottom: 12px !important;
+        margin-bottom: 8px !important;
+        padding-top: 2px;
     }
     
-    /* 7. 상세 자금 집행 계획 라벨 높이 조정용 */
-    .std-label-14 {
+    /* 7. 상세 자금 집행 계획 라벨 (9번 우측 정렬용) */
+    .std-label-14-align {
         font-size: 14px !important;
         font-weight: 400 !important;
         display: inline-block;
-        margin-bottom: 12px !important;
+        margin-bottom: 8px !important;
+        padding-top: 5px;
     }
+
+    /* 8. 섹션 간 구분선 여백 */
+    hr { margin: 40px 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -117,6 +122,7 @@ def save_db(data): json.dump(data, open(DB_FILE, "w", encoding="utf-8"), ensure_
 
 if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 
+# ---------------- 사이드바 ----------------
 st.sidebar.header("📂 업체 관리")
 db = load_db()
 selected_company = st.sidebar.selectbox("불러올 업체 선택", ["선택 안 함"] + list(db.keys()))
@@ -185,7 +191,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (분석 버튼 삭제) ---
+    # --- 3. 대표자 신용정보 ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.1, 1.2, 1.8])
     with c3_col1:
@@ -200,9 +206,8 @@ if st.session_state["view_mode"] == "INPUT":
         s_nice = r2[1].number_input("n_i", value=st.session_state.get("in_nice_score", None), key="in_nice_score", label_visibility="collapsed", placeholder="점수", step=1, format="%d")
     with c3_col2:
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-        # AI 버튼 삭제됨
         box_color = "#FFEBEE" if delinquency == "유" or tax_delin == "유" else "#E8F5E9"
-        st.markdown(f"<div style='background-color:{box_color}; padding:15px; border-radius:10px; height:160px; font-size:0.9em;'><b>금융 상태 가이드</b><br>연체 및 체납 정보와 신용 점수를 기반으로 자격 요건을 검토하세요.</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color:{box_color}; padding:15px; border-radius:10px; height:160px; font-size:0.9em;'><b>금융 상태 가이드</b><br>입력된 수치와 연체 여부를 바탕으로 적합한 정책자금 트랙을 검토합니다.</div>", unsafe_allow_html=True)
         
     with c3_col3:
         v_cols = st.columns(2); k_grade, k_color = get_kcb_info(s_kcb); n_grade, n_color = get_nice_info(s_nice)
@@ -253,50 +258,49 @@ if st.session_state["view_mode"] == "INPUT":
     with c7[0]:
         st.radio("특허 보유 여부", ["무", "유"], horizontal=True, key="in_has_patent")
         st.number_input("보유 건수", value=st.session_state.get("in_pat_cnt", None), key="in_pat_cnt", step=1, format="%d")
-        st.text_area("특허 상세 내용", key="in_pat_desc")
+        st.text_area("특허 상세 내용", key="in_pat_desc", height=100)
     with c7[1]:
         st.radio("정부지원 수혜이력", ["무", "유"], horizontal=True, key="in_has_gov")
         st.number_input("수혜 건수", value=st.session_state.get("in_gov_cnt", None), key="in_gov_cnt", step=1, format="%d")
-        st.text_area("수혜 사업명 상세", key="in_gov_desc")
+        st.text_area("수혜 사업명 상세", key="in_gov_desc", height=100)
     st.markdown("---")
 
-    # --- 8. 비즈니스 상세 정보 (AI 버튼 삭제) ---
+    # --- 8. 비즈니스 상세 정보 (2개씩 4줄 정렬) ---
     st.header("8. 비즈니스 상세 정보")
-    
-    # AI 자동 채우기 버튼 삭제됨
-
     row1 = st.columns(2)
-    with row1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100)
-    with row1[1]: st.text_area("판매 루트(유통망)", key="in_sales_route", height=100)
+    with row1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=120)
+    with row1[1]: st.text_area("판매 루트(유통망)", key="in_sales_route", height=120)
+    
     row2 = st.columns(2)
-    with row2[0]: st.text_area("경쟁력 및 차별성", key="in_item_diff")
-    with row2[1]: st.text_area("시장 현황", key="in_market_status")
+    with row2[0]: st.text_area("경쟁력 및 차별성", key="in_item_diff", height=120)
+    with row2[1]: st.text_area("시장 현황", key="in_market_status", height=120)
+    
     row3 = st.columns(2)
-    with row3[0]: st.text_area("제품생산/서비스 공정도", key="in_process_desc")
-    with row3[1]: st.text_area("구체적인 타겟 고객", key="in_target_cust")
+    with row3[0]: st.text_area("제품생산/서비스 공정도", key="in_process_desc", height=120)
+    with row3[1]: st.text_area("구체적인 타겟 고객", key="in_target_cust", height=120)
+    
     row4 = st.columns(2)
-    with row4[0]: st.text_area("수익 모델", key="in_revenue_model")
-    with row4[1]: st.text_area("앞으로의 계획", key="in_future_plan")
+    with row4[0]: st.text_area("수익 모델", key="in_revenue_model", height=120)
+    with row4[1]: st.text_area("앞으로의 계획", key="in_future_plan", height=120)
     st.markdown("---")
 
-    # --- 9. 자금 계획 (16px 라벨 유지) ---
+    # --- 9. 자금 계획 (정밀 수평 정렬) ---
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
         st.markdown('<p class="blue-bold-label-16">이번 조달 필요 자금 (만원)</p>', unsafe_allow_html=True)
         st.number_input("조달금액", value=st.session_state.get("in_req_funds", None), key="in_req_funds", placeholder=GUIDE_STR, step=1, format="%d", label_visibility="collapsed")
     with c9[1]:
-        st.markdown('<p class="std-label-14">상세 자금 집행 계획</p>', unsafe_allow_html=True)
-        st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%), 시제품 제작(30%), 마케팅 집행(30%) 등", label_visibility="collapsed")
+        st.markdown('<p class="std-label-14-align">상세 자금 집행 계획</p>', unsafe_allow_html=True)
+        st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%), 시제품 제작(30%), 마케팅 집행(30%) 등", label_visibility="collapsed", height=68)
 
 # ==========================================
-# 3. 리포트 출력 (데이터 요약 보기로 변경)
+# 3. 리포트 출력
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"): st.session_state["view_mode"] = "INPUT"; st.rerun()
     d = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     cn = d.get('in_company_name', '미입력').strip()
     
-    st.subheader(f"📑 {cn} 기업 정보 요약")
-    st.write("입력된 데이터를 바탕으로 정리된 내용입니다.")
-    st.json(d) # 입력을 확인하기 위한 JSON 출력
+    st.subheader(f"📑 {cn} 기업 데이터 요약")
+    st.json(d)
