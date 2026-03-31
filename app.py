@@ -7,7 +7,7 @@ import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
 
-# [리포트 엔진 연결]
+# [리포트 엔진 연결] 외부 엔진 파일 호출
 import engine_analysis
 import engine_matching
 import engine_loan
@@ -37,7 +37,7 @@ st.markdown("""
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     
-    /* [정렬 해결] 5. 라디오 버튼 수직 정렬 (없음/있음 위치 동일화) */
+    /* [정렬] 5. 라디오 버튼 수직 정렬 (없음/있음 위치 동일화) */
     div[data-testid="stHorizontalRadio"] div[role="radiogroup"] > label {
         min-width: 100px !important; 
         margin-right: 0px !important;
@@ -99,7 +99,7 @@ def create_gauge(score, title, color):
             ],
         }
     ))
-    fig.update_layout(height=190, margin=dict(l=10, r=10, t=40, b=10), paper_bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(height=180, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)")
     return fig
 
 # ==========================================
@@ -142,10 +142,10 @@ with sb_c2:
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 리포트 생성")
-if st.sidebar.button("📊 AI 기업분석리포트", use_container_width=True): st.session_state["view_mode"] = "REPORT"; st.rerun()
-if st.sidebar.button("💡 AI 정책자금 매칭", use_container_width=True): st.session_state["view_mode"] = "MATCHING"; st.rerun()
-if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): st.session_state["view_mode"] = "LOAN_PLAN"; st.rerun()
-if st.sidebar.button("📑 AI 사업계획서", use_container_width=True): st.session_state["view_mode"] = "AI_PLAN"; st.rerun()
+if st.sidebar.button("📊 AI 기업분석리포트", key="sb_r1", use_container_width=True): st.session_state["view_mode"] = "REPORT"; st.rerun()
+if st.sidebar.button("💡 AI 정책자금 매칭", key="sb_r2", use_container_width=True): st.session_state["view_mode"] = "MATCHING"; st.rerun()
+if st.sidebar.button("📝 기관별 융자/사업계획서", key="sb_r3", use_container_width=True): st.session_state["view_mode"] = "LOAN_PLAN"; st.rerun()
+if st.sidebar.button("📑 AI 사업계획서", key="sb_r4", use_container_width=True): st.session_state["view_mode"] = "AI_PLAN"; st.rerun()
 
 # ==========================================
 # 2. 메인 대시보드
@@ -210,26 +210,26 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r3[3]: st.text_input("경력사항 2", placeholder="기타 경력 기재", key="in_rep_career_2")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (교정 완료) ---
+    # --- 3. 대표자 신용정보 (하단 정렬 최적화) ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.5, 1.2, 1.8])
     
-    # [좌측: 입력 섹션]
+    # [좌측: 입력 섹션 - 위로 올림]
     with c3_col1:
-        st.markdown("<p style='margin-bottom:10px;'>연체 및 체납 여부</p>", unsafe_allow_html=True)
+        st.markdown("<p style='margin-bottom:8px;'>연체 및 체납 여부</p>", unsafe_allow_html=True)
         r1c1, r1c2 = st.columns(2)
         with r1c1: delinquency = st.radio("금융연체 여부", ["없음", "있음"], horizontal=True, key="in_fin_delinquency")
         with r1c2: tax_delin = st.radio("세금체납 여부", ["없음", "있음"], horizontal=True, key="in_tax_delinquency")
         
-        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
-        st.markdown("<p style='margin-bottom:10px;'>신용 점수 입력</p>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True) # 간격 축소
+        st.markdown("<p style='margin-bottom:8px;'>신용 점수 입력</p>", unsafe_allow_html=True)
         r2c1, r2c2 = st.columns(2)
         with r2c1: s_kcb = st.number_input("KCB 점수", value=st.session_state.get("in_kcb_score", None), key="in_kcb_score", step=1)
         with r2c2: s_nice = st.number_input("NICE 점수", value=st.session_state.get("in_nice_score", None), key="in_nice_score", step=1)
 
-    # [중앙: 요약 섹션 - 높이 축소]
+    # [중앙: 요약 섹션 - 하단 라인 맞춤 확대]
     with c3_col2:
-        st.markdown("<div style='height:45px;'></div>", unsafe_allow_html=True) # 위쪽 여백 조절
+        st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True) 
         vk, vn = safe_int(s_kcb), safe_int(s_nice)
         has_issue = (delinquency == "있음" or tax_delin == "있음")
         if has_issue: status, color, text = "🔴 진행 불가", "#FFEBEE", "연체/체납 기록 해결 필수"
@@ -237,27 +237,28 @@ if st.session_state["view_mode"] == "INPUT":
         elif vk == 0: status, color, text = "⚪ 정보 대기", "#F8F9FA", "점수를 입력해 주세요."
         else: status, color, text = "🟢 진행 원활", "#E8F5E9", "양호한 신용 등급입니다."
         
+        # 높이를 185px로 설정하여 하단 빨간선에 맞춤
         st.markdown(f"""
-            <div style='background-color:{color}; padding:15px; border-radius:12px; height:135px; border:1px solid #ddd; text-align:center;'>
+            <div style='background-color:{color}; padding:20px; border-radius:12px; height:185px; border:1px solid #ddd; text-align:center; display: flex; flex-direction: column; justify-content: center;'>
                 <p style='font-weight:700; color:#555; margin-bottom:10px;'>금융 상태 요약</p>
-                <p style='font-size:1.5em; font-weight:800; color:#333; margin-bottom:5px;'>{status}</p>
-                <p style='font-size:0.85em; color:#666;'>{text}</p>
+                <p style='font-size:1.6em; font-weight:800; color:#333; margin-bottom:8px;'>{status}</p>
+                <p style='font-size:0.9em; color:#666;'>{text}</p>
             </div>
         """, unsafe_allow_html=True)
 
-    # [우측: 그래프 섹션 - 크기 확대 및 등급 표기]
+    # [우측: 그래프 섹션 - 크기 및 등급]
     with c3_col3:
-        st.markdown("<div style='height:15px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
         g_c1, g_c2 = st.columns(2)
         kg, kc = get_kcb_info(vk)
         ng, nc = get_nice_info(vn)
         
         with g_c1: 
             st.plotly_chart(create_gauge(vk, "KCB Score", kc), use_container_width=True, config={'displayModeBar': False})
-            st.markdown(f"<p style='text-align:center; font-weight:800; font-size:1.1em; color:{kc}; margin-top:-20px;'>{kg}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center; font-weight:800; font-size:1.15em; color:{kc}; margin-top:-25px;'>{kg}</p>", unsafe_allow_html=True)
         with g_c2: 
             st.plotly_chart(create_gauge(vn, "NICE Score", nc), use_container_width=True, config={'displayModeBar': False})
-            st.markdown(f"<p style='text-align:center; font-weight:800; font-size:1.1em; color:{nc}; margin-top:-20px;'>{ng}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center; font-weight:800; font-size:1.15em; color:{nc}; margin-top:-25px;'>{ng}</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     # --- 4~9번 섹션 ---
@@ -315,7 +316,7 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%) 등", label_visibility="collapsed")
 
 # ==========================================
-# 3. 리포트 출력
+# 3. 리포트 출력 (엔진 연결)
 # ==========================================
 else:
     if st.button("⬅️ 입력 화면으로 돌아가기"): st.session_state["view_mode"] = "INPUT"; st.rerun()
