@@ -7,7 +7,7 @@ import numpy as np
 import google.generativeai as genai
 import plotly.graph_objects as go
 
-# [리포트 엔진 연결]
+# [리포트 엔진 연결] 외부 엔진 파일 호출
 import engine_analysis
 import engine_matching
 import engine_loan
@@ -52,12 +52,9 @@ st.markdown("""
         margin-bottom: 12px !important;
     }
     
-    /* 3번 섹션 라벨 전용 (간격 조절) */
-    .credit-label {
-        font-size: 14px;
-        font-weight: 400;
-        margin-bottom: 0px;
-        padding-bottom: 0px;
+    /* 3번 섹션 전용 마진 조절 클래스 */
+    .floor-gap {
+        margin-bottom: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -107,7 +104,6 @@ def create_gauge(score, title, color):
             ],
         }
     ))
-    # 제목 안잘리게 margin t(top) 확보
     fig.update_layout(height=180, margin=dict(l=10, r=10, t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
     return fig
 
@@ -219,35 +215,42 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r3[3]: st.text_input("경력사항 2", placeholder="기타 경력 기재", key="in_rep_career_2")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (요청하신 4층 구조로 정밀 복구) ---
+    # --- 3. 대표자 신용정보 (정밀 간격 조정 완료) ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.6, 1.2, 1.8])
     
-    # [좌측: 4층 입력 섹션]
+    # [좌측: 4층 입력 섹션 - 간격 추가로 하단 라인 맞춤]
     with c3_col1:
         # 1층: 라벨
         r1c1, r1c2 = st.columns(2)
-        r1c1.markdown("<p class='credit-label'>금융연체여부</p>", unsafe_allow_html=True)
-        r1c2.markdown("<p class='credit-label'>세금체납여부</p>", unsafe_allow_html=True)
+        r1c1.markdown("<p style='font-size:14px;'>금융연체여부</p>", unsafe_allow_html=True)
+        r1c2.markdown("<p style='font-size:14px;'>세금체납여부</p>", unsafe_allow_html=True)
+        
+        # [수정] 1층-2층 사이 간격 추가
+        st.markdown("<div style='margin-top:2px;'></div>", unsafe_allow_html=True)
         
         # 2층: 유/무 버튼
         r2c1, r2c2 = st.columns(2)
         with r2c1: delinquency = st.radio("f_d", ["없음", "있음"], horizontal=True, key="in_fin_delinquency", label_visibility="collapsed")
         with r2c2: tax_delin = st.radio("t_d", ["없음", "있음"], horizontal=True, key="in_tax_delinquency", label_visibility="collapsed")
         
-        st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
+        # [수정] 2층-3층 사이 넓은 간격
+        st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
         
         # 3층: 라벨
         r3c1, r3c2 = st.columns(2)
-        r3c1.markdown("<p class='credit-label'>KCB 점수</p>", unsafe_allow_html=True)
-        r3c2.markdown("<p class='credit-label'>NICE 점수</p>", unsafe_allow_html=True)
+        r3c1.markdown("<p style='font-size:14px;'>KCB 점수</p>", unsafe_allow_html=True)
+        r3c2.markdown("<p style='font-size:14px;'>NICE 점수</p>", unsafe_allow_html=True)
+        
+        # [수정] 3층-4층 사이 간격 추가
+        st.markdown("<div style='margin-top:2px;'></div>", unsafe_allow_html=True)
         
         # 4층: 점수 입력창
         r4c1, r4c2 = st.columns(2)
         with r4c1: s_kcb = st.number_input("k_i", value=st.session_state.get("in_kcb_score", None), key="in_kcb_score", label_visibility="collapsed", step=1)
         with r4c2: s_nice = st.number_input("n_i", value=st.session_state.get("in_nice_score", None), key="in_nice_score", label_visibility="collapsed", step=1)
 
-    # [중앙: 요약 섹션 - 높이 확대 및 하단 라인 정렬]
+    # [가가운데: 요약 섹션 - 높이 고정]
     with c3_col2:
         vk, vn = safe_int(s_kcb), safe_int(s_nice)
         has_issue = (delinquency == "있음" or tax_delin == "있음")
@@ -264,21 +267,20 @@ if st.session_state["view_mode"] == "INPUT":
             </div>
         """, unsafe_allow_html=True)
 
-    # [우측: 그래프 섹션 - 제목 잘림 방지 및 등급 표기]
+    # [우측: 그래프 섹션]
     with c3_col3:
         g_c1, g_c2 = st.columns(2)
         kg, kc = get_kcb_info(vk)
         ng, nc = get_nice_info(vn)
-        
         with g_c1: 
             st.plotly_chart(create_gauge(vk, "KCB Score", kc), use_container_width=True, config={'displayModeBar': False})
-            st.markdown(f"<p style='text-align:center; font-weight:800; font-size:1.1em; color:#333; margin-top:-25px;'>KCB 점수 {kg}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center; font-weight:800; font-size:1.15em; color:#333; margin-top:-25px;'>KCB 점수 {kg}</p>", unsafe_allow_html=True)
         with g_c2: 
             st.plotly_chart(create_gauge(vn, "NICE Score", nc), use_container_width=True, config={'displayModeBar': False})
-            st.markdown(f"<p style='text-align:center; font-weight:800; font-size:1.1em; color:#333; margin-top:-25px;'>NICE 점수 {ng}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center; font-weight:800; font-size:1.15em; color:#333; margin-top:-25px;'>NICE 점수 {ng}</p>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # --- 4~9번 섹션 (완벽 복구 상태 유지) ---
+    # --- 4. 매출현황 ---
     st.header("4. 매출현황")
     exp_c1, exp_c2 = st.columns([1, 1])
     with exp_c1: has_exp = st.radio("수출매출 여부", ["없음", "있음"], horizontal=True, key="in_export_revenue")
@@ -292,13 +294,15 @@ if st.session_state["view_mode"] == "INPUT":
         for i, (t, k) in enumerate(e_keys): ec[i].number_input(f"{t} (만원)", value=st.session_state.get(k, None), key=k, step=1)
     st.markdown("---")
 
-    st.header("5. 기대출 현황")
+    # --- 5. 부채현황 (명칭 수정) ---
+    st.header("5. 부채현황")
     debt_items = [("중진공", "in_debt_kosme"), ("소진공", "in_debt_semas"), ("신보", "in_debt_kodit"), ("기보", "in_debt_kibo"), ("재단", "in_debt_foundation"), ("회사담보", "in_debt_corp_coll"), ("대표신용", "in_debt_rep_cred"), ("대표담보", "in_debt_rep_coll")]
     for r in range(0, 8, 4):
         cols = st.columns(4)
         for i in range(4): cols[i].number_input(f"{debt_items[r+i][0]} (만원)", value=st.session_state.get(debt_items[r+i][1], None), key=debt_items[r+i][1], step=1)
     st.markdown("---")
 
+    # --- 6. 보유 인증 ---
     st.header("6. 보유 인증")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
     for i in range(0, 8, 4):
@@ -306,6 +310,7 @@ if st.session_state["view_mode"] == "INPUT":
         for j in range(4): cols[j].checkbox(cert_list[i+j], key=f"in_cert_{i+j}")
     st.markdown("---")
 
+    # --- 7. 특허 및 정부지원 ---
     st.header("7. 특허 및 정부지원")
     c7 = st.columns(2)
     with c7[0]:
@@ -316,13 +321,15 @@ if st.session_state["view_mode"] == "INPUT":
         st.number_input("수혜 건수", value=st.session_state.get("in_gov_cnt", None), key="in_gov_cnt", step=1); st.text_area("수혜 사업명 상세", key="in_gov_desc")
     st.markdown("---")
 
+    # --- 8. 비즈니스 상세 정보 ---
     st.header("8. 비즈니스 상세 정보")
     r8_1 = st.columns(2); r8_1[0].text_area("핵심 아이템", key="in_item_desc", height=100); r8_1[1].text_area("판매 루트(유통망)", key="in_sales_route", height=100)
     r8_2 = st.columns(2); r8_2[0].text_area("경쟁력 및 차별성", key="in_item_diff", height=100); r8_2[1].text_area("시장 현황", key="in_market_status", height=100)
-    r8_3 = st.columns(2); r8_3[0].text_area("제품생산/서비스 공정도", key="in_process_desc", height=100); r8_3[1].text_area("구체적인 타겟 고객", key="in_target_cust", height=100)
-    r8_4 = st.columns(2); r8_4[0].text_area("수익 모델", key="in_revenue_model", height=100); r8_4[1].text_area("앞으로의 계획", key="in_future_plan", height=100)
+    r8_3 = st.columns(2); r8_3[0].text_area("공정도", key="in_process_desc", height=100); r8_3[1].text_area("타겟 고객", key="in_target_cust", height=100)
+    r8_4 = st.columns(2); r8_4[0].text_area("수익 모델", key="in_revenue_model", height=100); r8_4[1].text_area("미래 계획", key="in_future_plan", height=100)
     st.markdown("---")
 
+    # --- 9. 자금 계획 ---
     st.header("9. 자금 계획")
     c9 = st.columns([1, 2])
     with c9[0]:
