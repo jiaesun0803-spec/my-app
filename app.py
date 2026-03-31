@@ -44,7 +44,7 @@ st.markdown("""
         background-color: #E8F5E9; 
         padding: 12px; 
         border-radius: 10px; 
-        height: 145px; /* 좌측 입력단 바닥과 일치 */
+        height: 145px; 
         border: 1px solid #ddd; 
         text-align: center; 
         display: flex; 
@@ -57,17 +57,17 @@ st.markdown("""
         background-color: #F1F8E9;
         padding: 12px;
         border-radius: 10px;
-        height: 145px; /* 좌측 입력단 바닥과 일치 */
+        height: 145px; 
         border: 1px solid #C8E6C9;
         text-align: center;
-        display: flex;
-        flex-direction: column;
+        display: flex; 
+        flex-direction: column; 
         justify-content: center;
         margin-top: 25px;
     }
     
     .result-title {
-        font-size: 17px !important; /* 제목 폰트 확대 */
+        font-size: 18px !important; /* 제목 폰트 확대 */
         font-weight: 700 !important;
         color: #2E7D32;
         margin-bottom: 5px !important;
@@ -88,7 +88,7 @@ def safe_int(value):
         return int(float(str(value).replace(',', '').strip()))
     except: return 0
 
-# 신용 등급 판정 로직 (저신용 판단 삭제, 등급만 표시)
+# 신용 등급 판정 로직
 def get_kcb_grade(score):
     s = safe_int(score)
     if s >= 942: return "1등급", "#43A047"
@@ -190,8 +190,8 @@ if st.session_state["view_mode"] == "INPUT":
     st.header("2. 대표자 정보")
     c2r1 = st.columns([1, 1, 1, 1])
     with c2r1[0]: st.text_input("대표자명", key="in_rep_name")
-    with c2r1[1]: st.text_input("생년월일", placeholder="YYYY.MM.DD", key="in_rep_dob")
-    with c2r1[2]: st.text_input("연락처", placeholder="010-0000-0000", key="in_rep_phone")
+    with c2r1[1]: st.text_input("생년월일", key="in_rep_dob")
+    with c2r1[2]: st.text_input("연락처", key="in_rep_phone")
     with c2r1[3]: st.selectbox("통신사", ["선택", "SKT", "KT", "LGU+", "알뜰폰"], key="in_rep_carrier")
     
     c2r2 = st.columns([2, 1, 1]) 
@@ -206,20 +206,24 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r3[3]: st.text_input("경력사항 2", key="in_rep_career_2")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (정렬 최적화) ---
+    # --- 3. 대표자 신용정보 (입력창 하단 이동 수정) ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.5, 1.3, 1.8])
     
-    # [좌측: 2x2 입력]
+    # [좌측: 2x2 입력단]
     with c3_col1:
         l_r1_c1, l_r1_c2 = st.columns(2)
         with l_r1_c1: delinquency = st.radio("금융연체여부", ["없음", "있음"], horizontal=True, key="in_fin_delinquency")
         with l_r1_c2: tax_delin = st.radio("세금체납여부", ["없음", "있음"], horizontal=True, key="in_tax_delinquency")
+        
+        # [정렬 수정] 상단 버튼과 하단 입력창 사이 간격을 주어 입력창 바닥 라인을 맞춤
+        st.markdown("<div style='margin-top:25px;'></div>", unsafe_allow_html=True)
+        
         l_r2_c1, l_r2_c2 = st.columns(2)
         with l_r2_c1: s_kcb = st.number_input("KCB 점수", value=st.session_state.get("in_kcb_score", 0), key="in_kcb_score", step=1)
         with l_r2_c2: s_nice = st.number_input("NICE 점수", value=st.session_state.get("in_nice_score", 0), key="in_nice_score", step=1)
 
-    # [중앙: 신용상태요약 (바닥 라인 맞춤)]
+    # [중앙: 신용상태요약]
     with c3_col2:
         vk, vn = safe_int(s_kcb), safe_int(s_nice)
         has_issue = (delinquency == "있음" or tax_delin == "있음")
@@ -230,13 +234,13 @@ if st.session_state["view_mode"] == "INPUT":
         
         st.markdown(f"""
             <div class="summary-box-compact">
-                <p style='font-weight:700; color:#555; font-size:0.9em; margin-bottom:5px;'>신용상태요약</p>
-                <p style='font-size:1.4em; font-weight:800; color:#333; margin-bottom:5px;'>{status}</p>
+                <p style='font-weight:700; color:#555; font-size:0.95em; margin-bottom:5px;'>신용상태요약</p>
+                <p style='font-size:1.45em; font-weight:800; color:#333; margin-bottom:5px;'>{status}</p>
                 <p style='font-size:0.85em; color:#666;'>{text}</p>
             </div>
         """, unsafe_allow_html=True)
 
-    # [우측: 점수/등급 결과 박스 (제목 확대 및 바닥 라인 맞춤)]
+    # [우측: 등급 결과 박스]
     with c3_col3:
         res_c1, res_c2 = st.columns(2)
         kg, kc = get_kcb_grade(vk); ng, nc = get_nice_grade(vn)
@@ -245,7 +249,7 @@ if st.session_state["view_mode"] == "INPUT":
                 <div class="score-result-box">
                     <p class="result-title">KCB 결과</p>
                     <p style='font-size:1.8em; font-weight:800; color:{kc}; margin:5px 0;'>{vk}점</p>
-                    <p style='font-weight:700; color:#333; font-size:1.1em;'>{kg}</p>
+                    <p style='font-weight:700; color:#333; font-size:1.15em;'>{kg}</p>
                 </div>
             """, unsafe_allow_html=True)
         with res_c2:
@@ -253,12 +257,12 @@ if st.session_state["view_mode"] == "INPUT":
                 <div class="score-result-box">
                     <p class="result-title">NICE 결과</p>
                     <p style='font-size:1.8em; font-weight:800; color:{nc}; margin:5px 0;'>{vn}점</p>
-                    <p style='font-weight:700; color:#333; font-size:1.1em;'>{ng}</p>
+                    <p style='font-weight:700; color:#333; font-size:1.15em;'>{ng}</p>
                 </div>
             """, unsafe_allow_html=True)
     st.markdown("---")
 
-    # --- 4. 매출현황 (수출 항목 복구) ---
+    # --- 4. 매출현황 ---
     st.header("4. 매출현황")
     exp_c1, exp_c2 = st.columns([1, 1])
     with exp_c1: has_exp = st.radio("수출매출 여부", ["없음", "있음"], horizontal=True, key="in_export_revenue")
@@ -285,7 +289,6 @@ if st.session_state["view_mode"] == "INPUT":
         for i in range(4): cols[i].number_input(f"{debt_items[r+i][0]} (만원)", value=st.session_state.get(debt_items[r+i][1], 0), key=debt_items[r+i][1], step=1)
     st.markdown("---")
 
-    # --- 6~9번 섹션 (유지) ---
     st.header("6. 보유 인증")
     cert_list = ["소상공인확인서", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
     for i in range(0, 8, 4):
@@ -327,7 +330,7 @@ else:
     current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     mode = st.session_state["view_mode"]; v_titles = {"REPORT":"분석리포트", "MATCHING":"정책자금매칭", "LOAN_PLAN":"융자계획서", "AI_PLAN":"사업계획서"}
     st.subheader(f"📊 {current_data.get('in_company_name', '미입력')} - {v_titles.get(mode)}")
-    if not st.session_state.get("api_key"): st.error("사이드바에서 API Key를 먼저 저장해 주세요.")
+    if not st.session_state.get("api_key"): st.error("API Key를 먼저 저장해 주세요.")
     else:
         with st.status("🚀 AI 분석 진행 중..."):
             try:
