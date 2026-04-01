@@ -838,11 +838,15 @@ if st.session_state["view_mode"] == "INPUT":
 else:
 
     if st.button("⬅️ 입력 화면으로 돌아가기"):
-        st.session_state["view_mode"] = "INPUT"
-        st.rerun()
+    st.session_state["selected_company_name"] = st.session_state.get("active_company", "")
+    st.session_state["view_mode"] = "INPUT"
+    st.rerun()
 
     current_data = get_current_company_data()
-    company_name = current_data.get("in_company_name", "").strip()
+    company_name = (
+    current_data.get("in_company_name", "").strip()
+    or st.session_state.get("active_company", "")
+)
 
     if not company_name:
         st.warning("기업명이 입력되지 않았습니다.")
