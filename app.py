@@ -11,28 +11,36 @@ import engine_loan
 import engine_ai_plan
 
 # ==========================================
-# 0. 파일 데이터 관리 함수 (영구 저장의 핵심)
+# 0. 파일 데이터 관리 함수 (영구 저장 시스템)
 # ==========================================
 SETTINGS_FILE = "settings.json"
 DATA_FILE = "companies_data.json"
 
 def load_settings():
+    """파일에서 API 설정 불러오기"""
     if os.path.exists(SETTINGS_FILE):
-        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: return {"api_key": ""}
     return {"api_key": ""}
 
 def save_settings(api_key):
+    """파일에 API 설정 영구 저장"""
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
         json.dump({"api_key": api_key}, f, ensure_ascii=False, indent=4)
 
 def load_companies():
+    """파일에서 저장된 기업 목록 불러오기"""
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: return {}
     return {}
 
 def save_companies(data):
+    """파일에 기업 목록 영구 저장"""
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
@@ -88,7 +96,7 @@ st.sidebar.header("⚙️ AI 엔진 설정")
 
 saved_key = st.session_state["settings"].get("api_key", "")
 
-# API Key UI: 저장되어 있으면 입력창 숨기고 '변경' 버튼 노출
+# API Key UI: 저장되어 있고 수정 모드가 아니면 숨김
 if saved_key and not st.session_state["edit_api_key"]:
     st.sidebar.success("✅ API Key 영구 저장됨")
     if st.sidebar.button("🔄 API Key 변경"):
@@ -100,33 +108,34 @@ else:
         save_settings(new_key)
         st.session_state["settings"]["api_key"] = new_key
         st.session_state["edit_api_key"] = False
+        st.sidebar.success("설정이 파일에 저장되었습니다.")
         st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.header("📁 업체 목록")
+st.sidebar.header("📁 업체 목록 관리")
 
-# 업체 저장 버튼
-if st.sidebar.button("💾 현재 정보 저장 (파일)", use_container_width=True):
+# 현재 입력값 저장 버튼
+if st.sidebar.button("💾 현재 정보 파일 저장", use_container_width=True):
     c_name = st.session_state.get("in_company_name", "").strip()
     if c_name:
         current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
         st.session_state["company_list"][c_name] = current_data
         save_companies(st.session_state["company_list"])
-        st.sidebar.success(f"'{c_name}' 파일 저장 완료")
+        st.sidebar.success(f"'{c_name}' 저장 완료!")
     else:
-        st.sidebar.error("기업명을 입력해 주세요.")
+        st.sidebar.error("기업명을 입력해야 저장 가능합니다.")
 
 # 업체 불러오기
 if st.session_state["company_list"]:
     target = st.sidebar.selectbox("저장된 업체 선택", options=list(st.session_state["company_list"].keys()))
     if st.sidebar.button("📂 데이터 불러오기", use_container_width=True):
         loaded = st.session_state["company_list"][target]
-        for k, v in loaded.items(): st.session_state[k] = v
+        for k, v in loaded.items():
+            st.session_state[k] = v
         st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.header("🚀 리포트 생성")
-# 사이드바 리포트 버튼들
 if st.sidebar.button("📊 AI 기업분석리포트", use_container_width=True): st.session_state["view_mode"] = "REPORT"; st.rerun()
 if st.sidebar.button("💡 AI 정책자금 매칭", use_container_width=True): st.session_state["view_mode"] = "MATCHING"; st.rerun()
 if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): st.session_state["view_mode"] = "LOAN_PLAN"; st.rerun()
@@ -148,7 +157,7 @@ st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 GUIDE_STR = "1억=10000으로 입력"
 
 # ==========================================
-# 4. 화면 분기 (입력 vs 리포트) - 1~9번 전체 복구
+# 4. 화면 분기 (입력 vs 리포트) - 1~9번 전체 세션
 # ==========================================
 if st.session_state["view_mode"] == "INPUT":
     # --- 1. 기업현황 ---
@@ -183,10 +192,12 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r1[1]: st.text_input("생년월일", key="in_rep_dob", placeholder="YYYY.MM.DD")
     with c2r1[2]: st.text_input("연락처", key="in_rep_phone", placeholder="010-0000-0000")
     with c2r1[3]: st.selectbox("통신사", ["선택", "SKT", "KT", "LGU+", "알뜰폰"], key="in_rep_carrier")
+    
     c2r2 = st.columns([2, 1, 1]) 
     with c2r2[0]: st.text_input("거주지 주소", key="in_home_addr", placeholder="거주지 주소")
     with c2r2[1]: st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status")
     with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate")
+    
     c2r3 = st.columns([0.8, 0.8, 1.2, 1.2]) 
     with c2r3[0]: st.selectbox("최종학력", ["선택", "중졸", "고졸", "대졸", "석사", "박사"], key="in_edu_level")
     with c2r3[1]: st.text_input("전공", key="in_rep_major", placeholder="전공명")
@@ -278,35 +289,29 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%) 등", label_visibility="collapsed")
 
 else:
-    # --- [리포트 출력 화면] ---
+    # --- 리포트 출력 모드 ---
     if st.button("⬅️ 입력 화면으로 돌아가기"):
         st.session_state["view_mode"] = "INPUT"; st.rerun()
 
-    # 현재 입력된 모든 데이터를 수집
     current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     mode = st.session_state["view_mode"]
     biz_name = current_data.get("in_company_name", "미입력")
-    v_titles = {"REPORT":"기업분석리포트", "MATCHING":"정책자금매칭결과", "LOAN_PLAN":"융자/사업계획서", "AI_PLAN":"사업계획서"}
     
-    st.subheader(f"📊 {biz_name} - {v_titles.get(mode, '리포트')}")
-
-    # 영구 저장된 API Key 가져오기
+    # 영구 저장된 API Key 사용
     final_api_key = st.session_state["settings"].get("api_key", "")
-    
+
     if not final_api_key:
         st.error("사이드바에서 API Key를 먼저 저장해 주세요.")
     elif not current_data.get("in_company_name"):
-        st.warning("분석할 기업 정보가 없습니다. 입력화면에서 정보를 입력하고 '저장' 버튼을 먼저 눌러주세요.")
+        st.warning("분석할 기업 정보가 없습니다. 입력화면에서 정보를 먼저 작성해 주세요.")
     else:
-        with st.status(f"🚀 {biz_name} AI 분석 및 리포트 생성 중..."):
+        with st.status(f"🚀 {biz_name} AI 분석 중..."):
             try:
                 if mode == "REPORT": res_html = engine_analysis.run_report(final_api_key, current_data)
                 elif mode == "MATCHING": res_html = engine_matching.run_report(final_api_key, current_data)
                 elif mode == "LOAN_PLAN": res_html = engine_loan.run_report(final_api_key, current_data)
                 elif mode == "AI_PLAN": res_html = engine_ai_plan.run_report(final_api_key, current_data)
                 
-                # HTML 컴포넌트로 리포트 출력
                 components.html(res_html, height=1200, scrolling=True)
-                
             except Exception as e:
                 st.error(f"오류 발생: {e}")
