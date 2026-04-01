@@ -121,8 +121,8 @@ MODEL_OPTIONS = {
 
 REPORT_MODES = ["REPORT", "MATCHING", "LOAN_PLAN", "AI_PLAN"]
 REPORT_LABELS = [
-    "📊 AI 기업분석리포트",
-    "💡 AI 정책자금 매칭",
+    "📊 기업진단 리포트",
+    "💡 정책자금 매칭 + 보증가능성 리포트",
     "📝 기관별 융자/사업계획서",
     "📑 AI 사업계획서"
 ]
@@ -208,7 +208,6 @@ def apply_company_data(company_name, loaded_data):
     if isinstance(loaded_data, dict):
         merged.update(loaded_data)
 
-    # 업체명 누락 방지
     if not merged.get("in_company_name"):
         merged["in_company_name"] = company_name
 
@@ -218,6 +217,10 @@ def apply_company_data(company_name, loaded_data):
     st.session_state["active_company"] = company_name
     st.session_state["selected_company_name"] = company_name
 
+
+def reset_input_form():
+    for k, v in DEFAULT_INPUTS.items():
+        st.session_state[k] = v
 
 # =========================================================
 # 3. 공통 함수
@@ -474,6 +477,15 @@ st.markdown("""
         border-radius: 12px;
         margin-top: 12px;
     }
+    .active-company-box {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e3a8a;
+        padding: 14px 16px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+        font-weight: 600;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -553,6 +565,24 @@ with tab_load:
             apply_company_data(target, loaded)
             st.success(f"'{target}' 불러오기 완료!")
             st.rerun()
+
+        st.markdown("---")
+
+        if st.button("🗑 선택 업체 삭제", use_container_width=True):
+            if target in st.session_state["company_list"]:
+                del st.session_state["company_list"][target]
+                save_companies(st.session_state["company_list"])
+
+                if st.session_state.get("active_company") == target:
+                    st.session_state["active_company"] = ""
+                    st.session_state["selected_company_name"] = ""
+                    reset_input_form()
+                else:
+                    if st.session_state.get("selected_company_name") == target:
+                        st.session_state["selected_company_name"] = ""
+
+                st.success(f"'{target}' 삭제 완료")
+                st.rerun()
     else:
         st.info("저장된 업체가 없습니다.")
 
@@ -571,6 +601,16 @@ for i in range(4):
 # 8. 메인 헤더 / 상단 버튼
 # =========================================================
 st.title("📊 AI 컨설팅 대시보드")
+
+if st.session_state.get("active_company"):
+    st.markdown(
+        f"""
+        <div class="active-company-box">
+            현재 진행중 업체: {st.session_state["active_company"]}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 top_cols = st.columns(4)
 for i in range(4):
@@ -809,7 +849,7 @@ else:
         <div class="placeholder-box">
             <b>현재 선택 모드:</b> {st.session_state["view_mode"]}<br><br>
             메인 대시보드 골격을 먼저 안정화하는 단계입니다.<br>
-            리포트 엔진은 다음 단계에서 연결할 예정이며, 현재 입력한 업체 정보는 유지되고 있습니다.
+            다음 단계에서 각 리포트 엔진을 연결할 예정이며, 현재 입력한 업체 정보는 유지되고 있습니다.
         </div>
         """,
         unsafe_allow_html=True
