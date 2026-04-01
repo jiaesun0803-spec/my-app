@@ -166,29 +166,35 @@ st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 GUIDE_STR = "1억=10000으로 입력"
 
 if st.session_state["view_mode"] == "INPUT":
-    # --- 1. 기업현황 (4층 레이아웃 고정) ---
+    # --- 1. 기업현황 (요청하신 최종 4층 레이아웃) ---
     st.header("1. 기업현황")
+    
+    # 1층 - 기업명, 사업자유형, 사업자번호, 법인등록번호
     c1_f1 = st.columns([2, 1, 1.5, 1.5])
-    with c1_f1[0]: st.text_input("기업명", key="in_company_name")
+    with c1_f1[0]: st.text_input("기업명", key="in_company_name", placeholder="업체명을 입력하세요")
     with c1_f1[1]: st.radio("사업자유형", ["개인", "법인"], horizontal=True, key="in_biz_type")
     with c1_f1[2]: st.text_input("사업자번호", key="in_raw_biz_no", placeholder="000-00-00000")
     with c1_f1[3]: st.text_input("법인등록번호", key="in_raw_corp_no", placeholder="000000-0000000")
     
-    c1_f2 = st.columns([1, 1, 1])
+    # 2층 - 사업개시일, 사업장전화번호, 이메일주소, 현사업장 업종
+    c1_f2 = st.columns([1, 1, 1, 1])
     with c1_f2[0]: st.text_input("사업개시일", key="in_start_date", placeholder="YYYY.MM.DD")
     with c1_f2[1]: st.text_input("사업장 전화번호", key="in_biz_tel", placeholder="000-00-0000")
     with c1_f2[2]: st.text_input("이메일 주소", key="in_email_addr", placeholder="example@email.com")
+    with c1_f2[3]: st.selectbox("현사업장 업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
     
+    # 3층 - 사업장 임대여부, 사업장 주소, 보증금, 월임대료
     c1_f3 = st.columns([1.2, 3, 0.9, 0.9])
     with c1_f3[0]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
     with c1_f3[1]: st.text_input("사업장 주소", key="in_biz_addr", placeholder="소재지를 입력하세요")
     with c1_f3[2]: st.number_input("보증금 (만원)", key="in_lease_deposit", step=1, placeholder=GUIDE_STR, value=None)
     with c1_f3[3]: st.number_input("월임대료 (만원)", key="in_lease_rent", step=1, placeholder=GUIDE_STR, value=None)
     
-    c1_f4 = st.columns([1.2, 3, 1.8])
+    # 4층 - 추가사업장여부, 추가사업장 정보입력
+    c1_f4 = st.columns([1.2, 4.8])
     with c1_f4[0]: st.radio("추가 사업장 여부", ["없음", "있음"], horizontal=True, key="in_has_extra_biz")
     with c1_f4[1]: st.text_input("추가사업장 정보입력", key="in_extra_biz_info", placeholder="사업장명/사업자등록번호")
-    with c1_f4[2]: st.selectbox("현 사업장 업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
+    
     st.markdown("---")
 
     # --- 2. 대표자 정보 ---
@@ -228,16 +234,14 @@ if st.session_state["view_mode"] == "INPUT":
         st.markdown(f'<div class="score-result-box"><p>KCB: {vk}점 ({kg})</p><p>NICE: {vn}점 ({ng})</p></div>', unsafe_allow_html=True)
     st.markdown("---")
 
-    # --- 4. 매출현황 (수출예정여부 복구) ---
+    # --- 4. 매출현황 ---
     st.header("4. 매출현황")
     exp_cols = st.columns(2)
     with exp_cols[0]: has_exp = st.radio("수출매출 여부", ["없음", "있음"], horizontal=True, key="in_export_revenue")
-    with exp_cols[1]: plan_exp = st.radio("수출예정 여부", ["없음", "있음"], horizontal=True, key="in_planned_export") # 복구 완료
-    
+    with exp_cols[1]: plan_exp = st.radio("수출예정 여부", ["없음", "있음"], horizontal=True, key="in_planned_export")
     mc = st.columns(4)
     m_keys = [("금년 매출", "in_sales_cur"), ("25년 매출", "in_sales_25"), ("24년 매출", "in_sales_24"), ("23년 매출", "in_sales_23")]
     for i, (t, k) in enumerate(m_keys): mc[i].number_input(f"{t} (만원)", key=k, step=1, value=None)
-    
     if has_exp == "있음":
         st.markdown("<p style='font-size:14px; font-weight:600;'>[수출매출 상세역사]</p>", unsafe_allow_html=True)
         ec = st.columns(4)
@@ -275,7 +279,7 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("수혜 사업명 상세", key="in_gov_desc")
     st.markdown("---")
 
-    # --- 8. 비즈니스 상세 정보 (8종 전체 복구) ---
+    # --- 8. 비즈니스 상세 정보 ---
     st.header("8. 비즈니스 상세 정보")
     r8_1 = st.columns(2)
     with r8_1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100, placeholder="제품/서비스 기능 상세")
@@ -291,9 +295,9 @@ if st.session_state["view_mode"] == "INPUT":
     with r8_4[1]: st.text_area("앞으로의 계획", key="in_future_plan", height=100, placeholder="향후 목표")
     st.markdown("---")
 
-    # --- 9. 자금 계획 (가로 일렬 배치 복구) ---
+    # --- 9. 자금 계획 ---
     st.header("9. 자금 계획")
-    c9 = st.columns([1, 2]) # 복구 완료
+    c9 = st.columns([1, 2])
     with c9[0]:
         st.markdown('<p class="blue-bold-label-16">이번 조달 필요 자금 (만원)</p>', unsafe_allow_html=True)
         st.number_input("조달금액", key="in_req_funds", label_visibility="collapsed", step=1, value=None)
