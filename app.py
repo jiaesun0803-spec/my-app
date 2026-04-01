@@ -162,7 +162,7 @@ for i in range(4):
 st.title("📊 AI 컨설팅 대시보드")
 t_cols = st.columns(4)
 for i in range(4):
-    if t_cols[i].button(v_labels[i] if 'v_labels' in locals() else s_labels[i], key=f"t_{i}", use_container_width=True, type="primary"):
+    if t_cols[i].button(s_labels[i], key=f"t_{i}", use_container_width=True, type="primary"):
         st.session_state["view_mode"] = s_modes[i]; st.rerun()
 st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
@@ -183,18 +183,17 @@ if st.session_state["view_mode"] == "INPUT":
     with c1_f2[2]: st.text_input("이메일 주소", key="in_email_addr", placeholder="example@email.com")
     with c1_f2[3]: st.selectbox("현사업장 업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry")
     
-    # 3층: 임대여부(1.2), 주소(3), 보증금(0.9), 월세(0.9)
     c1_f3 = st.columns([1.2, 3, 0.9, 0.9])
     with c1_f3[0]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status")
     with c1_f3[1]: st.text_input("사업장 주소", key="in_biz_addr", placeholder="소재지를 입력하세요")
+    # [가이드 문구 복구]
     with c1_f3[2]: st.number_input("보증금 (만원)", key="in_lease_deposit", step=1, placeholder=GUIDE_STR, value=None)
     with c1_f3[3]: st.number_input("월임대료 (만원)", key="in_lease_rent", step=1, placeholder=GUIDE_STR, value=None)
     
-    # 4층: 추가사업장 상태(1.2), 정보입력(3 - 주소창과 동일너비), 공란(1.8)
     c1_f4 = st.columns([1.2, 3, 1.8])
     with c1_f4[0]: st.radio("추가 사업장 여부", ["없음", "있음"], horizontal=True, key="in_has_extra_biz")
     with c1_f4[1]: st.text_input("추가사업장 정보입력", key="in_extra_biz_info", placeholder="사업장명/사업자등록번호")
-    with c1_f4[2]: st.empty() # 보증금/월세 아랫부분 공란 처리
+    with c1_f4[2]: st.empty() 
     st.markdown("---")
 
     # --- 2. 대표자 정보 ---
@@ -215,7 +214,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r3[3]: st.text_input("경력사항 2", key="in_rep_career_2")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (디자인 복구) ---
+    # --- 3. 대표자 신용정보 ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.5, 1.3, 1.8])
     with c3_col1:
@@ -243,12 +242,14 @@ if st.session_state["view_mode"] == "INPUT":
     with exp_cols[1]: plan_exp = st.radio("수출예정 여부", ["없음", "있음"], horizontal=True, key="in_planned_export")
     mc = st.columns(4)
     m_keys = [("금년 매출", "in_sales_cur"), ("25년 매출", "in_sales_25"), ("24년 매출", "in_sales_24"), ("23년 매출", "in_sales_23")]
-    for i, (t, k) in enumerate(m_keys): mc[i].number_input(f"{t} (만원)", key=k, step=1, value=None)
+    # [가이드 문구 복구]
+    for i, (t, k) in enumerate(m_keys): mc[i].number_input(f"{t} (만원)", key=k, step=1, placeholder=GUIDE_STR, value=None)
     if has_exp == "있음":
         st.markdown("<p style='font-size:14px; font-weight:600;'>[수출매출 상세역사]</p>", unsafe_allow_html=True)
         ec = st.columns(4)
         e_keys = [("금년 수출액", "in_exp_cur"), ("25년 수출액", "in_exp_25"), ("24년 수출액", "in_exp_24"), ("23년 수출액", "in_exp_23")]
-        for i, (t, k) in enumerate(e_keys): ec[i].number_input(f"{t} (만원)", key=k, step=1, value=None)
+        # [가이드 문구 복구]
+        for i, (t, k) in enumerate(e_keys): ec[i].number_input(f"{t} (만원)", key=k, step=1, placeholder=GUIDE_STR, value=None)
     st.markdown("---")
 
     # --- 5. 부채현황 ---
@@ -256,10 +257,11 @@ if st.session_state["view_mode"] == "INPUT":
     debt_items = [("중진공", "in_debt_kosme"), ("소진공", "in_debt_semas"), ("신보", "in_debt_kodit"), ("기보", "in_debt_kibo"), ("재단", "in_debt_foundation"), ("회사담보", "in_debt_corp_coll"), ("대표신용", "in_debt_rep_cred"), ("대표담보", "in_debt_rep_coll")]
     for r in range(0, 8, 4):
         cols = st.columns(4)
-        for i in range(4): cols[i].number_input(f"{debt_items[r+i][0]} (만원)", key=debt_items[r+i][1], step=1, value=None)
+        # [가이드 문구 복구]
+        for i in range(4): cols[i].number_input(f"{debt_items[r+i][0]} (만원)", key=debt_items[r+i][1], step=1, placeholder=GUIDE_STR, value=None)
     st.markdown("---")
 
-    # --- 6. 보유 인증 (글자 크기 증폭 적용) ---
+    # --- 6. 보유 인증 ---
     st.header("6. 보유 인증")
     cert_list = ["중소기업확인서(소상공인확인서)", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
     for i in range(0, 8, 4):
@@ -302,7 +304,8 @@ if st.session_state["view_mode"] == "INPUT":
     c9 = st.columns([1, 2])
     with c9[0]:
         st.markdown('<p class="blue-bold-label-16">이번 조달 필요 자금 (만원)</p>', unsafe_allow_html=True)
-        st.number_input("조달금액", key="in_req_funds", label_visibility="collapsed", step=1, value=None)
+        # [가이드 문구 복구]
+        st.number_input("조달금액", key="in_req_funds", label_visibility="collapsed", step=1, placeholder=GUIDE_STR, value=None)
     with c9[1]:
         st.markdown('<p style="font-size:14px;">상세 자금 집행 계획</p>', unsafe_allow_html=True)
         st.text_area("자금집행", key="in_fund_plan", label_visibility="collapsed")
