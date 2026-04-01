@@ -1,23 +1,50 @@
 # =========================================================
-# AI 컨설팅 시스템 통합 안정 버전
-# (기업명 유지 오류 + 리포트 이동 오류 해결)
+# AI 컨설팅 시스템 (기존 대시보드 유지 + 리포트 오류 수정 안정판)
 # =========================================================
 
 import streamlit as st
 import json
 import os
 
-
-# =========================================================
-# 기본 파일 설정
-# =========================================================
-
+SETTINGS_FILE = "settings.json"
 DATA_FILE = "companies_data.json"
 
 
 # =========================================================
-# 데이터 로드 / 저장
+# 기본값 정의
 # =========================================================
+
+DEFAULT_SETTINGS = {
+    "provider": "gemini",
+    "api_key": "",
+    "model": "gemini-1.5-flash-latest"
+}
+
+DEFAULT_INPUTS = {
+    "in_company_name": "",
+    "in_industry": "",
+    "in_rep_name": "",
+    "in_sales_cur": None,
+    "in_kcb_score": None,
+    "in_nice_score": None
+}
+
+
+# =========================================================
+# 파일 처리
+# =========================================================
+
+def load_settings():
+    if os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return DEFAULT_SETTINGS
+
+
+def save_settings(data):
+    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
 
 def load_companies():
     if os.path.exists(DATA_FILE):
@@ -35,51 +62,45 @@ def save_companies(data):
 # 세션 초기화
 # =========================================================
 
-if "company_list" not in st.session_state:
-    st.session_state.company_list = load_companies()
+def init_session():
 
-if "view_mode" not in st.session_state:
-    st.session_state.view_mode = "INPUT"
+    if "settings" not in st.session_state:
+        st.session_state.settings = load_settings()
 
-if "active_company" not in st.session_state:
-    st.session_state.active_company = ""
+    if "company_list" not in st.session_state:
+        st.session_state.company_list = load_companies()
 
-if "selected_company_name" not in st.session_state:
-    st.session_state.selected_company_name = ""
+    if "view_mode" not in st.session_state:
+        st.session_state.view_mode = "INPUT"
 
+    if "active_company" not in st.session_state:
+        st.session_state.active_company = ""
 
-# =========================================================
-# 입력 데이터 기본값
-# =========================================================
+    if "selected_company_name" not in st.session_state:
+        st.session_state.selected_company_name = ""
 
-DEFAULT_INPUTS = {
-    "in_company_name": "",
-    "in_industry": "",
-    "in_rep_name": "",
-    "in_sales_cur": 0,
-    "in_kcb_score": 0,
-    "in_nice_score": 0,
-}
+    for k, v in DEFAULT_INPUTS.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
 
 
-for key in DEFAULT_INPUTS:
-    if key not in st.session_state:
-        st.session_state[key] = DEFAULT_INPUTS[key]
+init_session()
 
 
 # =========================================================
-# 기업 데이터 가져오기
+# 현재 입력 데이터 가져오기
 # =========================================================
 
 def get_current_company_data():
+
     return {
-        k: st.session_state.get(k, DEFAULT_INPUTS[k])
+        k: st.session_state.get(k)
         for k in DEFAULT_INPUTS
     }
 
 
 # =========================================================
-# 기업 데이터 적용
+# 데이터 적용
 # =========================================================
 
 def apply_company_data(name, data):
@@ -87,42 +108,45 @@ def apply_company_data(name, data):
     merged = DEFAULT_INPUTS.copy()
     merged.update(data)
 
-    for k in merged:
-        st.session_state[k] = merged[k]
+    for k, v in merged.items():
+        st.session_state[k] = v
 
     st.session_state.active_company = name
     st.session_state.selected_company_name = name
 
 
 # =========================================================
-# 정책자금 점수 계산
+# 점수 계산
 # =========================================================
+
+def safe_int(x):
+    try:
+        return int(x)
+    except:
+        return 0
+
 
 def calc_policy_score(data):
 
     score = 50
 
-    if data["in_kcb_score"] > 800:
+    if safe_int(data.get("in_kcb_score")) > 800:
         score += 20
 
-    if data["in_sales_cur"] > 10000:
+    if safe_int(data.get("in_sales_cur")) > 10000:
         score += 20
 
     return score
 
 
-# =========================================================
-# 보증 확률 계산
-# =========================================================
-
 def calc_guarantee_prob(data):
 
     score = 40
 
-    if data["in_nice_score"] > 800:
+    if safe_int(data.get("in_nice_score")) > 800:
         score += 25
 
-    if data["in_sales_cur"] > 10000:
+    if safe_int(data.get("in_sales_cur")) > 10000:
         score += 20
 
     return score
@@ -132,7 +156,7 @@ def calc_guarantee_prob(data):
 # 사이드바 업체 관리
 # =========================================================
 
-st.sidebar.header("업체 관리")
+st.sidebar.header("📁 업체 관리")
 
 company_names = list(st.session_state.company_list.keys())
 
@@ -140,11 +164,10 @@ if company_names:
 
     selected = st.sidebar.selectbox(
         "업체 선택",
-        company_names,
-        index=0
+        company_names
     )
 
-    if st.sidebar.button("불러오기"):
+    if st.sidebar.button("데이터 불러오기"):
 
         apply_company_data(
             selected,
@@ -153,7 +176,7 @@ if company_names:
 
         st.rerun()
 
-    if st.sidebar.button("삭제"):
+    if st.sidebar.button("선택 업체 삭제"):
 
         del st.session_state.company_list[selected]
 
@@ -166,34 +189,37 @@ if company_names:
 
 
 # =========================================================
-# 상단 UI
+# 상단 헤더
 # =========================================================
 
-st.title("AI 컨설팅 대시보드")
-
+st.title("📊 AI 컨설팅 대시보드")
 
 if st.session_state.active_company:
 
-    st.info(
+    st.success(
         f"현재 진행중 업체: {st.session_state.active_company}"
     )
 
 
+# =========================================================
+# 리포트 버튼
+# =========================================================
+
 col1, col2, col3, col4 = st.columns(4)
 
-if col1.button("기업진단 리포트"):
+if col1.button("📊 기업진단 리포트"):
     st.session_state.view_mode = "REPORT"
     st.rerun()
 
-if col2.button("정책자금 매칭 리포트"):
+if col2.button("💡 정책자금 매칭 + 보증가능성 리포트"):
     st.session_state.view_mode = "MATCHING"
     st.rerun()
 
-if col3.button("기관별 사업계획서"):
+if col3.button("📝 기관별 융자/사업계획서"):
     st.session_state.view_mode = "PLAN"
     st.rerun()
 
-if col4.button("AI 사업계획서"):
+if col4.button("📑 AI 사업계획서"):
     st.session_state.view_mode = "AI"
     st.rerun()
 
@@ -212,17 +238,15 @@ if st.session_state.view_mode == "INPUT":
 
     st.number_input("매출", key="in_sales_cur")
 
-    st.number_input("KCB", key="in_kcb_score")
+    st.number_input("KCB 점수", key="in_kcb_score")
 
-    st.number_input("NICE", key="in_nice_score")
+    st.number_input("NICE 점수", key="in_nice_score")
 
-
-    if st.button("저장"):
+    if st.button("현재 정보 저장"):
 
         name = st.session_state.in_company_name
 
-        st.session_state.company_list[name] = \
-            get_current_company_data()
+        st.session_state.company_list[name] = get_current_company_data()
 
         save_companies(st.session_state.company_list)
 
@@ -237,40 +261,32 @@ if st.session_state.view_mode == "INPUT":
 
 else:
 
-    if st.button("입력 화면으로 돌아가기"):
+    if st.button("⬅️ 입력 화면으로 돌아가기"):
 
-        st.session_state.selected_company_name = \
-            st.session_state.get("active_company", "")
+        st.session_state.selected_company_name = st.session_state.get("active_company", "")
 
         st.session_state.view_mode = "INPUT"
 
         st.rerun()
 
-
     current_data = get_current_company_data()
 
     company_name = (
-
         current_data.get("in_company_name", "")
-
         or st.session_state.get("active_company", "")
-
     )
-
 
     if not company_name:
 
-        st.warning("기업명을 먼저 입력하세요")
+        st.warning("기업 정보를 입력하고 저장 또는 불러오기 후 다시 시도하세요.")
 
         st.stop()
-
 
     policy_score = calc_policy_score(current_data)
 
     guarantee_prob = calc_guarantee_prob(current_data)
 
-
-    st.header("기업진단 리포트")
+    st.header("📊 기업진단 리포트")
 
     st.write("기업명:", company_name)
 
