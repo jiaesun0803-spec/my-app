@@ -1,24 +1,17 @@
 # =========================================================
-# AI 컨설팅 시스템 (기존 대시보드 유지 + 리포트 오류 수정 안정판)
+# AI 컨설팅 대시보드 (복구 안정 버전)
+# 기존 메인 대시보드 구조 유지 + 리포트 오류 수정 포함
 # =========================================================
 
 import streamlit as st
 import json
 import os
 
-SETTINGS_FILE = "settings.json"
 DATA_FILE = "companies_data.json"
 
-
 # =========================================================
-# 기본값 정의
+# 기본 입력 필드
 # =========================================================
-
-DEFAULT_SETTINGS = {
-    "provider": "gemini",
-    "api_key": "",
-    "model": "gemini-1.5-flash-latest"
-}
 
 DEFAULT_INPUTS = {
     "in_company_name": "",
@@ -29,22 +22,9 @@ DEFAULT_INPUTS = {
     "in_nice_score": None
 }
 
-
 # =========================================================
-# 파일 처리
+# 데이터 로드 / 저장
 # =========================================================
-
-def load_settings():
-    if os.path.exists(SETTINGS_FILE):
-        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return DEFAULT_SETTINGS
-
-
-def save_settings(data):
-    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
 
 def load_companies():
     if os.path.exists(DATA_FILE):
@@ -52,55 +32,42 @@ def load_companies():
             return json.load(f)
     return {}
 
-
 def save_companies(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-
 
 # =========================================================
 # 세션 초기화
 # =========================================================
 
-def init_session():
+if "company_list" not in st.session_state:
+    st.session_state.company_list = load_companies()
 
-    if "settings" not in st.session_state:
-        st.session_state.settings = load_settings()
+if "view_mode" not in st.session_state:
+    st.session_state.view_mode = "INPUT"
 
-    if "company_list" not in st.session_state:
-        st.session_state.company_list = load_companies()
+if "active_company" not in st.session_state:
+    st.session_state.active_company = ""
 
-    if "view_mode" not in st.session_state:
-        st.session_state.view_mode = "INPUT"
+if "selected_company_name" not in st.session_state:
+    st.session_state.selected_company_name = ""
 
-    if "active_company" not in st.session_state:
-        st.session_state.active_company = ""
-
-    if "selected_company_name" not in st.session_state:
-        st.session_state.selected_company_name = ""
-
-    for k, v in DEFAULT_INPUTS.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
-
-
-init_session()
-
+for k in DEFAULT_INPUTS:
+    if k not in st.session_state:
+        st.session_state[k] = DEFAULT_INPUTS[k]
 
 # =========================================================
-# 현재 입력 데이터 가져오기
+# 현재 데이터 가져오기
 # =========================================================
 
 def get_current_company_data():
-
     return {
         k: st.session_state.get(k)
         for k in DEFAULT_INPUTS
     }
 
-
 # =========================================================
-# 데이터 적용
+# 업체 데이터 적용
 # =========================================================
 
 def apply_company_data(name, data):
@@ -114,43 +81,39 @@ def apply_company_data(name, data):
     st.session_state.active_company = name
     st.session_state.selected_company_name = name
 
-
 # =========================================================
 # 점수 계산
 # =========================================================
 
-def safe_int(x):
+def safe_int(v):
     try:
-        return int(x)
+        return int(v)
     except:
         return 0
-
 
 def calc_policy_score(data):
 
     score = 50
 
-    if safe_int(data.get("in_kcb_score")) > 800:
+    if safe_int(data["in_kcb_score"]) > 800:
         score += 20
 
-    if safe_int(data.get("in_sales_cur")) > 10000:
+    if safe_int(data["in_sales_cur"]) > 10000:
         score += 20
 
     return score
-
 
 def calc_guarantee_prob(data):
 
     score = 40
 
-    if safe_int(data.get("in_nice_score")) > 800:
+    if safe_int(data["in_nice_score"]) > 800:
         score += 25
 
-    if safe_int(data.get("in_sales_cur")) > 10000:
+    if safe_int(data["in_sales_cur"]) > 10000:
         score += 20
 
     return score
-
 
 # =========================================================
 # 사이드바 업체 관리
@@ -187,9 +150,8 @@ if company_names:
 
         st.rerun()
 
-
 # =========================================================
-# 상단 헤더
+# 메인 헤더
 # =========================================================
 
 st.title("📊 AI 컨설팅 대시보드")
@@ -200,9 +162,8 @@ if st.session_state.active_company:
         f"현재 진행중 업체: {st.session_state.active_company}"
     )
 
-
 # =========================================================
-# 리포트 버튼
+# 상단 리포트 버튼
 # =========================================================
 
 col1, col2, col3, col4 = st.columns(4)
@@ -223,12 +184,13 @@ if col4.button("📑 AI 사업계획서"):
     st.session_state.view_mode = "AI"
     st.rerun()
 
-
 # =========================================================
 # 입력 화면
 # =========================================================
 
 if st.session_state.view_mode == "INPUT":
+
+    st.subheader("기업 정보 입력")
 
     st.text_input("기업명", key="in_company_name")
 
@@ -246,14 +208,19 @@ if st.session_state.view_mode == "INPUT":
 
         name = st.session_state.in_company_name
 
-        st.session_state.company_list[name] = get_current_company_data()
+        if name:
 
-        save_companies(st.session_state.company_list)
+            st.session_state.company_list[name] = get_current_company_data()
 
-        st.session_state.active_company = name
+            save_companies(st.session_state.company_list)
 
-        st.success("저장 완료")
+            st.session_state.active_company = name
 
+            st.success("저장 완료")
+
+        else:
+
+            st.error("기업명을 입력하세요")
 
 # =========================================================
 # 리포트 화면
