@@ -45,6 +45,8 @@ def auto_save():
     current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     c_name = st.session_state.get("in_company_name", "").strip()
     if c_name:
+        if "company_list" not in st.session_state:
+            st.session_state["company_list"] = load_companies()
         st.session_state["company_list"][c_name] = current_data
         save_companies(st.session_state["company_list"])
 
@@ -93,7 +95,7 @@ def get_nice_grade(score):
     else: return f"{s}점(등급외)", "#E53935"
 
 # ==========================================
-# 2. 사이드바 (API Key 영구 저장 및 업체 불러오기)
+# 2. 사이드바 (API Key 고정 및 업체 로드)
 # ==========================================
 st.sidebar.header("⚙️ AI 엔진 설정")
 saved_key = st.session_state["settings"].get("api_key", "")
@@ -123,13 +125,6 @@ if st.session_state["company_list"]:
 else:
     st.sidebar.write("저장된 업체가 없습니다.")
 
-st.sidebar.markdown("---")
-st.sidebar.header("🚀 리포트 생성")
-if st.sidebar.button("📊 AI 기업분석리포트", use_container_width=True): st.session_state["view_mode"] = "REPORT"; st.rerun()
-if st.sidebar.button("💡 AI 정책자금 매칭", use_container_width=True): st.session_state["view_mode"] = "MATCHING"; st.rerun()
-if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True): st.session_state["view_mode"] = "LOAN_PLAN"; st.rerun()
-if st.sidebar.button("📑 AI 사업계획서", use_container_width=True): st.session_state["view_mode"] = "AI_PLAN"; st.rerun()
-
 # ==========================================
 # 3. 메인 대시보드 상단 (고정 탭)
 # ==========================================
@@ -149,30 +144,30 @@ GUIDE_STR = "1억=10000으로 입력"
 # 4. 화면 분기 (입력 vs 리포트)
 # ==========================================
 if st.session_state["view_mode"] == "INPUT":
-    # --- 1. 기업현황 (요청하신 4층 구조 적용) ---
+    # --- 1. 기업현황 (요청하신 순서 및 위치 적용) ---
     st.header("1. 기업현황")
     
-    # 1층 - 기업명, 사업자유형, 사업자번호, 법인등록번호
+    # 1층: 기업명, 사업자유형, 사업자번호, 법인등록번호
     c1_f1 = st.columns([2, 1, 1.5, 1.5])
     with c1_f1[0]: st.text_input("기업명", key="in_company_name", placeholder="업체명을 입력하세요", on_change=auto_save)
     with c1_f1[1]: st.radio("사업자유형", ["개인", "법인"], horizontal=True, key="in_biz_type", on_change=auto_save)
     with c1_f1[2]: st.text_input("사업자번호", key="in_raw_biz_no", placeholder="000-00-00000", on_change=auto_save)
     with c1_f1[3]: st.text_input("법인등록번호", key="in_raw_corp_no", placeholder="000000-0000000", on_change=auto_save)
     
-    # 2층 - 사업개시일, 사업장 전화번호, 이메일주소
+    # 2층: 사업개시일, 사업장 전화번호, 이메일주소
     c1_f2 = st.columns([1, 1, 1])
     with c1_f2[0]: st.text_input("사업개시일", key="in_start_date", placeholder="YYYY.MM.DD", on_change=auto_save)
     with c1_f2[1]: st.text_input("사업장 전화번호", key="in_biz_tel", placeholder="000-00-0000", on_change=auto_save)
     with c1_f2[2]: st.text_input("이메일 주소", key="in_email_addr", placeholder="example@email.com", on_change=auto_save)
     
-    # 3층 - 사업장주소, 사업장 임대여부, 보증금, 월임대료
-    c1_f3 = st.columns([2, 1, 1, 1])
-    with c1_f3[0]: st.text_input("사업장 주소", key="in_biz_addr", placeholder="소재지를 입력하세요", on_change=auto_save)
-    with c1_f3[1]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status", on_change=auto_save)
+    # 3층: 사업장 임대여부(Swapped), 사업장주소(Swapped), 보증금, 월임대료
+    c1_f3 = st.columns([1, 2, 1, 1]) # 주소창을 더 넓게 설정
+    with c1_f3[0]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status", on_change=auto_save)
+    with c1_f3[1]: st.text_input("사업장 주소", key="in_biz_addr", placeholder="소재지를 입력하세요", on_change=auto_save)
     with c1_f3[2]: st.number_input("보증금 (만원)", key="in_lease_deposit", step=1, placeholder=GUIDE_STR, value=None, on_change=auto_save)
     with c1_f3[3]: st.number_input("월임대료 (만원)", key="in_lease_rent", step=1, placeholder=GUIDE_STR, value=None, on_change=auto_save)
     
-    # 4층 - 업종, 추가사업장 여부, 추가사업장 정보입력
+    # 4층: 업종, 추가사업장 여부, 추가사업장 정보입력
     c1_f4 = st.columns([1, 1, 2])
     with c1_f4[0]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry", on_change=auto_save)
     with c1_f4[1]: st.radio("추가 사업장 여부", ["없음", "있음"], horizontal=True, key="in_has_extra_biz", on_change=auto_save)
@@ -187,10 +182,12 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r1[1]: st.text_input("생년월일", key="in_rep_dob", placeholder="YYYY.MM.DD", on_change=auto_save)
     with c2r1[2]: st.text_input("연락처", key="in_rep_phone", placeholder="010-0000-0000", on_change=auto_save)
     with c2r1[3]: st.selectbox("통신사", ["선택", "SKT", "KT", "LGU+", "알뜰폰"], key="in_rep_carrier", on_change=auto_save)
+    
     c2r2 = st.columns([2, 1, 1]) 
     with c2r2[0]: st.text_input("거주지 주소", key="in_home_addr", placeholder="거주지 주소", on_change=auto_save)
     with c2r2[1]: st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status", on_change=auto_save)
     with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate", on_change=auto_save)
+    
     c2r3 = st.columns([0.8, 0.8, 1.2, 1.2]) 
     with c2r3[0]: st.selectbox("최종학력", ["선택", "중졸", "고졸", "대졸", "석사", "박사"], key="in_edu_level", on_change=auto_save)
     with c2r3[1]: st.text_input("전공", key="in_rep_major", placeholder="전공명", on_change=auto_save)
