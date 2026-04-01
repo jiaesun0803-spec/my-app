@@ -836,6 +836,7 @@ if st.session_state["view_mode"] == "INPUT":
 # 10. 리포트 화면 (현재는 준비용)
 # =========================================================
 else:
+
     if st.button("⬅️ 입력 화면으로 돌아가기"):
         st.session_state["view_mode"] = "INPUT"
         st.rerun()
@@ -843,24 +844,127 @@ else:
     current_data = get_current_company_data()
     company_name = current_data.get("in_company_name", "").strip()
 
-    st.subheader("리포트 화면")
-    st.markdown(
-        f"""
-        <div class="placeholder-box">
-            <b>현재 선택 모드:</b> {st.session_state["view_mode"]}<br><br>
-            메인 대시보드 골격을 먼저 안정화하는 단계입니다.<br>
-            다음 단계에서 각 리포트 엔진을 연결할 예정이며, 현재 입력한 업체 정보는 유지되고 있습니다.
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    if not company_name:
+        st.warning("기업명이 입력되지 않았습니다.")
+        st.stop()
 
-    if company_name:
-        st.success(f"현재 진행중 업체: {company_name}")
-    elif st.session_state.get("active_company"):
-        st.info(f"현재 선택된 업체: {st.session_state['active_company']}")
-    else:
-        st.warning("아직 선택된 업체 정보가 없습니다.")
+    # ===============================
+    # REPORT 모드: 기업진단 리포트
+    # ===============================
+    if st.session_state["view_mode"] == "REPORT":
 
-    st.markdown("### 현재 입력 데이터 확인")
-    st.json(current_data)
+        policy_score, policy_grade = calc_simple_policy_score(current_data)
+        guarantee_prob, guarantee_label = calc_simple_guarantee(current_data)
+
+        sales = calc_recent_sales(current_data)
+        debt = calc_total_debt(current_data)
+        certs = selected_certs(current_data)
+
+        st.title("📊 기업진단 리포트")
+
+        st.markdown(f"""
+        ### 기업 개요
+        - 기업명: **{company_name}**
+        - 업종: **{current_data.get("in_industry","미입력")}**
+        - 대표자: **{current_data.get("in_rep_name","미입력")}**
+        """)
+
+        st.markdown("---")
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("정책자금 점수", f"{policy_score}점")
+        col2.metric("정책자금 등급", policy_grade)
+        col3.metric("보증 승인 확률", f"{guarantee_prob}%")
+
+        st.markdown("---")
+
+        st.subheader("재무 구조 분석")
+
+        st.write(f"- 최근 매출 추정: **{sales:,} 만원**")
+        st.write(f"- 총 부채 규모: **{debt:,} 만원**")
+
+        if sales > 0:
+            ratio = round((debt / sales) * 100, 1)
+            st.write(f"- 부채비율 추정: **{ratio}%**")
+
+            if ratio <= 50:
+                st.success("재무 안정성이 우수한 구조입니다.")
+            elif ratio <= 120:
+                st.warning("부채 관리가 일부 필요합니다.")
+            else:
+                st.error("부채 구조 개선 전략이 필요합니다.")
+        else:
+            st.info("매출 데이터가 부족합니다.")
+
+        st.markdown("---")
+
+        st.subheader("인증 및 기술 요소")
+
+        if certs:
+            for c in certs:
+                st.write(f"✔ {c}")
+        else:
+            st.write("보유 인증 없음")
+
+        if current_data.get("in_has_patent") == "있음":
+            st.write("✔ 특허 보유 기업")
+
+        if current_data.get("in_export_revenue") == "있음":
+            st.write("✔ 수출 실적 보유 기업")
+
+        st.markdown("---")
+
+        st.subheader("보증기관 평가 해석")
+
+        st.write(f"보증 승인 가능성 판단: **{guarantee_label}**")
+
+        if guarantee_prob >= 80:
+            st.success("보증기관 접근이 매우 유리한 상태입니다.")
+        elif guarantee_prob >= 60:
+            st.info("조건부 접근 가능한 수준입니다.")
+        else:
+            st.warning("재무 또는 신용 보완 후 접근 권장")
+
+        st.markdown("---")
+
+        st.subheader("종합 컨설팅 의견")
+
+        if policy_score >= 75:
+            st.success("정책자금 활용에 매우 유리한 기업입니다.")
+        elif policy_score >= 58:
+            st.info("일부 보완 후 정책자금 접근이 가능합니다.")
+        else:
+            st.warning("재무·신용 구조 보완 전략이 필요합니다.")
+
+        st.markdown("""
+        ### 추천 실행 전략
+        1. 정책자금 우선 접근 기관 선정
+        2. 보증기관 사전 상담 진행
+        3. 인증 또는 특허 보강 전략 검토
+        4. 매출 구조 개선 자료 준비
+        """)
+
+    # ===============================
+    # MATCHING 모드 (다음 단계 연결 예정)
+    # ===============================
+    elif st.session_state["view_mode"] == "MATCHING":
+
+        st.title("💡 정책자금 매칭 + 보증가능성 리포트")
+        st.info("다음 단계에서 정책자금 자동 매칭 엔진이 연결됩니다.")
+
+    # ===============================
+    # LOAN_PLAN 모드 (기관별 사업계획서 슬롯)
+    # ===============================
+    elif st.session_state["view_mode"] == "LOAN_PLAN":
+
+        st.title("📝 기관별 융자/사업계획서")
+        st.info("기관별 템플릿 기반 사업계획서 엔진 연결 예정입니다.")
+
+    # ===============================
+    # AI_PLAN 모드
+    # ===============================
+    elif st.session_state["view_mode"] == "AI_PLAN":
+
+        st.title("📑 AI 사업계획서")
+        st.info("AI 자동 생성 사업계획서 엔진 연결 예정입니다.")
