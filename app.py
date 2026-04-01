@@ -11,7 +11,7 @@ import engine_loan
 import engine_ai_plan
 
 # ==========================================
-# 0. 파일 데이터 관리 및 자동 저장 로직
+# 0. 파일 데이터 관리 및 실시간 자동 저장 로직
 # ==========================================
 SETTINGS_FILE = "settings.json"
 DATA_FILE = "companies_data.json"
@@ -41,7 +41,7 @@ def save_companies(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def auto_save():
-    """입력 즉시 파일에 자동 저장"""
+    """모든 입력 즉시 파일에 자동 저장"""
     current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     c_name = st.session_state.get("in_company_name", "").strip()
     if c_name:
@@ -95,7 +95,7 @@ def get_nice_grade(score):
     else: return f"{s}점(등급외)", "#E53935"
 
 # ==========================================
-# 2. 사이드바 (API Key 고정 및 업체 로드)
+# 2. 사이드바 (리포트 탭 복구 및 API 고정)
 # ==========================================
 st.sidebar.header("⚙️ AI 엔진 설정")
 saved_key = st.session_state["settings"].get("api_key", "")
@@ -122,8 +122,13 @@ if st.session_state["company_list"]:
             loaded = st.session_state["company_list"][target]
             for k, v in loaded.items(): st.session_state[k] = v
             st.rerun()
-else:
-    st.sidebar.write("저장된 업체가 없습니다.")
+
+st.sidebar.markdown("---")
+st.sidebar.header("🚀 리포트 생성 (복구됨)")
+if st.sidebar.button("📊 AI 기업분석리포트", use_container_width=True, key="side_b1"): st.session_state["view_mode"] = "REPORT"; st.rerun()
+if st.sidebar.button("💡 AI 정책자금 매칭", use_container_width=True, key="side_b2"): st.session_state["view_mode"] = "MATCHING"; st.rerun()
+if st.sidebar.button("📝 기관별 융자/사업계획서", use_container_width=True, key="side_b3"): st.session_state["view_mode"] = "LOAN_PLAN"; st.rerun()
+if st.sidebar.button("📑 AI 사업계획서", use_container_width=True, key="side_b4"): st.session_state["view_mode"] = "AI_PLAN"; st.rerun()
 
 # ==========================================
 # 3. 메인 대시보드 상단 (고정 탭)
@@ -144,7 +149,7 @@ GUIDE_STR = "1억=10000으로 입력"
 # 4. 화면 분기 (입력 vs 리포트)
 # ==========================================
 if st.session_state["view_mode"] == "INPUT":
-    # --- 1. 기업현황 (요청하신 순서 및 위치 적용) ---
+    # --- 1. 기업현황 (요청하신 최종 4층 레이아웃) ---
     st.header("1. 기업현황")
     
     # 1층: 기업명, 사업자유형, 사업자번호, 법인등록번호
@@ -160,18 +165,18 @@ if st.session_state["view_mode"] == "INPUT":
     with c1_f2[1]: st.text_input("사업장 전화번호", key="in_biz_tel", placeholder="000-00-0000", on_change=auto_save)
     with c1_f2[2]: st.text_input("이메일 주소", key="in_email_addr", placeholder="example@email.com", on_change=auto_save)
     
-    # 3층: 사업장 임대여부(Swapped), 사업장주소(Swapped), 보증금, 월임대료
-    c1_f3 = st.columns([1, 2, 1, 1]) # 주소창을 더 넓게 설정
+    # 3층: 사업장 임대여부, 사업장주소, 보증금, 월임대료
+    c1_f3 = st.columns([1, 2, 1, 1])
     with c1_f3[0]: st.radio("사업장 임대여부", ["자가", "임대"], horizontal=True, key="in_lease_status", on_change=auto_save)
     with c1_f3[1]: st.text_input("사업장 주소", key="in_biz_addr", placeholder="소재지를 입력하세요", on_change=auto_save)
     with c1_f3[2]: st.number_input("보증금 (만원)", key="in_lease_deposit", step=1, placeholder=GUIDE_STR, value=None, on_change=auto_save)
     with c1_f3[3]: st.number_input("월임대료 (만원)", key="in_lease_rent", step=1, placeholder=GUIDE_STR, value=None, on_change=auto_save)
     
-    # 4층: 업종, 추가사업장 여부, 추가사업장 정보입력
-    c1_f4 = st.columns([1, 1, 2])
-    with c1_f4[0]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry", on_change=auto_save)
-    with c1_f4[1]: st.radio("추가 사업장 여부", ["없음", "있음"], horizontal=True, key="in_has_extra_biz", on_change=auto_save)
-    with c1_f4[2]: st.text_input("추가사업장 정보입력", key="in_extra_biz_info", placeholder="사업장명/사업자등록번호", on_change=auto_save)
+    # 4층: 추가사업장 여부, 추가사업장 정보입력, 업종
+    c1_f4 = st.columns([1, 2, 1])
+    with c1_f4[0]: st.radio("추가 사업장 여부", ["없음", "있음"], horizontal=True, key="in_has_extra_biz", on_change=auto_save)
+    with c1_f4[1]: st.text_input("추가사업장 정보입력", key="in_extra_biz_info", placeholder="사업장명/사업자등록번호", on_change=auto_save)
+    with c1_f4[2]: st.selectbox("업종", ["제조업", "서비스업", "IT업", "도소매업", "건설업", "기타"], key="in_industry", on_change=auto_save)
     
     st.markdown("---")
 
@@ -182,12 +187,10 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r1[1]: st.text_input("생년월일", key="in_rep_dob", placeholder="YYYY.MM.DD", on_change=auto_save)
     with c2r1[2]: st.text_input("연락처", key="in_rep_phone", placeholder="010-0000-0000", on_change=auto_save)
     with c2r1[3]: st.selectbox("통신사", ["선택", "SKT", "KT", "LGU+", "알뜰폰"], key="in_rep_carrier", on_change=auto_save)
-    
     c2r2 = st.columns([2, 1, 1]) 
     with c2r2[0]: st.text_input("거주지 주소", key="in_home_addr", placeholder="거주지 주소", on_change=auto_save)
     with c2r2[1]: st.radio("거주지 상태", ["자가", "임대"], horizontal=True, key="in_home_status", on_change=auto_save)
     with c2r2[2]: st.multiselect("부동산 보유현황", ["아파트", "빌라", "토지", "공장", "임야"], key="in_real_estate", on_change=auto_save)
-    
     c2r3 = st.columns([0.8, 0.8, 1.2, 1.2]) 
     with c2r3[0]: st.selectbox("최종학력", ["선택", "중졸", "고졸", "대졸", "석사", "박사"], key="in_edu_level", on_change=auto_save)
     with c2r3[1]: st.text_input("전공", key="in_rep_major", placeholder="전공명", on_change=auto_save)
@@ -217,14 +220,21 @@ if st.session_state["view_mode"] == "INPUT":
         with res_c2: st.markdown(f'<div class="score-result-box"><p class="result-title">NICE 결과</p><p style="font-size:1.8em; font-weight:800; color:{nc};">{vn}점</p><p>{ng}</p></div>', unsafe_allow_html=True)
     st.markdown("---")
 
-    # --- 4. 매출현황 ---
+    # --- 4. 매출현황 (수출 복구) ---
     st.header("4. 매출현황")
     exp_c1, exp_c2 = st.columns(2)
-    with exp_c1: st.radio("수출매출 여부", ["없음", "있음"], horizontal=True, key="in_export_revenue", on_change=auto_save)
-    with exp_c2: st.radio("수출예정 여부", ["없음", "있음"], horizontal=True, key="in_planned_export", on_change=auto_save)
+    with exp_c1: has_exp = st.radio("수출매출 여부", ["없음", "있음"], horizontal=True, key="in_export_revenue", on_change=auto_save)
+    with exp_c2: plan_exp = st.radio("수출예정 여부", ["없음", "있음"], horizontal=True, key="in_planned_export", on_change=auto_save)
+    
     mc = st.columns(4)
     m_keys = [("금년 매출", "in_sales_cur"), ("25년 매출", "in_sales_25"), ("24년 매출", "in_sales_24"), ("23년 매출", "in_sales_23")]
     for i, (t, k) in enumerate(m_keys): mc[i].number_input(f"{t} (만원)", key=k, step=1, placeholder=GUIDE_STR, value=None, on_change=auto_save)
+    
+    if has_exp == "있음":
+        st.markdown("<p style='font-size:14px; font-weight:600;'>[수출매출 상세역사 복구]</p>", unsafe_allow_html=True)
+        ec = st.columns(4)
+        e_keys = [("금년 수출액", "in_exp_cur"), ("25년 수출액", "in_exp_25"), ("24년 수출액", "in_exp_24"), ("23년 수출액", "in_exp_23")]
+        for i, (t, k) in enumerate(e_keys): ec[i].number_input(f"{t} (만원)", key=k, step=1, placeholder=GUIDE_STR, value=None, on_change=auto_save)
     st.markdown("---")
 
     # --- 5. 부채현황 ---
@@ -257,14 +267,20 @@ if st.session_state["view_mode"] == "INPUT":
         st.text_area("수혜 사업명 상세", key="in_gov_desc", placeholder="과거 선정 사업명", on_change=auto_save)
     st.markdown("---")
 
-    # --- 8. 비즈니스 상세 정보 ---
+    # --- 8. 비즈니스 상세 정보 (복구) ---
     st.header("8. 비즈니스 상세 정보")
     r8_1 = st.columns(2)
-    with r8_1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100, on_change=auto_save)
-    with r8_1[1]: st.text_area("판매 루트(유통망)", key="in_sales_route", height=100, on_change=auto_save)
+    with r8_1[0]: st.text_area("핵심 아이템", key="in_item_desc", height=100, on_change=auto_save, placeholder="제품/서비스 기능 상세")
+    with r8_1[1]: st.text_area("판매 루트(유통망)", key="in_sales_route", height=100, on_change=auto_save, placeholder="주요 거래처 및 채널")
     r8_2 = st.columns(2)
-    with r8_2[0]: st.text_area("경쟁력 및 차별성", key="in_item_diff", height=100, on_change=auto_save)
-    with r8_2[1]: st.text_area("시장 현황", key="in_market_status", height=100, on_change=auto_save)
+    with r8_2[0]: st.text_area("경쟁력 및 차별성", key="in_item_diff", height=100, on_change=auto_save, placeholder="타사 대비 강점")
+    with r8_2[1]: st.text_area("시장 현황", key="in_market_status", height=100, on_change=auto_save, placeholder="업계 분위기")
+    r8_3 = st.columns(2)
+    with r8_3[0]: st.text_area("공정도", key="in_process_desc", height=100, on_change=auto_save, placeholder="생산 과정 요약")
+    with r8_3[1]: st.text_area("타겟 고객", key="in_target_cust", height=100, on_change=auto_save, placeholder="주요 구매층")
+    r8_4 = st.columns(2)
+    with r8_4[0]: st.text_area("수익 모델", key="in_revenue_model", height=100, on_change=auto_save, placeholder="매출 발생 구조")
+    with r8_4[1]: st.text_area("앞으로의 계획", key="in_future_plan", height=100, on_change=auto_save, placeholder="향후 목표")
     st.markdown("---")
 
     # --- 9. 자금 계획 ---
@@ -275,7 +291,7 @@ if st.session_state["view_mode"] == "INPUT":
         st.number_input("조달금액", key="in_req_funds", label_visibility="collapsed", step=1, placeholder=GUIDE_STR, value=None, on_change=auto_save)
     with c9[1]:
         st.markdown('<p style="font-size:14px;">상세 자금 집행 계획</p>', unsafe_allow_html=True)
-        st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용(40%) 등", label_visibility="collapsed", on_change=auto_save)
+        st.text_area("자금집행", key="in_fund_plan", placeholder="예: 연구인력 채용 등", label_visibility="collapsed", on_change=auto_save)
 
 else:
     # --- 리포트 출력 모드 ---
@@ -285,7 +301,10 @@ else:
     current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     mode = st.session_state["view_mode"]
     biz_name = current_data.get("in_company_name", "미입력")
+    v_titles = {"REPORT":"기업분석리포트", "MATCHING":"정책자금매칭결과", "LOAN_PLAN":"융자/사업계획서", "AI_PLAN":"사업계획서"}
     
+    st.subheader(f"📊 {biz_name} - {v_titles.get(mode, '리포트')}")
+
     final_api_key = st.session_state["settings"].get("api_key", "")
 
     if not final_api_key:
@@ -295,10 +314,12 @@ else:
     else:
         with st.status(f"🚀 {biz_name} AI 분석 중..."):
             try:
+                # 각 엔진 호출 (engine_analysis.py 등 내부 모델명은 gemini-1.5-flash-latest로 설정 권장)
                 if mode == "REPORT": res_html = engine_analysis.run_report(final_api_key, current_data)
                 elif mode == "MATCHING": res_html = engine_matching.run_report(final_api_key, current_data)
                 elif mode == "LOAN_PLAN": res_html = engine_loan.run_report(final_api_key, current_data)
                 elif mode == "AI_PLAN": res_html = engine_ai_plan.run_report(final_api_key, current_data)
+                
                 components.html(res_html, height=1200, scrolling=True)
             except Exception as e:
                 st.error(f"오류 발생: {e}")
