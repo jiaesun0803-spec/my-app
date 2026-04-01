@@ -36,19 +36,26 @@ def save_companies(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 # ==========================================
-# 1. 고도화된 AI 리포트 생성 엔진
+# 1. 고도화된 AI 리포트 생성 엔진 (문서형 최적화)
 # ==========================================
-def generate_ai_report(api_key, data, mode, style="랜딩페이지형"):
+def generate_ai_report(api_key, data, mode, style="문서형"):
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-1.5-flash-latest')
         
-        # 스타일 가이드라인 설정
-        style_instruction = ""
+        # 스타일별 프롬프트 고도화
         if style == "문서형":
-            style_instruction = "전달받은 HTML 예시와 같이 관공서 제출용 느낌의 깔끔한 표(Table) 중심, 신뢰감 있는 블루톤을 사용할 것."
+            style_instruction = """
+            - 첨부된 (주)대박컴퍼니 예시와 동일한 관공서/은행 제출용 전문 리포트 양식으로 작성할 것.
+            - 시각적 요소: 정갈한 표(Table) 위주, 신뢰감 있는 짙은 블루(#174EA6) 포인트 컬러 사용.
+            - 구조: 1. 기업현황, 2. SWOT 분석, 3. 시장현황, 4. 핵심경쟁력 순서 준수.
+            """
         else:
-            style_instruction = "Canva나 랜딩페이지처럼 화려한 카드형 레이아웃, 그라데이션, 큰 아이콘, 모던한 폰트 디자인을 사용하여 프리미엄한 느낌을 줄 것."
+            style_instruction = """
+            - 캔바(Canva)나 웹 랜딩페이지처럼 화려하고 모던한 카드형 레이아웃으로 작성할 것.
+            - 시각적 요소: 그라데이션 배경, 큰 아이콘, 모던한 웹 폰트 디자인 활용.
+            - 프리미엄 컨설팅 브리핑용 비주얼 강조.
+            """
 
         prompts = {
             "REPORT": "이 기업의 시장 경쟁력과 성장 가능성을 분석한 전문 경영 리포트",
@@ -57,24 +64,27 @@ def generate_ai_report(api_key, data, mode, style="랜딩페이지형"):
             "AI_PLAN": "신규 사업 아이템 기반의 미래 비전 전략 사업계획서"
         }
         
+        # 현재 입력된 모든 데이터를 프롬프트에 포함
+        biz_info_str = "\n".join([f"- {k}: {v}" for k, v in data.items() if v])
+        
         base_prompt = f"""
-        [기업 기본 정보]
-        기업명: {data.get('in_company_name')}, 업종: {data.get('in_industry')}, 매출: {data.get('in_sales_cur')}만원
-        주요 아이템: {data.get('in_item_desc')}, 인증현황: {", ".join([k for k,v in data.items() if k.startswith('in_cert_') and v])}
+        [분석 대상 기업 상세 정보]
+        {biz_info_str}
         
         [스타일 요구사항]
         {style_instruction}
         
-        [분석 요청]
-        {prompts.get(mode)}를 HTML 형식으로 작성해줘. 
-        - 반드시 시각적으로 압도적인 고퀄리티 CSS를 포함할 것.
-        - 전문 컨설턴트의 날카로운 통찰력을 담을 것.
+        [최종 미션]
+        '{prompts.get(mode)}'를 HTML/CSS 코드로 작성해줘. 
+        - 기업의 강점을 극대화하여 표현할 것.
+        - 전문 컨설턴트의 어조를 유지하며, 실제 비즈니스에 도움되는 구체적인 전략을 제시할 것.
         """
         
         response = model.generate_content(base_prompt)
-        return response.text.replace('```html', '').replace('```', '')
+        # AI가 리턴한 텍스트에서 코드 블록 기호 제거
+        return response.text.replace('```html', '').replace('```', '').strip()
     except Exception as e:
-        return f"<div style='color:red; padding:20px;'>AI 분석 중 오류 발생: {str(e)}</div>"
+        return f"<div style='color:red; padding:20px;'>AI 엔진 연결 오류: {str(e)}<br>API Key와 인터넷 연결을 확인하세요.</div>"
 
 # ==========================================
 # 2. 디자인 커스텀 (CSS)
@@ -83,15 +93,10 @@ st.set_page_config(page_title="AI 컨설팅 시스템", layout="wide")
 
 st.markdown("""
 <style>
-    /* 입력창 라벨 폰트 */
     [data-testid="stWidgetLabel"] p { font-weight: 400 !important; font-size: 14px !important; color: #31333F !important; margin-bottom: 2px !important; }
     h2 { font-weight: 700 !important; margin-top: 25px !important; }
     input::placeholder { font-size: 0.85em !important; color: #888 !important; }
-    
-    /* 6번 인증서 체크박스 폰트 크기 증폭 */
-    [data-testid="stCheckbox"] label p { font-size: 18px !important; font-weight: 500 !important; color: #333 !important; }
-    
-    /* 신용정보 박스 디자인 */
+    [data-testid="stCheckbox"] label p { font-size: 18px !important; font-weight: 500; color: #333; }
     .summary-box-compact { background-color: #E8F5E9; padding: 12px; border-radius: 10px; height: 145px; border: 1px solid #ddd; text-align: center; display: flex; flex-direction: column; justify-content: center; margin-top: 25px; }
     .score-result-box { background-color: #F1F8E9; padding: 12px; border-radius: 10px; height: 145px; border: 1px solid #C8E6C9; text-align: center; display: flex; flex-direction: column; justify-content: center; margin-top: 25px; }
     .result-title { font-size: 18px !important; font-weight: 700 !important; color: #2E7D32; margin-bottom: 5px !important; }
@@ -99,6 +104,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# 세션 상태 초기화 및 데이터 로드
 if "view_mode" not in st.session_state: st.session_state["view_mode"] = "INPUT"
 if "settings" not in st.session_state: st.session_state["settings"] = load_settings()
 if "company_list" not in st.session_state: st.session_state["company_list"] = load_companies()
@@ -123,7 +129,7 @@ def get_nice_grade(score):
     else: return f"{s}점(등급외)", "#E53935"
 
 # ==========================================
-# 3. 사이드바 (업체 관리 및 API 설정)
+# 3. 사이드바 (API 및 데이터 관리)
 # ==========================================
 st.sidebar.header("⚙️ AI 엔진 설정")
 saved_key = st.session_state["settings"].get("api_key", "")
@@ -154,10 +160,11 @@ with tab_save:
 
 with tab_load:
     if st.session_state["company_list"]:
-        target = st.selectbox("업체 선택", options=list(st.session_state["company_list"].keys()))
+        target = st.selectbox("저장된 업체 선택", options=list(st.session_state["company_list"].keys()))
         if st.button("데이터 불러오기", use_container_width=True):
             loaded = st.session_state["company_list"][target]
             for k, v in loaded.items(): st.session_state[k] = v
+            st.info(f"'{target}' 데이터를 불러왔습니다.")
             st.rerun()
 
 st.sidebar.markdown("---")
@@ -180,8 +187,11 @@ st.markdown("<hr style='margin-top:0;'>", unsafe_allow_html=True)
 
 GUIDE_STR = "1억=10000으로 입력"
 
+# [핵심 로직] 리포트 생성 시 현재 입력된 모든 데이터를 읽어옴
+current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
+
 if st.session_state["view_mode"] == "INPUT":
-    # --- 1. 기업현황 (요청하신 최종 4층 레이아웃 유지) ---
+    # --- 1. 기업현황 (레이아웃 고정) ---
     st.header("1. 기업현황")
     c1_f1 = st.columns([2, 1, 1.5, 1.5])
     with c1_f1[0]: st.text_input("기업명", key="in_company_name")
@@ -225,7 +235,7 @@ if st.session_state["view_mode"] == "INPUT":
     with c2r3[3]: st.text_input("경력사항 2", key="in_rep_career_2")
     st.markdown("---")
 
-    # --- 3. 대표자 신용정보 (디자인 복구) ---
+    # --- 3. 대표자 신용정보 ---
     st.header("3. 대표자 신용정보")
     c3_col1, c3_col2, c3_col3 = st.columns([1.5, 1.3, 1.8])
     with c3_col1:
@@ -260,14 +270,6 @@ if st.session_state["view_mode"] == "INPUT":
         for i, (t, k) in enumerate(e_keys): ec[i].number_input(f"{t} (만원)", key=k, step=1, value=None)
     st.markdown("---")
 
-    # --- 5. 부채현황 ---
-    st.header("5. 부채현황")
-    debt_items = [("중진공", "in_debt_kosme"), ("소진공", "in_debt_semas"), ("신보", "in_debt_kodit"), ("기보", "in_debt_kibo"), ("재단", "in_debt_foundation"), ("회사담보", "in_debt_corp_coll"), ("대표신용", "in_debt_rep_cred"), ("대표담보", "in_debt_rep_coll")]
-    for r in range(0, 8, 4):
-        cols = st.columns(4)
-        for i in range(4): cols[i].number_input(f"{debt_items[r+i][0]} (만원)", key=debt_items[r+i][1], step=1, value=None)
-    st.markdown("---")
-
     # --- 6. 보유 인증 ---
     st.header("6. 보유 인증")
     cert_list = ["중소기업확인서(소상공인확인서)", "창업확인서", "여성기업확인서", "이노비즈", "벤처인증", "뿌리기업확인서", "ISO인증", "HACCP인증"]
@@ -275,19 +277,6 @@ if st.session_state["view_mode"] == "INPUT":
         cols = st.columns(4)
         for j in range(4):
             if i+j < len(cert_list): cols[j].checkbox(cert_list[i+j], key=f"in_cert_{i+j}")
-    st.markdown("---")
-
-    # --- 7. 특허 및 정부지원 ---
-    st.header("7. 특허 및 정부지원")
-    c7 = st.columns(2)
-    with c7[0]:
-        st.radio("특허 보유 여부", ["없음", "있음"], horizontal=True, key="in_has_patent")
-        st.number_input("보유 건수", key="in_pat_cnt", step=1, value=None)
-        st.text_area("특허 상세 내용", key="in_pat_desc")
-    with c7[1]:
-        st.radio("정부지원 수혜이력", ["없음", "있음"], horizontal=True, key="in_has_gov")
-        st.number_input("수혜 건수", key="in_gov_cnt", step=1, value=None)
-        st.text_area("수혜 사업명 상세", key="in_gov_desc")
     st.markdown("---")
 
     # --- 8. 비즈니스 상세 정보 ---
@@ -316,23 +305,37 @@ if st.session_state["view_mode"] == "INPUT":
         st.markdown('<p style="font-size:14px;">상세 자금 집행 계획</p>', unsafe_allow_html=True)
         st.text_area("자금집행", key="in_fund_plan", label_visibility="collapsed")
 
+# ==========================================
+# 5. 리포트 출력 모드 (로직 수정)
+# ==========================================
 else:
-    # --- 리포트 출력 모드 (스타일 선택 추가) ---
-    st.columns([1, 1, 1])
-    sel_col1, sel_col2 = st.columns([6, 2])
-    with sel_col1:
+    # 상단 컨트롤바
+    ctrl_col1, ctrl_col2 = st.columns([6, 2])
+    with ctrl_col1:
         if st.button("⬅️ 입력 화면으로 돌아가기"): st.session_state["view_mode"] = "INPUT"; st.rerun()
-    with sel_col2:
-        report_style = st.selectbox("리포트 스타일 선택", ["랜딩페이지형", "문서형"])
+    with ctrl_col2:
+        # [수정] 기본값을 '문서형'으로 설정
+        report_style = st.selectbox("리포트 스타일 선택", ["문서형", "랜딩페이지형"], index=0)
 
-    current_data = {k: v for k, v in st.session_state.items() if k.startswith("in_")}
     mode = st.session_state["view_mode"]
-    biz_name = current_data.get("in_company_name", "미입력")
     api_key = st.session_state["settings"].get("api_key", "")
     
-    if not api_key: st.error("사이드바에서 API Key를 먼저 저장해 주세요.")
-    elif not biz_name or biz_name == "미입력": st.warning("기업 정보를 입력하고 불러오기 탭에서 선택해 주세요.")
+    # [수정] 기업명을 session_state에서 직접 추출하여 검증
+    biz_name = st.session_state.get("in_company_name", "").strip()
+
+    if not api_key:
+        st.error("좌측 사이드바에서 Gemini API Key를 먼저 저장해 주세요.")
+    elif not biz_name:
+        # 데이터가 없을 때의 안내 문구
+        st.warning("⚠️ 분석할 기업 정보가 없습니다. 입력 화면에서 '기업명'을 포함한 정보를 먼저 작성해 주세요.")
+        if st.button("정보 입력하러 가기"): 
+            st.session_state["view_mode"] = "INPUT"; st.rerun()
     else:
-        with st.status(f"🚀 {biz_name} {report_style} 리포트 생성 중..."):
-            res_html = generate_ai_report(api_key, current_data, mode, style=report_style)
-            components.html(res_html, height=1500, scrolling=True)
+        # 리포트 생성 시작
+        with st.status(f"🚀 {biz_name} 리포트 분석 및 생성 중..."):
+            try:
+                # 모든 입력 데이터를 통합하여 전달
+                res_html = generate_ai_report(api_key, current_data, mode, style=report_style)
+                components.html(res_html, height=1200, scrolling=True)
+            except Exception as e:
+                st.error(f"리포트 생성 실패: {str(e)}")
