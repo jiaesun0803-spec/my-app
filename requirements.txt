@@ -3,3 +3,4 @@ pandas
 numpy
 google-generativeai>=0.7.2
 plotly
+openai
